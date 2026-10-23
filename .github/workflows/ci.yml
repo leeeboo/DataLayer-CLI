@@ -1,0 +1,25 @@
+name: CLI CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cli-ci-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Show toolchain
+        run: swift --version
+      - name: Build release CLI
+        run: swift build -c release --product overlay
+      - name: Run all core and CLI tests
+        run: swift test
+      - name: Check command entry point
+        run: .build/release/overlay --help

@@ -1,0 +1,779 @@
+import Foundation
+import OverlayCore
+
+struct CommandLineOptions {
+    var timelineProjectURL: URL?
+    var videoURL: URL?
+    var fitURL: URL?
+    var outputURL: URL
+    var width: Int?
+    var height: Int?
+    var framesPerSecond: Double?
+    var timeSync: TelemetryTimeSync
+    var activityOffsetMilliseconds: Int
+    var fitClockOffsetMilliseconds: Int
+    var averageBitRate: Int
+    var exportMode: OverlayExportMode
+    var codec: OverlayVideoCodec
+    var distanceUnit: OverlayDistanceUnit
+    var distanceUnitOverride: OverlayDistanceUnit?
+    var timeZoneOverride: OverlayTimeZone?
+    var activityTrim: ActivityTrim
+    var layoutPresetReference: String?
+    var validateFITCRC: Bool
+    var inspectOnly: Bool
+    var forceOverwrite: Bool
+    var specifiedArguments: Set<String>
+
+    static func parse(arguments: [String]) throws -> CommandLineOptions {
+        var values: [String: String] = [:]
+        var flags = Set<String>()
+        var index = 1
+
+        while index < arguments.count {
+            let argument = arguments[index]
+            switch argument {
+            case "-h", "--help":
+                throw CLIError.helpRequested
+            case "--skip-fit-crc", "--inspect", "--force":
+                flags.insert(argument)
+                index += 1
+            case "--timeline-project", "--video", "--fit", "--output", "--width", "--height", "--fps", "--offset", "--fit-start", "--sync-video", "--sync-fit", "--activity-offset-ms", "--fit-clock-offset-ms", "--bitrate", "--bitrate-bps", "--export-mode", "--codec", "--distance-unit", "--time-zone", "--activity-trim-start", "--activity-trim-end", "--layout-preset":
+                guard index + 1 < arguments.count else {
+                    throw CLIError.missingValue(argument)
+                }
+                values[argument] = arguments[index + 1]
+                index += 2
+            default:
+                throw CLIError.unknownArgument(argument)
+            }
+        }
+
+        let timelineProjectURL = values["--timeline-project"].map { URL(fileURLWithPath: $0) }
+        if timelineProjectURL == nil, values["--fit"] == nil {
+            throw CLIError.missingRequired("--fit")
+        }
+        if timelineProjectURL != nil {
+            try validateTimelineProjectArguments(values: values)
+        }
+        guard let output = values["--output"] else { throw CLIError.missingRequired("--output") }
+        let exportMode = try parseExportMode(values["--export-mode"])
+        let codec = try parseCodec(
+            values["--codec"],
+            exportMode: timelineProjectURL != nil && values["--export-mode"] == nil ? nil : exportMode
+        )
+        let videoURL = values["--video"].map { URL(fileURLWithPath: $0) }
+        let distanceUnitOverride = try parseDistanceUnitOverride(values["--distance-unit"])
+
+        return CommandLineOptions(
+            timelineProjectURL: timelineProjectURL,
+            videoURL: videoURL,
+            fitURL: values["--fit"].map { URL(fileURLWithPath: $0) },
+            outputURL: URL(fileURLWithPath: output),
+            width: try optionalInt(values["--width"], name: "--width", minimum: 2, maximum: 16_384, requireEven: true),
+            height: try optionalInt(values["--height"], name: "--height", minimum: 2, maximum: 16_384, requireEven: true),
+            framesPerSecond: try optionalDouble(values["--fps"], name: "--fps", minimum: 1),
+            timeSync: try parseTimeSync(values: values),
+            activityOffsetMilliseconds: try parseActivityOffsetMilliseconds(values["--activity-offset-ms"]),
+            fitClockOffsetMilliseconds: try parseFitClockOffsetMilliseconds(values["--fit-clock-offset-ms"]),
+            averageBitRate: try parseAverageBitRate(values: values),
+            exportMode: exportMode,
+            codec: codec,
+            distanceUnit: distanceUnitOverride ?? .kilometers,
+            distanceUnitOverride: distanceUnitOverride,
+            timeZoneOverride: try parseTimeZone(values["--time-zone"]),
+            activityTrim: try parseActivityTrim(values: values),
+            layoutPresetReference: values["--layout-preset"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+            validateFITCRC: !flags.contains("--skip-fit-crc"),
+            inspectOnly: flags.contains("--inspect"),
+            forceOverwrite: flags.contains("--force"),
+            specifiedArguments: Set(values.keys)
+        )
+    }
+
+    private static func validateTimelineProjectArguments(values: [String: String]) throws {
+        for name in ["--fit", "--video", "--offset", "--fit-start", "--sync-video", "--sync-fit", "--activity-offset-ms", "--fit-clock-offset-ms", "--layout-preset"] where values[name] != nil {
+            throw CLIError.conflictingArguments("--timeline-project cannot be combined with \(name)")
+        }
+    }
+
+    private static func parseActivityOffsetMilliseconds(_ raw: String?) throws -> Int {
+        guard let raw else { return 0 }
+        guard let value = Int(raw), OverlayRenderConfig.activityOffsetRange.contains(value) else {
+            throw CLIError.invalidValue("--activity-offset-ms", raw)
+        }
+        return value
+    }
+
+    private static func parseTimeZone(_ raw: String?) throws -> OverlayTimeZone? {
+        guard let raw else { return nil }
+        guard let zone = OverlayTimeZone(rawValue: raw) else { throw CLIError.invalidValue("--time-zone", raw) }
+        return zone
+    }
+
+    private static func parseFitClockOffsetMilliseconds(_ raw: String?) throws -> Int {
+        guard let raw else { return 0 }
+        guard let value = Int(raw), (-999...999).contains(value) else {
+            throw CLIError.invalidValue("--fit-clock-offset-ms", raw)
+        }
+        return value
+    }
+
+    private static func optionalInt(
+        _ raw: String?,
+        name: String,
+        minimum: Int,
+        maximum: Int? = nil,
+        requireEven: Bool = false
+    ) throws -> Int? {
+        guard let raw else { return nil }
+        guard let value = Int(raw),
+              value >= minimum,
+              maximum.map({ value <= $0 }) ?? true,
+              !requireEven || value % 2 == 0 else {
+            throw CLIError.invalidValue(name, raw)
+        }
+        return value
+    }
+
+    private static func parseAverageBitRate(values: [String: String]) throws -> Int {
+        if values["--bitrate"] != nil, values["--bitrate-bps"] != nil {
+            throw CLIError.conflictingArguments("--bitrate cannot be combined with --bitrate-bps")
+        }
+
+        if let rawBPS = values["--bitrate-bps"] {
+            return try parsePositiveInt(rawBPS, name: "--bitrate-bps")
+        }
+
+        guard let rawKBPS = values["--bitrate"] else {
+            return 12_000_000
+        }
+
+        let value = try parsePositiveInt(rawKBPS, name: "--bitrate")
+        if value > 1_000_000 {
+            return value
+        }
+        return value * 1000
+    }
+
+    private static func parsePositiveInt(_ raw: String, name: String) throws -> Int {
+        guard let value = Int(raw), value > 0 else { throw CLIError.invalidValue(name, raw) }
+        return value
+    }
+
+    private static func parseTimeSync(values: [String: String]) throws -> TelemetryTimeSync {
+        let hasOffset = values["--offset"] != nil
+        let hasFitStart = values["--fit-start"] != nil
+        let hasSyncVideo = values["--sync-video"] != nil
+        let hasSyncFit = values["--sync-fit"] != nil
+
+        if hasOffset, hasFitStart || hasSyncVideo || hasSyncFit {
+            throw CLIError.conflictingArguments("--offset cannot be combined with --fit-start, --sync-video, or --sync-fit")
+        }
+        if hasFitStart, hasSyncVideo || hasSyncFit {
+            throw CLIError.conflictingArguments("--fit-start cannot be combined with --sync-video or --sync-fit")
+        }
+
+        if hasSyncVideo || hasSyncFit {
+            guard let video = values["--sync-video"] else { throw CLIError.missingRequired("--sync-video") }
+            guard let fit = values["--sync-fit"] else { throw CLIError.missingRequired("--sync-fit") }
+            return TelemetryTimeSync(
+                videoSyncTime: try parseDouble(video, name: "--sync-video", allowNegative: false),
+                fitSyncTime: try parseDouble(fit, name: "--sync-fit", allowNegative: false)
+            )
+        }
+
+        if let fitStart = values["--fit-start"] {
+            return TelemetryTimeSync(
+                videoSyncTime: 0,
+                fitSyncTime: try parseDouble(fitStart, name: "--fit-start", allowNegative: false)
+            )
+        }
+
+        if let offset = values["--offset"] {
+            return .legacyOffset(try parseDouble(offset, name: "--offset", allowNegative: true))
+        }
+
+        return .identity
+    }
+
+    private static func optionalDouble(_ raw: String?, name: String, minimum: Double) throws -> Double? {
+        guard let raw else { return nil }
+        let value = try parseDouble(raw, name: name, allowNegative: false)
+        guard value >= minimum else { throw CLIError.invalidValue(name, raw) }
+        return value
+    }
+
+    private static func parseDouble(_ raw: String, name: String, allowNegative: Bool) throws -> Double {
+        guard let value = Double(raw), value.isFinite, allowNegative || value >= 0 else {
+            throw CLIError.invalidValue(name, raw)
+        }
+        return value
+    }
+
+    private static func parseExportMode(_ raw: String?) throws -> OverlayExportMode {
+        guard let raw else { return .overlay }
+        guard let mode = OverlayExportMode(rawValue: raw) else {
+            throw CLIError.invalidValue("--export-mode", raw)
+        }
+        return mode
+    }
+
+    private static func parseCodec(_ raw: String?, exportMode: OverlayExportMode?) throws -> OverlayVideoCodec {
+        guard let raw else { return (exportMode ?? .overlay).defaultCodec }
+        guard let codec = OverlayVideoCodec(rawValue: raw) else {
+            throw CLIError.invalidValue("--codec", raw)
+        }
+        if let exportMode, codec.exportMode != exportMode {
+            throw CLIError.conflictingArguments("\(codec.rawValue) cannot be used with --export-mode \(exportMode.rawValue)")
+        }
+        return codec
+    }
+
+    private static func parseDistanceUnit(_ raw: String?) throws -> OverlayDistanceUnit {
+        guard let raw else { return .kilometers }
+        return try parseDistanceUnitOverride(raw) ?? .kilometers
+    }
+
+    private static func parseDistanceUnitOverride(_ raw: String?) throws -> OverlayDistanceUnit? {
+        guard let raw else { return nil }
+        guard let unit = OverlayDistanceUnit(rawValue: raw) else {
+            throw CLIError.invalidValue("--distance-unit", raw)
+        }
+        return unit
+    }
+
+    private static func parseActivityTrim(values: [String: String]) throws -> ActivityTrim {
+        let start = try parseDouble(values["--activity-trim-start"] ?? "0", name: "--activity-trim-start", allowNegative: false)
+        let end = try values["--activity-trim-end"].map {
+            try parseDouble($0, name: "--activity-trim-end", allowNegative: false)
+        }
+        if let end, end < start {
+            throw CLIError.conflictingArguments("--activity-trim-end must be greater than or equal to --activity-trim-start")
+        }
+        return ActivityTrim(startSeconds: start, endSeconds: end)
+    }
+}
+
+enum CLIError: Error, CustomStringConvertible {
+    case helpRequested
+    case missingValue(String)
+    case missingRequired(String)
+    case invalidValue(String, String)
+    case invalidOutputDimensions(Int, Int)
+    case layoutPresetNotFound(String)
+    case layoutPresetFileUnreadable(String, String)
+    case layoutPresetFileInvalid(String)
+    case timelineProjectFileUnreadable(String, String)
+    case timelineProjectFileInvalid(String)
+    case outputAlreadyExists(String)
+    case outputMatchesInput(String)
+    case conflictingArguments(String)
+    case unknownArgument(String)
+
+    var description: String {
+        switch self {
+        case .helpRequested:
+            return Self.help
+        case let .missingValue(name):
+            return "Missing value for \(name).\n\n\(Self.help)"
+        case let .missingRequired(name):
+            return "Missing required argument \(name).\n\n\(Self.help)"
+        case let .invalidValue(name, value):
+            return "Invalid value for \(name): \(value).\n\n\(Self.help)"
+        case let .invalidOutputDimensions(width, height):
+            return "Invalid output dimensions: \(width)x\(height). Width and height must be 2...16384 and even pixel values."
+        case let .layoutPresetNotFound(reference):
+            return "Layout preset not found: \(reference).\n\n\(Self.help)"
+        case let .layoutPresetFileUnreadable(path, reason):
+            return "Could not read layout preset file \(path): \(reason).\n\n\(Self.help)"
+        case let .layoutPresetFileInvalid(path):
+            return "Layout preset file does not contain any usable preset: \(path).\n\n\(Self.help)"
+        case let .timelineProjectFileUnreadable(path, reason):
+            return "Could not read timeline project file \(path): \(reason).\n\n\(Self.help)"
+        case let .timelineProjectFileInvalid(path):
+            return "Timeline project file is invalid: \(path).\n\n\(Self.help)"
+        case let .outputAlreadyExists(path):
+            return "Output already exists: \(path). Pass --force to replace it.\n\n\(Self.help)"
+        case let .outputMatchesInput(path):
+            return "Output must not overwrite an input file: \(path).\n\n\(Self.help)"
+        case let .conflictingArguments(message):
+            return "\(message).\n\n\(Self.help)"
+        case let .unknownArgument(argument):
+            return "Unknown argument \(argument).\n\n\(Self.help)"
+        }
+    }
+
+    static let help = """
+    Usage:
+      overlay --fit activity.fit|activity.gpx --output overlay.mov [options]
+      overlay --timeline-project project.dlsproj --output output.mov [options]
+
+    Required:
+      --fit PATH         Standard .FIT or .GPX activity file.
+                         Use either --fit or --timeline-project.
+      --timeline-project PATH
+                         DataLayer Studio .dlsproj project file.
+      --output PATH      Output .mov file; individual project clips use name_01.mov, name_02.mov, etc.
+
+    Options:
+      --video PATH       Optional source video. Without one, video mode renders data over a black canvas.
+      --export-mode M    overlay (single-source default) for transparent alpha video, or video for an opaque composited video.
+                         Projects inherit saved export mode, codec, bitrate, trims and render scope.
+                         Explicit CLI options override the corresponding saved settings.
+      --width PX         Override output width, 2...16384 and even. Defaults to source video width, or 1920 without video.
+      --height PX        Override output height, 2...16384 and even. Defaults to source video height, or 1080 without video.
+      --fps N            Override output frame rate, minimum 1. Defaults to source video frame rate, or 30 without video.
+      --fit-start SEC    Activity elapsed time at video 0. Use when recording starts mid-activity.
+      --sync-video SEC   Video timestamp for a sync point. Requires --sync-fit.
+      --sync-fit SEC     FIT elapsed timestamp for the same sync point. Requires --sync-video.
+      --offset SEC       Legacy shorthand: video starts SEC seconds before FIT. Negative starts mid-FIT.
+      --activity-offset-ms MS
+                         Shift Activity Time and all telemetry samples by -999...999 ms.
+                         Positive values select later activity data at the current frame.
+      --fit-clock-offset-ms MS
+                         Shift only the displayed FIT clock/date by -999...999 ms.
+                         Positive values make the displayed clock later.
+      --bitrate KBPS     Average HEVC bitrate in kbps. Default: 12000.
+                         Existing values above 1000000 are accepted as legacy bps.
+      --bitrate-bps BPS  Legacy explicit bps bitrate.
+      --codec NAME       overlay mode: hevc-alpha (default), prores-4444. video mode: hevc (default), h264.
+      --distance-unit U  Distance unit for overlay labels: km (default) or m.
+      --time-zone ZONE   Absolute clock/date zone: activity (default), system, or an IANA
+                         identifier such as Asia/Shanghai. Activity falls back to system.
+                         Timeline projects keep their saved choice unless overridden.
+      --activity-trim-start SEC
+                         Rebase overlay data from this original activity elapsed time.
+      --activity-trim-end SEC
+                         Stop overlay data at this original activity elapsed time.
+      --layout-preset P  Use a saved GUI layout preset by name/ID, or a GUI-exported JSON file.
+                         Not used with --timeline-project.
+      --skip-fit-crc     Parse FIT even if CRC validation fails. Ignored for GPX.
+      --inspect          Parse video and activity data, print metadata, do not render.
+      --force            Replace an existing output file. Input files are never overwritten.
+      -h, --help         Show this help.
+    """
+}
+
+struct ResolvedOverlayLayout {
+    var layout: OverlayLayout
+    var presetName: String?
+}
+
+func resolveOverlayLayout(
+    presetReference: String?,
+    loadPresetState: () -> LayoutPresetState = { LayoutPresetStore.loadSharedAppState() }
+) throws -> ResolvedOverlayLayout {
+    guard let presetReference else {
+        return ResolvedOverlayLayout(layout: .default, presetName: nil)
+    }
+    let trimmedReference = presetReference.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmedReference.isEmpty else {
+        throw CLIError.invalidValue("--layout-preset", presetReference)
+    }
+
+    let fileURL = URL(fileURLWithPath: trimmedReference)
+    var isDirectory: ObjCBool = false
+    if FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDirectory), !isDirectory.boolValue {
+        return try resolveOverlayLayout(fromPresetFile: fileURL)
+    }
+
+    let state = loadPresetState()
+    guard let preset = state.preset(matching: trimmedReference) else {
+        throw CLIError.layoutPresetNotFound(trimmedReference)
+    }
+
+    return ResolvedOverlayLayout(layout: preset.layout.sanitized, presetName: preset.name)
+}
+
+private func resolveOverlayLayout(fromPresetFile fileURL: URL) throws -> ResolvedOverlayLayout {
+    let data: Data
+    do {
+        data = try Data(contentsOf: fileURL)
+    } catch {
+        throw CLIError.layoutPresetFileUnreadable(fileURL.path, error.localizedDescription)
+    }
+
+    let decoder = JSONDecoder()
+    if let state = try? decoder.decode(LayoutPresetState.self, from: data) {
+        let sanitizedState = state.sanitized
+        if let defaultPresetID = sanitizedState.defaultPresetID,
+           let defaultPreset = sanitizedState.presets.first(where: { $0.id == defaultPresetID }) {
+            return ResolvedOverlayLayout(layout: defaultPreset.layout.sanitized, presetName: defaultPreset.name)
+        }
+        if let preset = sanitizedState.presets.first {
+            return ResolvedOverlayLayout(layout: preset.layout.sanitized, presetName: preset.name)
+        }
+        throw CLIError.layoutPresetFileInvalid(fileURL.path)
+    }
+
+    if let preset = try? decoder.decode(LayoutPreset.self, from: data) {
+        let sanitizedState = LayoutPresetState(presets: [preset], defaultPresetID: preset.id).sanitized
+        guard let sanitizedPreset = sanitizedState.presets.first else {
+            throw CLIError.layoutPresetFileInvalid(fileURL.path)
+        }
+        return ResolvedOverlayLayout(layout: sanitizedPreset.layout.sanitized, presetName: sanitizedPreset.name)
+    }
+
+    throw CLIError.layoutPresetFileInvalid(fileURL.path)
+}
+
+func loadTimelineProject(from fileURL: URL) throws -> TimelineProject {
+    let data: Data
+    do {
+        data = try Data(contentsOf: fileURL)
+    } catch {
+        throw CLIError.timelineProjectFileUnreadable(fileURL.path, error.localizedDescription)
+    }
+
+    do {
+        return try TimelineProjectPersistenceService.project(
+            from: data,
+            relativeTo: fileURL,
+            bookmarkURLResolver: resolveTimelineBookmark
+        )
+    } catch {
+        throw CLIError.timelineProjectFileInvalid(fileURL.path)
+    }
+}
+
+func run() async throws {
+    TransparentVideoWriter.removeStaleTemporaryOutputs()
+    let options = try CommandLineOptions.parse(arguments: CommandLine.arguments)
+    if let timelineProjectURL = options.timelineProjectURL {
+        try renderTimelineProject(options: options, projectURL: timelineProjectURL)
+        return
+    }
+
+    guard let fitURL = options.fitURL else {
+        throw CLIError.missingRequired("--fit")
+    }
+    let parser = TelemetryFileParser(validateFITCRC: options.validateFITCRC)
+    let activity = try parser.parseActivity(url: fitURL)
+    let series = activity.series
+    let timeZone = (options.timeZoneOverride ?? .activity).resolve(activityOffsetSeconds: activity.timeZoneOffsetSeconds)
+    let metadata: VideoMetadata?
+    if let videoURL = options.videoURL {
+        metadata = try await VideoMetadata.loadAsync(from: videoURL)
+    } else {
+        metadata = nil
+    }
+    let resolvedLayout = try resolveOverlayLayout(presetReference: options.layoutPresetReference)
+
+    let width = options.width ?? metadata.map { Int($0.size.width.rounded()) } ?? 1920
+    let height = options.height ?? metadata.map { Int($0.size.height.rounded()) } ?? 1080
+    let fps = options.framesPerSecond ?? metadata?.framesPerSecond ?? 30
+    let duration = metadata?.duration ?? series.duration
+
+    if metadata != nil {
+        print("Video: \(width)x\(height), \(String(format: "%.3f", fps)) fps, \(String(format: "%.2f", duration)) s")
+    } else {
+        print("Video: none, \(width)x\(height), \(String(format: "%.3f", fps)) fps, \(String(format: "%.2f", duration)) s")
+    }
+    print("Activity: \(series.samples.count) samples, \(String(format: "%.2f", series.duration)) s telemetry")
+    print("Export mode: \(options.exportMode.rawValue)")
+    print("Codec: \(options.codec.rawValue)")
+    print("Bitrate: \(options.averageBitRate / 1000) kbps")
+    print("Distance unit: \(options.distanceUnit.rawValue)")
+    print("Time zone: \(timeZone.identifier)")
+    if options.activityTrim.isActive(for: series.duration) {
+        print(String(format: "Activity trim: %.3f...%.3f s", options.activityTrim.start(in: series.duration), options.activityTrim.end(in: series.duration)))
+    }
+    if let presetName = resolvedLayout.presetName {
+        print("Layout preset: \(presetName)")
+    } else {
+        print("Layout: built-in default")
+    }
+    print("Hardware: \(OverlayHardwareProfile.current.displaySummary)")
+    printSyncSummary(timeSync: options.timeSync, videoDuration: duration, fitDuration: series.duration)
+    if options.activityOffsetMilliseconds != 0 {
+        print("Activity offset: \(options.activityOffsetMilliseconds) ms")
+    }
+    if options.fitClockOffsetMilliseconds != 0 {
+        print("FIT clock offset: \(options.fitClockOffsetMilliseconds) ms")
+    }
+
+    if options.inspectOnly {
+        return
+    }
+    try validateOutputDimensions(width: width, height: height)
+    try validateOutputSafety(
+        outputURL: options.outputURL,
+        inputURLs: [fitURL, options.videoURL].compactMap { $0 },
+        forceOverwrite: options.forceOverwrite
+    )
+    let progressHandler: (Int, Int) -> Void = { completed, total in
+        let percent = Double(completed) / Double(total) * 100
+        print(String(format: "Rendered %d/%d frames (%.0f%%)", completed, total, percent))
+    }
+
+    var exportWarnings: [VideoExportWarning] = []
+    switch options.exportMode {
+    case .overlay:
+        try TransparentVideoWriter(
+            outputURL: options.outputURL,
+            series: series,
+            config: TransparentVideoWriterConfig(
+                width: width,
+                height: height,
+                framesPerSecond: fps,
+                duration: duration,
+                averageBitRate: options.averageBitRate,
+                timeSync: options.timeSync,
+                activityOffsetMilliseconds: options.activityOffsetMilliseconds,
+                fitClockOffsetMilliseconds: options.fitClockOffsetMilliseconds,
+                codec: options.codec,
+                overlayLayout: resolvedLayout.layout,
+                distanceUnit: options.distanceUnit,
+                timeZone: timeZone,
+                activityTrim: options.activityTrim,
+                progressHandler: progressHandler
+            )
+        ).write()
+    case .video:
+        let activityAsset = MediaAsset(
+            id: fitURL.path,
+            kind: .activity,
+            url: fitURL,
+            displayName: fitURL.lastPathComponent,
+            duration: series.duration,
+            activityOffsetMilliseconds: options.activityOffsetMilliseconds,
+            fitClockOffsetMilliseconds: options.fitClockOffsetMilliseconds,
+            timeZoneOffsetSeconds: activity.timeZoneOffsetSeconds
+        )
+        let videoAsset = options.videoURL.flatMap { videoURL in
+            metadata.map { metadata in
+                MediaAsset(
+                    id: videoURL.path,
+                    kind: .video,
+                    url: videoURL,
+                    displayName: videoURL.lastPathComponent,
+                    duration: metadata.duration,
+                    width: Int(metadata.size.width.rounded()),
+                    height: Int(metadata.size.height.rounded()),
+                    framesPerSecond: metadata.framesPerSecond
+                )
+            }
+        }
+        var project = TimelineProject.migratingSingleSource(
+            outputWidth: width,
+            outputHeight: height,
+            framesPerSecond: fps,
+            distanceUnit: options.distanceUnit,
+            videoAsset: videoAsset,
+            activityAsset: activityAsset,
+            sync: options.timeSync,
+            layout: resolvedLayout.layout
+        )
+        project.timeZone = options.timeZoneOverride ?? .activity
+        exportWarnings = try TimelineVideoWriter(
+            outputURL: options.outputURL,
+            project: project,
+            telemetrySeriesByAssetID: [activityAsset.id: series],
+            config: TimelineVideoWriterConfig(
+                width: width,
+                height: height,
+                framesPerSecond: fps,
+                duration: project.duration,
+                averageBitRate: options.averageBitRate,
+                codec: options.codec,
+                activityTrim: options.activityTrim,
+                progressHandler: progressHandler
+            )
+        ).write().warnings
+    }
+    print("Wrote \(options.outputURL.path)")
+    printExportWarnings(exportWarnings)
+}
+
+func renderTimelineProject(options: CommandLineOptions, projectURL: URL) throws {
+    var project = try loadTimelineProject(from: projectURL)
+    let options = try options.resolvingTimelineExportSettings(project)
+    let scopedURLs = project.assets.filter { $0.bookmarkData != nil }.map(\.url)
+        .filter { $0.startAccessingSecurityScopedResource() }
+    defer { scopedURLs.forEach { $0.stopAccessingSecurityScopedResource() } }
+    if let distanceUnit = options.distanceUnitOverride {
+        project.distanceUnit = distanceUnit
+    }
+    if let timeZone = options.timeZoneOverride { project.timeZone = timeZone }
+
+    let request = timelineExportRequest(project: project, options: options)
+
+    let parser = TelemetryFileParser(validateFITCRC: options.validateFITCRC)
+    var telemetryByAssetID: [String: TelemetrySeries] = [:]
+    for index in project.assets.indices where project.assets[index].kind == .activity {
+        let asset = project.assets[index]
+        let activity = try parser.parseActivity(url: asset.url)
+        telemetryByAssetID[asset.id] = TimelineExportService.applyingWeatherRecords(asset.weatherRecords ?? [], to: activity.series)
+        project.assets[index].timeZoneOffsetSeconds = activity.timeZoneOffsetSeconds
+    }
+
+    if let issue = TimelineExportService.firstPreflightIssue(
+        for: request,
+        project: project,
+        availableTelemetryAssetIDs: Set(telemetryByAssetID.keys)
+    ) {
+        if case let .timeline(timelineIssue) = issue { throw timelineIssue }
+        throw CLIError.invalidValue("--timeline-project export settings", String(describing: issue))
+    }
+    let ranges = TimelineExportService.exportRanges(
+        for: project,
+        request: request,
+        renderScope: project.exportSettings?.renderScope ?? .singleClip
+    )
+    guard !ranges.isEmpty else {
+        throw CLIError.invalidValue("--timeline-project", "no clips in export range")
+    }
+    let outputURLs = ranges.indices.map { index in
+        ranges.count == 1 ? options.outputURL : TimelineExportService.segmentOutputURL(
+            base: options.outputURL, index: index + 1, count: ranges.count
+        )
+    }
+
+    print("Timeline project: \(project.assets.count) assets, \(project.tracks.count) tracks, \(String(format: "%.2f", project.duration)) s")
+    print("Export mode: \(options.exportMode.rawValue)")
+    print("Codec: \(options.codec.rawValue)")
+    print("Output: \(request.width)x\(request.height), \(String(format: "%.3f", request.framesPerSecond)) fps")
+    print(String(format: "Export range: %.3f...%.3f s, %d file(s)", request.timelineStart, request.timelineStart + (request.duration ?? 0), ranges.count))
+    print("Bitrate: \(options.averageBitRate / 1000) kbps")
+    print("Distance unit: \(project.distanceUnit.rawValue)")
+    print("Time zone: \(project.timeZone.rawValue)")
+    for asset in project.assets where asset.kind == .activity {
+        print("Activity time zone: \(project.displayTimeZone(for: asset).identifier)")
+    }
+    print("Hardware: \(OverlayHardwareProfile.current.displaySummary)")
+
+    if options.inspectOnly {
+        return
+    }
+    for outputURL in outputURLs {
+        try validateOutputSafety(
+            outputURL: outputURL,
+            inputURLs: [projectURL] + project.assets.map(\.url),
+            forceOverwrite: options.forceOverwrite
+        )
+    }
+    let progressHandler: (Int, Int) -> Void = { completed, total in
+        let percent = Double(completed) / Double(total) * 100
+        print(String(format: "Rendered %d/%d frames (%.0f%%)", completed, total, percent))
+    }
+
+    for (range, outputURL) in zip(ranges, outputURLs) {
+        let result = try TimelineVideoWriter(
+            outputURL: outputURL,
+            project: project,
+            telemetrySeriesByAssetID: telemetryByAssetID,
+            config: TimelineVideoWriterConfig(
+                width: request.width,
+                height: request.height,
+                framesPerSecond: request.framesPerSecond,
+                timelineStart: range.start,
+                duration: range.duration,
+                averageBitRate: options.averageBitRate,
+                codec: options.codec,
+                activityTrim: options.activityTrim,
+                progressHandler: progressHandler
+            )
+        ).write()
+        print("Wrote \(outputURL.path)")
+        printExportWarnings(result.warnings)
+    }
+}
+
+func printExportWarnings(_ warnings: [VideoExportWarning]) {
+    for warning in warnings where warning.kind == .videoSegmentSkipped {
+        let end = warning.timelineStart + warning.duration
+        print(String(
+            format: "Warning: skipped undecodable video clip %@ at %.3f...%.3f s; used a still or black frame.",
+            warning.sourceDisplayName,
+            warning.timelineStart,
+            end
+        ))
+    }
+    for warning in warnings where warning.kind == .skippedSegmentAudioSilenced {
+        let end = warning.timelineStart + warning.duration
+        print(String(
+            format: "Warning: muted audio for skipped clip %@ at %.3f...%.3f s.",
+            warning.sourceDisplayName,
+            warning.timelineStart,
+            end
+        ))
+    }
+}
+
+func validateOutputDimensions(width: Int, height: Int) throws {
+    guard width >= 2, width <= 16_384,
+          height >= 2, height <= 16_384,
+          width % 2 == 0, height % 2 == 0 else {
+        throw CLIError.invalidOutputDimensions(width, height)
+    }
+}
+
+func validateOutputSafety(
+    outputURL: URL,
+    inputURLs: [URL],
+    forceOverwrite: Bool,
+    fileManager: FileManager = .default
+) throws {
+    let resolvedOutput = outputURL.standardizedFileURL.resolvingSymlinksInPath()
+    if inputURLs.contains(where: {
+        $0.standardizedFileURL.resolvingSymlinksInPath() == resolvedOutput
+    }) {
+        throw CLIError.outputMatchesInput(outputURL.path)
+    }
+    if fileManager.fileExists(atPath: outputURL.path), !forceOverwrite {
+        throw CLIError.outputAlreadyExists(outputURL.path)
+    }
+}
+
+func printSyncSummary(timeSync: TelemetryTimeSync, videoDuration: TimeInterval, fitDuration: TimeInterval) {
+    let fitAtVideoStart = timeSync.fitElapsed(forVideoTime: 0)
+    let fitAtVideoEnd = timeSync.fitElapsed(forVideoTime: videoDuration)
+    print(
+        "Sync: \(timeSync.description); video 0.000s -> FIT \(TelemetryTimeSync.format(fitAtVideoStart))s, video end -> FIT \(TelemetryTimeSync.format(fitAtVideoEnd))s"
+    )
+
+    if timeSync.fitOffsetFromVideoStart < 0 {
+        print("Sync note: video begins before FIT telemetry; first sample is held until FIT time reaches 0.")
+    }
+    if fitAtVideoEnd > fitDuration {
+        print("Sync note: video extends beyond FIT telemetry; last sample is held after FIT \(TelemetryTimeSync.format(fitDuration))s.")
+    }
+}
+
+@main
+struct OverlayCLI {
+    static func main() async {
+        #if os(macOS)
+        if CommandLine.arguments.dropFirst().first == "--video-worker" { VideoExportWorker.run() }
+        VideoExportWorker.executableURL = Bundle.main.executableURL
+        #endif
+        do {
+            try await run()
+        } catch let error as CLIError {
+            print(error.description)
+            if case .helpRequested = error {
+                exit(0)
+            }
+            exit(2)
+        } catch let error as FITError {
+            fputs("FIT error: \(error.description)\n", stderr)
+            exit(1)
+        } catch let error as GPXError {
+            fputs("GPX error: \(error.description)\n", stderr)
+            exit(1)
+        } catch let error as TelemetryFileError {
+            fputs("Activity file error: \(error.description)\n", stderr)
+            exit(1)
+        } catch let error as TimelineExportValidationIssue {
+            fputs("Timeline error: \(error.errorDescription)\n", stderr)
+            exit(1)
+        } catch let error as OverlayVideoError {
+            fputs("Video error: \(error.description)\n", stderr)
+            exit(1)
+        } catch {
+            fputs("Error: \(error.localizedDescription)\n", stderr)
+            exit(1)
+        }
+    }
+}

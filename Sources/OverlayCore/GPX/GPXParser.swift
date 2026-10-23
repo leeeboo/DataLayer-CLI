@@ -1,0 +1,346 @@
+import Foundation
+
+public enum GPXError: Error, CustomStringConvertible, LocalizedError {
+    case unreadable(String)
+    case fileTooLarge(maximumBytes: Int, actualBytes: Int)
+    case malformedXML(String)
+    case noTrackPoints
+
+    public var description: String {
+        switch self {
+        case let .unreadable(message):
+            return "GPX file could not be read: \(message)."
+        case let .fileTooLarge(maximumBytes, actualBytes):
+            return "GPX file is too large. Maximum is \(maximumBytes) bytes, found \(actualBytes)."
+        case let .malformedXML(message):
+            return "GPX XML is malformed: \(message)."
+        case .noTrackPoints:
+            return "GPX file contains no usable track points."
+        }
+    }
+
+    public var errorDescription: String? {
+        description
+    }
+}
+
+public final class GPXParser {
+    static let maximumFileSizeBytes = 64 * 1024 * 1024
+    /// 同一秒内的多个采样点用亚秒步进区分，避免被当作重复样本丢弃。
+    private static let duplicateTimestampEpsilon: TimeInterval = 0.001
+
+    public init() {}
+
+    public func parse(url: URL) throws -> TelemetrySeries {
+        do {
+            return try parseActivity(url: url).series
+        } catch let error as GPXError {
+            throw error
+        } catch {
+            throw GPXError.unreadable(error.localizedDescription)
+        }
+    }
+
+    public func parseActivity(url: URL) throws -> ParsedActivity {
+        do {
+            let values = try url.resourceValues(forKeys: [.fileSizeKey])
+            if let fileSize = values.fileSize, fileSize > Self.maximumFileSizeBytes {
+                throw GPXError.fileTooLarge(maximumBytes: Self.maximumFileSizeBytes, actualBytes: fileSize)
+            }
+            return try parseActivity(data: Data(contentsOf: url))
+        } catch let error as GPXError {
+            throw error
+        } catch {
+            throw GPXError.unreadable(error.localizedDescription)
+        }
+    }
+
+    public func parse(data: Data) throws -> TelemetrySeries {
+        try parseActivity(data: data).series
+    }
+
+    public func parseActivity(data: Data) throws -> ParsedActivity {
+        guard data.count <= Self.maximumFileSizeBytes else {
+            throw GPXError.fileTooLarge(maximumBytes: Self.maximumFileSizeBytes, actualBytes: data.count)
+        }
+        let delegate = GPXParserDelegate()
+        let parser = XMLParser(data: data)
+        parser.shouldProcessNamespaces = false
+        parser.delegate = delegate
+
+        guard parser.parse() else {
+            if let error = parser.parserError {
+                throw GPXError.malformedXML(error.localizedDescription)
+            }
+            throw GPXError.malformedXML("Unknown parser error")
+        }
+
+        if let error = delegate.error {
+            throw error
+        }
+
+        guard !delegate.points.isEmpty else {
+            throw GPXError.noTrackPoints
+        }
+
+        let sport = delegate.trackTypeText.flatMap { TelemetrySport(gpxTypeText: $0) }
+        let series = TelemetrySeries(samples: samples(from: delegate.points, sport: sport))
+        return ParsedActivity(series: series, sport: sport, timeZoneOffsetSeconds: delegate.timeZoneOffsetSeconds)
+    }
+
+    private func samples(from points: [RawGPXTrackPoint], sport: TelemetrySport?) -> [TelemetrySample] {
+        let elapsedValues = monotonicElapsedValues(for: points)
+        return points.enumerated().map { index, point in
+            return TelemetrySample(
+                elapsed: elapsedValues[index],
+                date: point.date,
+                latitude: point.latitude,
+                longitude: point.longitude,
+                altitudeMeters: point.altitudeMeters,
+                heartRate: point.heartRate,
+                cadence: point.cadence.flatMap { Self.cadenceValue($0, sport: sport) },
+                distanceMeters: point.distanceMeters,
+                speedMetersPerSecond: point.speedMetersPerSecond,
+                powerWatts: point.powerWatts,
+                totalCalories: point.totalCalories,
+                stepLengthMeters: point.stepLengthMeters,
+                temperatureCelsius: point.temperatureCelsius,
+                trackSegmentIndex: point.trackSegmentIndex
+            )
+        }
+    }
+
+    private func monotonicElapsedValues(for points: [RawGPXTrackPoint]) -> [TimeInterval] {
+        guard let firstDatedIndex = points.firstIndex(where: { $0.date != nil }),
+              let firstDate = points[firstDatedIndex].date else {
+            return points.indices.map(TimeInterval.init)
+        }
+
+        var previous: TimeInterval?
+        return points.map { point in
+            // 缺时间戳的点按 1 秒递推；有时间戳的点保留原值。
+            // 同秒采样很常见（秒以下精度被截断、多段合并）。逐点 +1 会凭空
+            // 拉长轨迹总时长、令遥测与视频失步；而让它们相等又会被下游
+            // resampled 的去重整段丢弃，连路线几何一起损失。因此只用亚秒
+            // 步进拉开：时长偏差可忽略，样本和轨迹点都保住，且严格递增。
+            // 由此产生的亚秒间隔不参与距离推速，已由
+            // TelemetrySeries.minimumSpeedDerivationSegmentSeconds 兜住。
+            let candidate = point.date.map {
+                $0.timeIntervalSince(firstDate) + TimeInterval(firstDatedIndex)
+            } ?? ((previous ?? -1) + 1)
+            let elapsed: TimeInterval
+            if let previous, candidate <= previous {
+                elapsed = previous + Self.duplicateTimestampEpsilon
+            } else {
+                elapsed = max(0, candidate)
+            }
+            previous = elapsed
+            return elapsed
+        }
+    }
+
+    private static func cadenceValue(_ rawCadence: Int, sport: TelemetrySport?) -> Int? {
+        guard rawCadence >= 0 else { return nil }
+        if sport == .cycling {
+            return rawCadence
+        }
+        return rawCadence < 130 ? rawCadence * 2 : rawCadence
+    }
+}
+
+private struct RawGPXTrackPoint {
+    var trackSegmentIndex: Int?
+    var latitude: Double?
+    var longitude: Double?
+    var altitudeMeters: Double?
+    var date: Date?
+    var heartRate: Int?
+    var cadence: Int?
+    var distanceMeters: Double?
+    var speedMetersPerSecond: Double?
+    var powerWatts: Int?
+    var totalCalories: Double?
+    var stepLengthMeters: Double?
+    var temperatureCelsius: Int?
+
+    var hasUsablePayload: Bool {
+        latitude != nil
+            || longitude != nil
+            || altitudeMeters != nil
+            || date != nil
+            || heartRate != nil
+            || cadence != nil
+            || distanceMeters != nil
+            || speedMetersPerSecond != nil
+            || powerWatts != nil
+            || totalCalories != nil
+            || stepLengthMeters != nil
+            || temperatureCelsius != nil
+    }
+}
+
+private final class GPXParserDelegate: NSObject, XMLParserDelegate {
+    private static let internetDateFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    private static let fractionalDateFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    var points: [RawGPXTrackPoint] = []
+    var trackTypeText: String?
+    var timeZoneOffsetSeconds: Int?
+    var error: GPXError?
+
+    private var currentPoint: RawGPXTrackPoint?
+    private var currentTrackSegmentIndex: Int?
+    private var nextTrackSegmentIndex = 0
+    private var currentElement: String?
+    private var textBuffer = ""
+    private var isCapturingTrackType = false
+
+    func parser(
+        _ parser: XMLParser,
+        didStartElement elementName: String,
+        namespaceURI: String?,
+        qualifiedName qName: String?,
+        attributes attributeDict: [String: String] = [:]
+    ) {
+        let name = normalizedElementName(elementName)
+        if name == "trkseg" {
+            currentTrackSegmentIndex = nextTrackSegmentIndex
+            nextTrackSegmentIndex += 1
+        }
+        if name == "trkpt" {
+            currentPoint = RawGPXTrackPoint(
+                trackSegmentIndex: currentTrackSegmentIndex,
+                latitude: double(attributeDict["lat"]),
+                longitude: double(attributeDict["lon"])
+            )
+        }
+
+        if currentPoint == nil, name == "type", trackTypeText == nil {
+            isCapturingTrackType = true
+            textBuffer = ""
+            return
+        }
+
+        guard currentPoint != nil else { return }
+        currentElement = name
+        textBuffer = ""
+    }
+
+    func parser(_ parser: XMLParser, foundCharacters string: String) {
+        guard isCapturingTrackType || (currentPoint != nil && currentElement != nil) else { return }
+        textBuffer += string
+    }
+
+    func parser(
+        _ parser: XMLParser,
+        didEndElement elementName: String,
+        namespaceURI: String?,
+        qualifiedName qName: String?
+    ) {
+        let name = normalizedElementName(elementName)
+        if name == "trkseg" {
+            currentTrackSegmentIndex = nil
+        }
+        if isCapturingTrackType, name == "type" {
+            let text = textBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
+            trackTypeText = text.isEmpty ? nil : text
+            isCapturingTrackType = false
+            textBuffer = ""
+            return
+        }
+        guard currentPoint != nil else { return }
+
+        if name == "trkpt" {
+            if let point = currentPoint, point.hasUsablePayload {
+                points.append(point)
+            }
+            currentPoint = nil
+            currentElement = nil
+            textBuffer = ""
+            return
+        }
+
+        guard let element = currentElement, element == name else { return }
+        apply(textBuffer.trimmingCharacters(in: .whitespacesAndNewlines), to: name)
+        currentElement = nil
+        textBuffer = ""
+    }
+
+    func parser(_ parser: XMLParser, parseErrorOccurred parseError: Error) {
+        error = .malformedXML(parseError.localizedDescription)
+    }
+
+    private func apply(_ value: String, to elementName: String) {
+        guard !value.isEmpty else { return }
+
+        switch elementName {
+        case "ele":
+            currentPoint?.altitudeMeters = double(value)
+        case "time":
+            currentPoint?.date = date(value)
+            if currentPoint?.date != nil, timeZoneOffsetSeconds == nil {
+                timeZoneOffsetSeconds = Self.timeZoneOffset(in: value)
+            }
+        case "hr", "heartrate", "heart_rate":
+            currentPoint?.heartRate = integer(value)
+        case "cad", "cadence":
+            currentPoint?.cadence = integer(value)
+        case "distance", "dist":
+            currentPoint?.distanceMeters = double(value)
+        case "speed":
+            currentPoint?.speedMetersPerSecond = double(value)
+        case "power", "watts":
+            currentPoint?.powerWatts = integer(value)
+        case "calories", "calorie":
+            currentPoint?.totalCalories = double(value)
+        case "steplength", "step_length":
+            currentPoint?.stepLengthMeters = double(value)
+        case "atemp", "temp", "temperature":
+            currentPoint?.temperatureCelsius = integer(value)
+        default:
+            return
+        }
+    }
+
+    private func normalizedElementName(_ elementName: String) -> String {
+        let localName = elementName.split(separator: ":").last.map(String.init) ?? elementName
+        return localName
+            .replacingOccurrences(of: "-", with: "_")
+            .lowercased()
+    }
+
+    private func date(_ value: String) -> Date? {
+        Self.fractionalDateFormatter.date(from: value) ?? Self.internetDateFormatter.date(from: value)
+    }
+
+    private static func timeZoneOffset(in value: String) -> Int? {
+        if value.hasSuffix("Z") { return 0 }
+        let suffix = value.suffix(6).replacingOccurrences(of: ":", with: "")
+        let offset = suffix.hasPrefix("+") || suffix.hasPrefix("-") ? suffix : String(suffix.suffix(5))
+        guard offset.count == 5, offset.first == "+" || offset.first == "-",
+              let hours = Int(offset.dropFirst().prefix(2)),
+              let minutes = Int(offset.suffix(2)), minutes < 60 else { return nil }
+        return OverlayTimeZone.validatedOffset((hours * 3600 + minutes * 60) * (offset.first == "-" ? -1 : 1))
+    }
+
+    private func double(_ value: String?) -> Double? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let parsed = Double(trimmed), parsed.isFinite else { return nil }
+        return parsed
+    }
+
+    private func integer(_ value: String?) -> Int? {
+        guard let parsed = double(value) else { return nil }
+        return Int(exactly: parsed.rounded())
+    }
+}
