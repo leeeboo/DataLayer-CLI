@@ -106,6 +106,20 @@ final class PortableMediaTests: XCTestCase {
         XCTAssertLessThan(pixel, 195)
     }
 
+    func testShadowOpacityIncludesThePaintsAlpha() throws {
+        let buffer = CVPixelBuffer(width: 64, height: 64)
+        do {
+            let context = try XCTUnwrap(CGContext(data: buffer.pixels, width: 64, height: 64, bitsPerComponent: 8,
+                bytesPerRow: buffer.bytesPerRow, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: 0))
+            context.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0.5))
+            context.setShadow(offset: .zero, blur: 0, color: CGColor(red: 0, green: 0, blue: 0, alpha: 0.5))
+            context.fill(CGRect(x: 16, y: 16, width: 32, height: 32))
+        }
+        let alpha = buffer.pixels.load(fromByteOffset: (32 * 64 + 32) * 4 + 3, as: UInt8.self)
+        // Source-over: 0.5 + (0.5 * 0.5) * (1 - 0.5) = 0.625, rather than 0.75.
+        XCTAssertEqual(Double(alpha), 0.625 * 255, accuracy: 2)
+    }
+
     func testFractionalTrimAndCutSelectSourceFramesWithinApplesHalfFrameTolerance() throws {
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

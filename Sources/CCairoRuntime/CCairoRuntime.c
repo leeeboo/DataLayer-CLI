@@ -221,7 +221,7 @@ void dls_graphics_paint(void *context, int stroke, double r, double g, double b,
             if (!cairo_surface_status(surface)) {
                 void *mask=cairo_create(surface), *path=cairo_copy_path(cr);
                 cairo_translate(mask,-x1,y2); cairo_scale(mask,1,-1); cairo_append_path(mask,path);
-                cairo_path_destroy(path); cairo_set_source_rgba(mask,shadow[0],shadow[1],shadow[2],shadow[3]);
+                cairo_path_destroy(path); cairo_set_source_rgba(mask,shadow[0],shadow[1],shadow[2],shadow[3]*a);
                 cairo_set_line_width(mask,cairo_get_line_width(cr)); cairo_set_line_cap(mask,cairo_get_line_cap(cr));
                 cairo_set_line_join(mask,cairo_get_line_join(cr));
                 if(stroke)cairo_stroke(mask);else cairo_fill(mask);
