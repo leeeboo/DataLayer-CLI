@@ -46,6 +46,18 @@ software encoding. Install the official Swift toolchain and these runtime depend
 - Windows: native UCRT64 Cairo, Pango, FFmpeg and DejaVu fonts from MSYS2; add
   the UCRT64 `bin` directory to `PATH`. The CLI itself runs as a native Windows executable.
 
+Use the [official Swift Linux installation guide](https://www.swift.org/install/linux/)
+or [Windows guide and previous installers](https://www.swift.org/install/windows/)
+to install/select **6.1.2** for the prebuilt portable binaries. On Windows, restart
+the terminal after installation and ensure the Swift runtime DLL directory and
+MSYS2 UCRT64 `bin` are on `PATH`.
+On Linux, expose the selected toolchain's libraries when running the downloaded binary:
+
+```sh
+export LD_LIBRARY_PATH="$(swift -print-target-info | python3 -c 'import json,sys; print(":".join(json.load(sys.stdin)["paths"]["runtimeLibraryPaths"]))')${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+./overlay --help
+```
+
 Portable codecs are H.264, HEVC and ProRes 4444 with Alpha. Explicit HEVC Alpha
 requests fail before writing any output. Activity-only portable exports default
 to ProRes 4444; Apple platforms retain their HEVC Alpha default. Codec, bit rate,

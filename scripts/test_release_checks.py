@@ -4,6 +4,7 @@ import contextlib
 import hashlib
 import io
 import json
+import os
 import pathlib
 import tarfile
 import tempfile
@@ -71,7 +72,9 @@ class ReleaseChecks(unittest.TestCase):
                         members = [m for m in bundle.getmembers() if m.isfile()]
                         self.assertEqual(len(members), 7)
                         executable = next(m for m in members if m.name.endswith("/overlay"))
-                        self.assertTrue(executable.mode & 0o111)
+                        # Windows cannot represent POSIX execute bits; Linux CI checks the real mode.
+                        if os.name != "nt":
+                            self.assertTrue(executable.mode & 0o111)
                         source = json.loads(bundle.extractfile(next(m for m in members if m.name.endswith("/SOURCE.json"))).read())
                 else:
                     with zipfile.ZipFile(archive) as bundle:
