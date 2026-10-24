@@ -106,7 +106,7 @@ public final class CGContext {
         self.handle = handle
     }
     deinit { dls_graphics_destroy(handle) }
-    func setShouldAntialias(_ value: Bool) {}
+    func setShouldAntialias(_ value: Bool) { dls_graphics_antialias(handle, value ? 1 : 0) }
     func setAllowsAntialiasing(_ value: Bool) {}
     func saveGState() { stack.append(state); dls_graphics_save(handle) }
     func restoreGState() { if let saved = stack.popLast() { state = saved; dls_graphics_restore(handle) } }

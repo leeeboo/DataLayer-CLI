@@ -169,6 +169,7 @@ void dls_graphics_destroy(void *context) {
 #define CTX ((Graphics *)context)->context
 void dls_graphics_save(void *context) { cairo_save(CTX); }
 void dls_graphics_restore(void *context) { cairo_restore(CTX); }
+void dls_graphics_antialias(void *context, int enabled) { cairo_set_antialias(CTX,enabled?2:1); }
 void dls_graphics_move(void *context, double x, double y) { cairo_move_to(CTX, x, y); }
 void dls_graphics_line(void *context, double x, double y) { cairo_line_to(CTX, x, y); }
 void dls_graphics_curve(void *context, double a, double b, double c, double d, double e, double f) { cairo_curve_to(CTX, a,b,c,d,e,f); }
@@ -265,9 +266,12 @@ DLSFontMetrics dls_text_metrics(void *line) {
     return (DLSFontMetrics){ink.x/1024.0,baseline-(ink.y+ink.height)/1024.0,ink.width/1024.0,ink.height/1024.0,logical.width/1024.0};
 }
 void dls_text_draw(void *context, void *line, double x, double y, double r, double g, double b, double a) {
-    void *cr=CTX; cairo_save(cr); cairo_translate(cr,x,y); cairo_scale(cr,1,-1);
+    void *cr=CTX, *path=cairo_copy_path(cr);
+    // Cairo's graphics state excludes the path; CoreText drawing leaves that path intact.
+    cairo_new_path(cr); cairo_save(cr); cairo_translate(cr,x,y); cairo_scale(cr,1,-1);
     cairo_move_to(cr,0,-pango_layout_get_baseline(line)/1024.0); cairo_set_source_rgba(cr,r,g,b,a);
     pango_cairo_show_layout(cr,line); cairo_restore(cr);
+    cairo_new_path(cr); cairo_append_path(cr,path); cairo_path_destroy(path);
 }
 
 int dls_replace_file(const char *source, const char *destination) {

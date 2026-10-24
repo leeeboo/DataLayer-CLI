@@ -106,6 +106,55 @@ final class PortableMediaTests: XCTestCase {
         XCTAssertLessThan(pixel, 185, "The native Rec.709 ICC curve must be preserved")
     }
 
+    func testDrawingTextPreservesTheCurrentGraphicsPath() throws {
+        let buffer = CVPixelBuffer(width: 64, height: 64)
+        do {
+            let context = try XCTUnwrap(CGContext(data: buffer.pixels, width: 64, height: 64, bitsPerComponent: 8,
+                bytesPerRow: buffer.bytesPerRow, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: 0))
+            context.setStrokeColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+            context.setLineWidth(2)
+            context.move(to: CGPoint(x: 2, y: 2))
+            context.addLine(to: CGPoint(x: 8, y: 2))
+            let line = CTLineCreateWithAttributedString(NSAttributedString(string: "X", attributes: [
+                NSAttributedString.Key(kCTFontAttributeName): CTFontCreateWithName("Menlo-Bold", 8, nil),
+                NSAttributedString.Key(kCTForegroundColorAttributeName): CGColor(red: 1, green: 1, blue: 1, alpha: 1)
+            ]))
+            context.textPosition = CGPoint(x: 52, y: 52)
+            CTLineDraw(line, context)
+            context.addLine(to: CGPoint(x: 8, y: 8))
+            context.strokePath()
+        }
+        let middleAlpha = (20..<44).flatMap { y in (20..<44).map { x in
+            buffer.pixels.load(fromByteOffset: (y * 64 + x) * 4 + 3, as: UInt8.self)
+        } }
+        XCTAssertTrue(middleAlpha.allSatisfy { $0 == 0 },
+            "Text must not connect its baseline to the following gauge or route path")
+        XCTAssertGreaterThan(buffer.pixels.load(fromByteOffset: (61 * 64 + 4) * 4 + 3, as: UInt8.self), 0,
+            "The path that preceded the text must remain intact")
+    }
+
+    func testDisabledAntialiasingKeepsHardEdgesAndRestoresState() throws {
+        let buffer = CVPixelBuffer(width: 64, height: 32)
+        do {
+            let context = try XCTUnwrap(CGContext(data: buffer.pixels, width: 64, height: 32, bitsPerComponent: 8,
+                bytesPerRow: buffer.bytesPerRow, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: 0))
+            context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+            context.saveGState()
+            context.setShouldAntialias(false)
+            context.fill(CGRect(x: 8.25, y: 8.25, width: 8.5, height: 8.5))
+            context.restoreGState()
+            context.fill(CGRect(x: 40.25, y: 8.25, width: 8.5, height: 8.5))
+        }
+        var hard: [UInt8] = [], smooth: [UInt8] = []
+        for y in 0..<32 { for x in 0..<32 {
+            hard.append(buffer.pixels.load(fromByteOffset: (y * 64 + x) * 4 + 3, as: UInt8.self))
+            smooth.append(buffer.pixels.load(fromByteOffset: (y * 64 + x + 32) * 4 + 3, as: UInt8.self))
+        } }
+        XCTAssertTrue(hard.contains(255))
+        XCTAssertFalse(hard.contains { $0 > 0 && $0 < 255 })
+        XCTAssertTrue(smooth.contains { $0 > 0 && $0 < 255 })
+    }
+
     func testShadowOpacityIncludesThePaintsAlpha() throws {
         let buffer = CVPixelBuffer(width: 64, height: 64)
         do {

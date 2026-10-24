@@ -7,6 +7,7 @@ void *dls_graphics_create(uint8_t *pixels, int width, int height, int stride);
 void dls_graphics_destroy(void *context);
 void dls_graphics_save(void *context);
 void dls_graphics_restore(void *context);
+void dls_graphics_antialias(void *context, int enabled);
 void dls_graphics_move(void *context, double x, double y);
 void dls_graphics_line(void *context, double x, double y);
 void dls_graphics_curve(void *context, double x1, double y1, double x2, double y2, double x3, double y3);
