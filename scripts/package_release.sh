@@ -35,7 +35,7 @@ receipt = {"id": record.get("id"), "status": status}
 pathlib.Path(sys.argv[2]).write_text(json.dumps(receipt, indent=2) + "\n")
 print(json.dumps(receipt))
 PY
-# Raw Mach-O executables cannot be stapled; validate the notarized binary online.
-spctl --assess --type execute --verbose=2 "$stage/$name/overlay"
+# Raw Mach-O is not an app bundle; require its online notarization ticket.
+codesign --verify --strict --verbose=4 -R="notarized" --check-notarization "$stage/$name/overlay"
 (cd "$release_directory" && shasum -a 256 "$name.zip" > "$name.zip.sha256")
 echo "$archive"

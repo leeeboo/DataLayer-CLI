@@ -1,6 +1,6 @@
 {
   "upstream": "https://github.com/leeeboo/DataLayer-Studio",
-  "revision": "5cf40d79dee7c3d1be7ad1c881069ee7f611480c",
+  "revision": "44a154b99a6c904d56ff0e2fe3a4e44423b607d9",
   "working_tree_dirty": false,
   "sha256": {
     ".github/workflows/ci.yml": "fcc5efa7afcdc11521bf461d8ab6be30c1e4f55de676df80a8a6b862bae18af4",
@@ -10,7 +10,7 @@
     "LICENSE": "cbc3170a6999d48e1dd947f0df634c7090e7b0e4d613cfa8e2714375706a215c",
     "NOTICE.md": "c5025aa82fd516569711869f3eb65e74edbae1b1615fa72eaa5739c777f2565f",
     "Package.swift": "d2f3d58070e56cdf15c616a2b59fdb60f521bc057f2de3208801a4100b607fd2",
-    "README.md": "3190fae7c7dd3286537ecc41f8c9e1bd7158350f6bfbcb96caae75793a84aa32",
+    "README.md": "71e33955eb8f6dbeb1a58ea1f69917f791a6ed373c7cb9a9446c4d49b53fe9a5",
     "Sources/OverlayCore/Activity/TelemetryFileParser.swift": "2d7324933b25245b1abc39c839421986cfecfc3dc5e7e618ed19f8a811491e5a",
     "Sources/OverlayCore/Color/CubeLUT.swift": "57fef868570a1aebea5750d1f71ae16cfd209b25e25584bc1730006704b85164",
     "Sources/OverlayCore/Color/VideoColorPipeline.swift": "3acfe41575fc80540d365ea2c1c546d0aae63e9453235a70d43dea6dde8b4d68",
@@ -92,6 +92,6 @@
     "Tests/OverlayCoreTests/VideoMetadataTests.swift": "8b6aad05ff9346f582a5d7cc1553f2955fafd11d6f4a858ad430d40f6d6a426f",
     "Tests/OverlayCoreTests/VideoTimecodeTests.swift": "e35e828525da77effa3a7323b201505caa6c897bfd6df50f88b9d8a10e99f156",
     "examples/make_sample.py": "1aa545d7433f50b8ac8668391b2e1acba99388967480f21a21706b5c8d1fdcb8",
-    "scripts/package_release.sh": "c002cf9410b7a5be397198fd376cee51e425673e515213e850d1bc031189e848"
+    "scripts/package_release.sh": "faca83f6107ecd83e756099f5a14d86a3ea373c6e68714f7adf0bbe4f2e562f9"
   }
 }

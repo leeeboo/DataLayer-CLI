@@ -82,5 +82,5 @@ Maintainers package a clean, tested snapshot with
 `DEVELOPER_ID_APPLICATION="your existing identity" scripts/package_release.sh vX.Y.Z`.
 This requires configured Developer ID signing and `asc` public-API notarization
 credentials. It verifies the signature, requires Apple's Accepted result, and
-checks Gatekeeper before producing a SHA-256 checksum. Raw command executables
+verifies the online notarization ticket before producing a SHA-256 checksum. Raw command executables
 use online notarization tickets; they cannot carry a stapled app-bundle ticket.
