@@ -1,4 +1,14 @@
 [
+  ".githooks/pre-commit",
+  ".github/workflows/ci.yml",
+  ".gitignore",
+  "AUDIT.md",
+  "CONTRIBUTING.md",
+  "LICENSE",
+  "NOTICE.md",
+  "ORIGIN.json",
+  "Package.swift",
+  "README.md",
   "Sources/OverlayCore/Activity/TelemetryFileParser.swift",
   "Sources/OverlayCore/Color/CubeLUT.swift",
   "Sources/OverlayCore/Color/VideoColorPipeline.swift",
@@ -78,5 +88,10 @@
   "Tests/OverlayCoreTests/VideoExportOperationTests.swift",
   "Tests/OverlayCoreTests/VideoExportWorkerTests.swift",
   "Tests/OverlayCoreTests/VideoMetadataTests.swift",
-  "Tests/OverlayCoreTests/VideoTimecodeTests.swift"
+  "Tests/OverlayCoreTests/VideoTimecodeTests.swift",
+  "audit/files.json",
+  "examples/make_sample.py",
+  "scripts/check_source_boundary.py",
+  "scripts/package_release.sh",
+  "scripts/test_source_boundary.py"
 ]

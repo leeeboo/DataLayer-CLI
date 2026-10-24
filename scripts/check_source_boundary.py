@@ -44,19 +44,14 @@ def validate_sources(root, staged=False):
                 raise ValueError("Symlink or nested repository in CLI: " + relative)
             data = subprocess.check_output(["git", "-C", str(root), "show", ":" + relative], env=git_env)
             files[relative] = check_content(relative, data)
-        expected = json.loads(files["audit/files.json"])
-        actual = {name for name in files if name.startswith(("Sources/", "Tests/")) and name.endswith(".swift")}
     else:
-        expected = json.loads((root / "audit/files.json").read_text())
-        actual = {str(p.relative_to(root)) for folder in ("Sources", "Tests")
-                  for p in (root / folder).rglob("*.swift")}
-    if len(expected) != len(set(expected)) or set(expected) != actual:
-        raise ValueError("Swift source set changed; review provenance and update audit/files.json")
-    paths = subprocess.check_output(["git", "-C", str(root), "ls-files", "-c", "-o",
-                                     "--exclude-standard", "-z"], env=git_env).decode().split("\0")
-    for relative in filter(None, paths):
-        if (root / relative).exists() or (root / relative).is_symlink():
-            checked_file(root, relative)
+        paths = subprocess.check_output(["git", "-C", str(root), "ls-files", "-c", "-o",
+                                         "--exclude-standard", "-z"], env=git_env).decode().split("\0")
+        files = {name: checked_file(root, name) for name in filter(None, paths)
+                 if (root / name).exists() or (root / name).is_symlink()}
+    expected = json.loads(files["audit/files.json"])
+    if len(expected) != len(set(expected)) or set(expected) != set(files):
+        raise ValueError("File set changed; review provenance and update audit/files.json")
 
 
 if __name__ == "__main__":

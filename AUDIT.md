@@ -7,7 +7,7 @@ Audit date: 2026-10-24. Baseline: DataLayer-Studio commit
 
 The project owner explicitly authorized a standalone public DataLayer-CLI
 repository under MIT, including its required shared core. The GUI retains
-its existing license. The initially audited Swift file set is maintained in `audit/files.json` in
+its existing license. The audited source and distribution file set is maintained in `audit/files.json` in
 DataLayer-CLI. `ORIGIN.json` preserves the initial import revision and hashes;
 current source identity is the CLI Git commit. No private Git history is exported.
 
@@ -46,7 +46,7 @@ schema, and export validation behavior are preserved.
 
 ## Ongoing checks and limits
 
-New Swift files require an audit/files.json update and renewed provenance review.
+New files require an audit/files.json update and renewed provenance review.
 New dependencies or copied/adapted code require compatible notices before publication.
 Public CLI/core contributions are MIT; other upstream contributions retain
 the existing GUI/project terms. Project names and logos have separate rights.

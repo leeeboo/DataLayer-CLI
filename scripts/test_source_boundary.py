@@ -19,10 +19,14 @@ class SourceBoundaryTests(unittest.TestCase):
             source.parent.mkdir(parents=True)
             source.write_text("import SwiftUI\n")
             (root / "audit").mkdir()
-            (root / "audit/files.json").write_text(json.dumps(["Sources/OverlayCore/Example.swift"]))
+            (root / "audit/files.json").write_text(json.dumps(["Sources/OverlayCore/Example.swift", "audit/files.json"]))
             subprocess.run(["git", "-C", str(root), "add", "Sources", "audit"], check=True)
             source.write_text("import Foundation\n")
             validate_sources(root)
+            (root / "unexpected.txt").write_text("Unaudited extra file")
+            with self.assertRaises(ValueError):
+                validate_sources(root)
+            (root / "unexpected.txt").unlink()
             with self.assertRaises(ValueError):
                 validate_sources(root, staged=True)
 
