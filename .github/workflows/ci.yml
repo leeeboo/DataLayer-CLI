@@ -50,6 +50,7 @@ jobs:
       - name: Export saved project and inspect picture, timing, audio and Alpha
         run: python3 -B scripts/verify_export_fixture.py .build/release/overlay export-fixture export-macos
       - uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: export-macos
           path: export-macos/
@@ -81,6 +82,7 @@ jobs:
       - name: Export saved project and inspect picture, timing, audio and Alpha
         run: python3 -B scripts/verify_export_fixture.py .build/release/overlay export-fixture export-linux
       - uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: export-linux
           path: export-linux/
@@ -137,6 +139,7 @@ jobs:
           $binary = Join-Path (swift build -c release --show-bin-path) 'overlay.exe'
           python -B scripts/verify_export_fixture.py $binary export-fixture export-windows
       - uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: export-windows
           path: export-windows/

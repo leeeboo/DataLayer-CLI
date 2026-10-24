@@ -76,8 +76,12 @@ def verify(binary, fixture, output):
     report = {"platform": platform.platform(), "fixture": expected, "exports": {}}
     for codec in ["h264", "hevc", "prores-4444"]:
         target = output / (codec + ".mov")
-        with (output / (codec + ".log")).open("wb") as log:
-            subprocess.run([str(pathlib.Path(binary).resolve()), "--timeline-project", str(project / (codec + ".dlsproj")), "--output", str(target)], stdout=log, stderr=subprocess.STDOUT, check=True, timeout=240)
+        try:
+            with (output / (codec + ".log")).open("wb") as log:
+                subprocess.run([str(pathlib.Path(binary).resolve()), "--timeline-project", str(project / (codec + ".dlsproj")), "--output", str(target)], stdout=log, stderr=subprocess.STDOUT, check=True, timeout=240)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            print((output / (codec + ".log")).read_text(encoding="utf-8", errors="replace")[-16384:], flush=True)
+            raise
         text = (output / (codec + ".log")).read_text(encoding="utf-8")
         for inherited in ["960x540", "29.970 fps", "1.350...5.850 s", "4300 kbps", "Time zone: UTC"]:
             assert inherited in text, (codec, inherited, text)
