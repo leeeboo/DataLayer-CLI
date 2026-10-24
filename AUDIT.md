@@ -38,7 +38,8 @@ schema, and export validation behavior are preserved.
   screenshots, signing configuration, and personal media are excluded.
 - Tests generate synthetic telemetry and media in temporary directories;
   the sample generator writes synthetic coordinates near 0,0. No recorded
-  user activity, video, FIT/GPX file, or GUI project is distributed.
+  user activity, video, FIT/GPX file, or user GUI project is distributed. The shared
+  export fixture is an original synthetic project; its media is generated in CI.
 - Explicit allowlisting, path/symlink validation, credential-pattern checks,
   and per-file hashes protect the exported tree. The GUI's license remains
   unchanged except for the explicit MIT exception for the selected paths;
@@ -72,7 +73,7 @@ No export or source-copy synchronization is required. The CLI package's source
 boundary checks protect the audited file set, credential and UI import boundaries.
 Release packages generate SOURCE.json from the current CLI Git commit.
 Publish source only after both repositories' required CI and real-path
-acceptance pass. Binary releases additionally require signing and notarization.
+acceptance pass. macOS binary releases additionally require signing and notarization.
 Only the CLI and shared Core are published under MIT; the GUI repository
 remains private under its existing license.
 

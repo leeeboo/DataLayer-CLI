@@ -98,7 +98,13 @@ necessary before releasing Alpha export changes.
 Core changes and their regression tests are maintained in this repository.
 DataLayer Studio consumes the `OverlayCore` Swift package product through a
 Git submodule pinned to a tested commit; it does not keep a second Core copy.
-The package supports macOS 13+ and iOS 26+ for Core; the CLI is macOS-only.
+The package supports macOS 13+ and iOS 26+ for Core. The released CLI is macOS-only;
+this development branch adds native Windows and Linux CLI backends.
+
+CI generates one synthetic moved project and shares its exact media/project bytes
+across macOS, Windows and Linux. It exports H.264, HEVC and ProRes 4444, checks every
+frame timestamp, saved settings, audio duration and Alpha, then compares decoded
+picture, Alpha and audible PCM. Visual differences remain a failing release gate.
 
 `ORIGIN.json` preserves the initial import revision and hashes as historical
 provenance; current source identity is the Git commit. See [AUDIT.md](AUDIT.md)

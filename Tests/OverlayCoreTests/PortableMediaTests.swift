@@ -102,8 +102,8 @@ final class PortableMediaTests: XCTestCase {
             buffer.pixels.initializeMemory(as: UInt8.self, repeating: 128, count: buffer.bytesPerRow * buffer.height)
         }
         let pixel = try firstFrame(output)[0]
-        XCTAssertGreaterThan(pixel, 170, "A gamma-space blend would incorrectly produce 128")
-        XCTAssertLessThan(pixel, 195)
+        XCTAssertGreaterThan(pixel, 175, "A gamma-space blend would incorrectly produce 128")
+        XCTAssertLessThan(pixel, 185, "The native Rec.709 ICC curve must be preserved")
     }
 
     func testShadowOpacityIncludesThePaintsAlpha() throws {

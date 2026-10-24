@@ -347,10 +347,15 @@ enum PortableVideoExport {
                     audioLabels.append(label)
                 }
             }
-            // Core Image composites sRGB overlay colors over Rec.709 video in linear light.
-            filters.append("[\(videoLabel)]fps=fps=\(rate):start_time=0:round=near,format=gbrpf32le,zscale=transferin=709:transfer=linear:primariesin=709:primaries=709:matrixin=gbr:matrix=gbr:rangein=full:range=full,\(frameClock)[linearVideo]")
-            filters.append("[0:v]split[overlayRGB][overlayAlpha];[overlayRGB]format=gbrpf32le,zscale=transferin=iec61966-2-1:transfer=linear:primariesin=709:primaries=709:matrixin=gbr:matrix=gbr:rangein=full:range=full,\(frameClock)[linearOverlay];[overlayAlpha]alphaextract,setparams=range=full,format=gbrp16le,format=gbrpf32le,\(frameClock)[alphaMask]")
-            filters.append("[linearVideo][linearOverlay][alphaMask]maskedmerge,zscale=transferin=linear:transfer=709:primariesin=709:primaries=709:matrixin=gbr:matrix=709:rangein=full:range=limited,format=yuv420p[video]")
+            // Match Apple's Rec.709 ICC curve (502/256); zscale's 709 display curve uses a different gamma.
+            // swscale expands RGB8/gray8 to 16 bits by shifting, so full white is 65280 at this boundary.
+            let linear709 = rgbLUT("pow(min(val/65280,1),1.9609375)*65535")
+            let linearSRGB = rgbLUT("if(lte(val/65280,0.04045),val/65280/12.92,pow((val/65280+0.055)/1.055,2.4))*65535")
+            let mask = rgbLUT("min(val*65535/65280,65535)")
+            let encoded709 = rgbLUT("pow(val/65535,1/1.9609375)*65535")
+            filters.append("[\(videoLabel)]format=gbrp16le,\(linear709),format=gbrpf32le,\(frameClock)[linearVideo]")
+            filters.append("[0:v]split[overlayRGB][overlayAlpha];[overlayRGB]format=gbrp16le,\(linearSRGB),format=gbrpf32le,\(frameClock)[linearOverlay];[overlayAlpha]alphaextract,setparams=range=full,format=gbrp16le,\(mask),format=gbrpf32le,\(frameClock)[alphaMask]")
+            filters.append("[linearVideo][linearOverlay][alphaMask]maskedmerge,format=gbrp16le,\(encoded709),scale=out_color_matrix=bt709:out_range=tv,format=yuv420p[video]")
             videoLabel = "video"
             if !audioLabels.isEmpty {
                 filters.append(audioLabels.map { "[\($0)]" }.joined() + "amix=inputs=\(audioLabels.count):normalize=0,apad,atrim=duration=\(PortableMedia.number(config.duration))[audio]")
@@ -408,6 +413,8 @@ enum PortableVideoExport {
         }
         try VideoExportSupport.installCompletedOutput(from: temp, to: outputURL, cancellationHandler: config.cancellationHandler, diagnosticsHandler: config.diagnosticsHandler)
     }
+
+    private static func rgbLUT(_ expression: String) -> String { "lutrgb=r='\(expression)':g='\(expression)':b='\(expression)'" }
 
     static func colorFilters(clip: TimelineClip, asset: MediaAsset, directory: URL, index: Int) throws -> String {
         let input = clip.colorSettings?.input == .automatic || clip.colorSettings == nil ? asset.colorInfo?.detectedInput ?? .rec709 : clip.colorSettings!.input
