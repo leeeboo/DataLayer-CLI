@@ -94,6 +94,30 @@ final class PortableMediaTests: XCTestCase {
         XCTAssertEqual(timing.outputDuration.seconds, 4.5045, accuracy: 0.000000001)
     }
 
+    func testFractionalTrimAndCutSelectSourceFramesWithinApplesHalfFrameTolerance() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = directory.appendingPathComponent("alternating.mkv"), output = directory.appendingPathComponent("trimmed.mov")
+        let process = Process()
+        process.executableURL = try PortableMedia.executable("ffmpeg")
+        process.arguments = ["-v", "error", "-f", "lavfi", "-i", "nullsrc=s=64x64:r=30000/1001:d=2,geq=lum='64+120*mod(N,2)':cb=128:cr=128", "-c:v", "ffv1", source.path]
+        process.standardInput = FileHandle.nullDevice; process.standardOutput = FileHandle.nullDevice
+        try process.run(); process.waitUntilExit()
+        XCTAssertEqual(process.terminationStatus, 0)
+        let asset = MediaAsset(id: "video", kind: .video, url: source, displayName: "alternating", duration: 2)
+        let project = TimelineProject(outputWidth: 64, outputHeight: 64, framesPerSecond: 29.97, distanceUnit: .kilometers, assets: [asset], tracks: [
+            TimelineTrack(id: "video", kind: .video, name: "video", clips: [
+                TimelineClip(id: "clip", assetID: asset.id, timelineStart: 0, duration: 1.4, sourceIn: 0.2),
+                TimelineClip(id: "next", assetID: asset.id, timelineStart: 1.4, duration: 0.3, sourceIn: 0.3667)
+            ])
+        ])
+        try TimelineVideoWriter(outputURL: output, project: project, telemetrySeriesByAssetID: [:], config: .init(width: 64, height: 64, framesPerSecond: 29.97, timelineStart: 1.35, duration: 0.1, codec: .h264)).write()
+        // At source 1.55 s the native reader holds dark frame 46; rounding the filter clock selects bright frame 47.
+        let frames = try firstFrame(output, count: 2)
+        XCTAssertGreaterThan(frames[0], 40); XCTAssertLessThan(frames[0], 80)
+        XCTAssertGreaterThan(frames[64 * 64 * 4], 160, "The next clip must not appear one frame before its start")
+    }
+
     private func configuration(codec: OverlayVideoCodec) -> TransparentVideoWriterConfig {
         var weather = OverlayElement.defaultElement(kind: .weather)
         weather.frame = OverlayComponentFrame(x: 0.5, y: 0.5, scale: 0.6)
@@ -109,10 +133,10 @@ final class PortableMediaTests: XCTestCase {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("DataLayerPortableTests-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true); return url
     }
-    private func firstFrame(_ url: URL) throws -> Data {
+    private func firstFrame(_ url: URL, count: Int = 1) throws -> Data {
         let process = Process(), output = Pipe()
         process.executableURL = try PortableMedia.executable("ffmpeg")
-        process.arguments = ["-v", "error", "-i", url.path, "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "bgra", "pipe:1"]
+        process.arguments = ["-v", "error", "-i", url.path, "-frames:v", "\(count)", "-f", "rawvideo", "-pix_fmt", "bgra", "pipe:1"]
         process.standardOutput = output; process.standardError = FileHandle.nullDevice; process.standardInput = FileHandle.nullDevice
         try process.run()
         let data = try XCTUnwrap(output.fileHandleForReading.readToEnd()); process.waitUntilExit()

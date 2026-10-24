@@ -41,15 +41,19 @@ final class VideoExportOperation: @unchecked Sendable {
     private var stopped = false
     private var completed = false
     private var installingOutput = false
-    private var lastActivity = ProcessInfo.processInfo.systemUptime
+    private let clock: () -> TimeInterval
+    private var lastActivity: TimeInterval
     private var lastFrame = -1
     private var latestEvent: VideoExportDiagnosticEvent?
 
     init(cancellationHandler: (() -> Bool)?, progressHandler: ((Int, Int) -> Void)?,
-         diagnosticsHandler: ((VideoExportDiagnosticEvent) -> Void)?) {
+         diagnosticsHandler: ((VideoExportDiagnosticEvent) -> Void)?,
+         clock: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
         self.cancellationHandler = cancellationHandler
         self.progressHandler = progressHandler
         self.diagnosticsHandler = diagnosticsHandler
+        self.clock = clock
+        self.lastActivity = clock()
     }
 
     var isCancelled: Bool {
@@ -61,7 +65,7 @@ final class VideoExportOperation: @unchecked Sendable {
 
     func recordProgress(_ frame: Int, _ total: Int) {
         lock.lock()
-        if frame != lastFrame { lastActivity = ProcessInfo.processInfo.systemUptime; lastFrame = frame }
+        if frame != lastFrame { lastActivity = clock(); lastFrame = frame }
         let handler = progressHandler
         lock.unlock()
         handler?(frame, total)
@@ -71,7 +75,7 @@ final class VideoExportOperation: @unchecked Sendable {
         lock.lock()
         if event.stage != latestEvent?.stage || event.phase != latestEvent?.phase
             || event.frameIndex != latestEvent?.frameIndex {
-            lastActivity = ProcessInfo.processInfo.systemUptime
+            lastActivity = clock()
         }
         latestEvent = event
         // Once installation starts, report its real result instead of abandoning an atomic replacement.
@@ -86,7 +90,7 @@ final class VideoExportOperation: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         guard !completed, !installingOutput else { return nil }
-        let idle = ProcessInfo.processInfo.systemUptime - lastActivity
+        let idle = clock() - lastActivity
         let stalled = (latestEvent?.stage == .awaitReady && idle >= renderTimeout)
             || (latestEvent?.stage == .finishWriter && idle >= finishTimeout)
         guard cancelled || stalled else { return nil }

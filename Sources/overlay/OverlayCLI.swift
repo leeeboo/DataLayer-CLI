@@ -750,9 +750,8 @@ func printSyncSummary(timeSync: TelemetryTimeSync, videoDuration: TimeInterval, 
     }
 }
 
-@main
-struct OverlayCLI {
-    static func main() async {
+public enum OverlayCLI {
+    public static func main() async {
         #if os(macOS)
         if CommandLine.arguments.dropFirst().first == "--video-worker" { VideoExportWorker.run() }
         VideoExportWorker.executableURL = Bundle.main.executableURL

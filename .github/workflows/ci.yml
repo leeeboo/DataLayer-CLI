@@ -10,7 +10,23 @@ concurrency:
   group: cli-ci-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  fixture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare one shared moved project with synthetic media
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python3 -B scripts/prepare_export_fixture.py export-fixture
+      - uses: actions/upload-artifact@v7
+        with:
+          name: shared-export-fixture
+          path: export-fixture/
+          retention-days: 7
   test:
+    needs: fixture
     runs-on: macos-15
     timeout-minutes: 20
     steps:
@@ -25,7 +41,21 @@ jobs:
         run: swift test
       - name: Check command entry point
         run: .build/release/overlay --help
+      - name: Install media inspection runtime
+        run: command -v ffmpeg || brew install ffmpeg
+      - uses: actions/download-artifact@v8
+        with:
+          name: shared-export-fixture
+          path: export-fixture
+      - name: Export saved project and inspect picture, timing, audio and Alpha
+        run: python3 -B scripts/verify_export_fixture.py .build/release/overlay export-fixture export-macos
+      - uses: actions/upload-artifact@v7
+        with:
+          name: export-macos
+          path: export-macos/
+          retention-days: 7
   linux:
+    needs: fixture
     runs-on: ubuntu-24.04
     container: swift:6.1.2-noble
     timeout-minutes: 25
@@ -35,6 +65,7 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends python3 git ffmpeg libcairo2 libpangocairo-1.0-0 fonts-liberation fonts-dejavu-core
+          env -u GIT_CONFIG_GLOBAL -u GIT_CONFIG_SYSTEM git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Check audited source boundary
         run: python3 -B scripts/test_source_boundary.py
       - name: Build release CLI
@@ -43,7 +74,19 @@ jobs:
         run: swift test -j 4
       - name: Check command entry point
         run: .build/release/overlay --help
+      - uses: actions/download-artifact@v8
+        with:
+          name: shared-export-fixture
+          path: export-fixture
+      - name: Export saved project and inspect picture, timing, audio and Alpha
+        run: python3 -B scripts/verify_export_fixture.py .build/release/overlay export-fixture export-linux
+      - uses: actions/upload-artifact@v7
+        with:
+          name: export-linux
+          path: export-linux/
+          retention-days: 7
   windows:
+    needs: fixture
     runs-on: windows-2022
     timeout-minutes: 35
     steps:
@@ -84,3 +127,17 @@ jobs:
         run: |
           $binary = Join-Path (swift build -c release --show-bin-path) 'overlay.exe'
           & $binary --help
+      - uses: actions/download-artifact@v8
+        with:
+          name: shared-export-fixture
+          path: export-fixture
+      - name: Export saved project and inspect picture, timing, audio and Alpha
+        shell: pwsh
+        run: |
+          $binary = Join-Path (swift build -c release --show-bin-path) 'overlay.exe'
+          python -B scripts/verify_export_fixture.py $binary export-fixture export-windows
+      - uses: actions/upload-artifact@v7
+        with:
+          name: export-windows
+          path: export-windows/
+          retention-days: 7

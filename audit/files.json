@@ -11,6 +11,7 @@
   "README.md",
   "Sources/CCairoRuntime/CCairoRuntime.c",
   "Sources/CCairoRuntime/include/CCairoRuntime.h",
+  "Sources/OverlayCLIEntry/Entry.swift",
   "Sources/OverlayCore/Activity/TelemetryFileParser.swift",
   "Sources/OverlayCore/Color/CubeLUT.swift",
   "Sources/OverlayCore/Color/VideoColorPipeline.swift",
@@ -61,6 +62,7 @@
   "Sources/VideoExportWorker/main.swift",
   "Sources/overlay/OverlayCLI.swift",
   "Sources/overlay/TimelineProjectExport.swift",
+  "Tests/Fixtures/ExportParity/project.json",
   "Tests/OverlayCLITests/CommandLineOptionsTests.swift",
   "Tests/OverlayCLITests/TimelineProjectExportTests.swift",
   "Tests/OverlayCoreTests/AltitudeProfileGeometryTests.swift",
@@ -99,5 +101,7 @@
   "examples/make_sample.py",
   "scripts/check_source_boundary.py",
   "scripts/package_release.sh",
-  "scripts/test_source_boundary.py"
+  "scripts/prepare_export_fixture.py",
+  "scripts/test_source_boundary.py",
+  "scripts/verify_export_fixture.py"
 ]

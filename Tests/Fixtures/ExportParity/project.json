@@ -1,0 +1,266 @@
+{
+  "assets" : [
+    {
+      "colorInfo" : {
+        "colorPrimaries" : "ITU_R_709_2",
+        "isFullRange" : false,
+        "transferFunction" : "ITU_R_709_2",
+        "yCbCrMatrix" : "ITU_R_709_2"
+      },
+      "displayName" : "Synthetic 440Hz scene",
+      "duration" : 7,
+      "framesPerSecond" : 29.97002997002997,
+      "height" : 540,
+      "id" : "video-a",
+      "kind" : "video",
+      "relativePath" : "Media\/scene-a.mov",
+      "url" : "file:\/\/\/DataLayer-CLI-missing-original-location\/Media\/scene-a.mov",
+      "width" : 960
+    },
+    {
+      "colorInfo" : {
+        "colorPrimaries" : "ITU_R_709_2",
+        "isFullRange" : false,
+        "transferFunction" : "ITU_R_709_2",
+        "yCbCrMatrix" : "ITU_R_709_2"
+      },
+      "displayName" : "Synthetic 660Hz scene",
+      "duration" : 7,
+      "framesPerSecond" : 29.97002997002997,
+      "height" : 540,
+      "id" : "video-b",
+      "kind" : "video",
+      "relativePath" : "Media\/scene-b.mov",
+      "url" : "file:\/\/\/DataLayer-CLI-missing-original-location\/Media\/scene-b.mov",
+      "width" : 960
+    },
+    {
+      "activityOffsetMilliseconds" : 125,
+      "displayName" : "Synthetic cached weather",
+      "duration" : 8,
+      "fitClockOffsetMilliseconds" : -75,
+      "id" : "activity",
+      "kind" : "activity",
+      "relativePath" : "Media\/activity.gpx",
+      "timeZoneOffsetSeconds" : 0,
+      "url" : "file:\/\/\/DataLayer-CLI-missing-original-location\/Media\/activity.gpx",
+      "weatherRecords" : [
+        {
+          "humidityPercent" : 57,
+          "summary" : "Clear",
+          "temperatureCelsius" : 31,
+          "timestamp" : 788918402
+        },
+        {
+          "humidityPercent" : 68,
+          "summary" : "Clouds",
+          "temperatureCelsius" : 35,
+          "timestamp" : 788918404
+        },
+        {
+          "humidityPercent" : 79,
+          "summary" : "Rain",
+          "temperatureCelsius" : 39,
+          "timestamp" : 788918406
+        }
+      ]
+    }
+  ],
+  "distanceUnit" : "km",
+  "exportSettings" : {
+    "activityTrim" : {
+      "endSeconds" : 7,
+      "startSeconds" : 0.8
+    },
+    "bitRateKbps" : 4300,
+    "codec" : "h264",
+    "exportMode" : "video",
+    "renderScope" : "singleClip",
+    "timelineEnd" : 5.85,
+    "timelineStart" : 1.35
+  },
+  "framesPerSecond" : 29.97002997002997,
+  "outputHeight" : 540,
+  "outputWidth" : 960,
+  "schemaVersion" : 4,
+  "timeZone" : "UTC",
+  "tracks" : [
+    {
+      "clips" : [
+        {
+          "assetID" : "video-a",
+          "duration" : 4.5,
+          "id" : "a",
+          "isAlignmentPending" : false,
+          "isEnabled" : true,
+          "sourceIn" : 0.2,
+          "timelineStart" : 0
+        },
+        {
+          "assetID" : "video-b",
+          "duration" : 3.5,
+          "id" : "b",
+          "isAlignmentPending" : false,
+          "isEnabled" : true,
+          "sourceIn" : 1,
+          "timelineStart" : 4.5
+        }
+      ],
+      "id" : "video",
+      "isEnabled" : true,
+      "isLocked" : false,
+      "kind" : "video",
+      "name" : "Two synthetic scenes"
+    },
+    {
+      "clips" : [
+        {
+          "assetID" : "activity",
+          "duration" : 8,
+          "id" : "data",
+          "isAlignmentPending" : false,
+          "isEnabled" : true,
+          "layout" : {
+            "elements" : [
+              {
+                "customization" : {
+                  "iconFont" : "helveticaNeueBold",
+                  "iconScale" : 1.12,
+                  "labelFont" : "helveticaNeueBold",
+                  "labelScale" : 0.92,
+                  "lengthScale" : 1,
+                  "lineWidth" : 1,
+                  "showsIcon" : true,
+                  "showsLabel" : true,
+                  "showsPanel" : true,
+                  "showsUnit" : true,
+                  "unitFont" : "helveticaNeueBold",
+                  "unitScale" : 0.94,
+                  "valueFont" : "menloBold",
+                  "valueScale" : 1.04
+                },
+                "frame" : {
+                  "isVisible" : true,
+                  "scale" : 0.8,
+                  "style" : {
+                    "accentColor" : "electricBlue",
+                    "textScale" : 1
+                  },
+                  "x" : 0.15,
+                  "y" : 0.2
+                },
+                "id" : "weather",
+                "kind" : "weather"
+              },
+              {
+                "customization" : {
+                  "gaugeMaximum" : 24,
+                  "gaugeMinimum" : 0,
+                  "iconFont" : "helveticaNeueBold",
+                  "iconScale" : 1,
+                  "labelFont" : "helveticaNeueBold",
+                  "labelScale" : 1,
+                  "lengthScale" : 1,
+                  "lineWidth" : 12,
+                  "showsIcon" : false,
+                  "showsLabel" : true,
+                  "showsPanel" : true,
+                  "showsUnit" : true,
+                  "unitFont" : "helveticaNeueBold",
+                  "unitScale" : 1,
+                  "valueFont" : "menloBold",
+                  "valuePrecision" : 1,
+                  "valueScale" : 1
+                },
+                "frame" : {
+                  "isVisible" : true,
+                  "scale" : 0.85,
+                  "style" : {
+                    "textScale" : 1
+                  },
+                  "x" : 0.83,
+                  "y" : 0.25
+                },
+                "id" : "speed",
+                "kind" : "speed"
+              },
+              {
+                "customization" : {
+                  "iconFont" : "helveticaNeueBold",
+                  "iconScale" : 1,
+                  "labelFont" : "helveticaNeueBold",
+                  "labelScale" : 1,
+                  "lengthScale" : 1,
+                  "lineWidth" : 5.5,
+                  "showsIcon" : false,
+                  "showsLabel" : true,
+                  "showsPanel" : true,
+                  "showsUnit" : true,
+                  "unitFont" : "helveticaNeueBold",
+                  "unitScale" : 1,
+                  "valueFont" : "menloBold",
+                  "valueScale" : 1
+                },
+                "frame" : {
+                  "isVisible" : true,
+                  "scale" : 0.7,
+                  "style" : {
+                    "textScale" : 1
+                  },
+                  "x" : 0.18,
+                  "y" : 0.78
+                },
+                "id" : "route",
+                "kind" : "route"
+              },
+              {
+                "customization" : {
+                  "iconFont" : "helveticaNeueBold",
+                  "iconScale" : 1,
+                  "labelFont" : "helveticaNeueBold",
+                  "labelScale" : 1,
+                  "lengthScale" : 1,
+                  "lineWidth" : 1,
+                  "showGaugeTicks" : false,
+                  "showsIcon" : false,
+                  "showsLabel" : false,
+                  "showsPanel" : false,
+                  "showsUnit" : true,
+                  "unitFont" : "helveticaNeueBold",
+                  "unitScale" : 1.04,
+                  "valueFont" : "menloBold",
+                  "valueScale" : 1.08
+                },
+                "frame" : {
+                  "isVisible" : true,
+                  "scale" : 0.7,
+                  "style" : {
+                    "accentColor" : "cleanWhite",
+                    "textScale" : 1
+                  },
+                  "x" : 0.8,
+                  "y" : 0.8
+                },
+                "id" : "timeDate",
+                "kind" : "timeDate"
+              }
+            ],
+            "style" : {
+              "accentColor" : "telemetryGreen",
+              "metricScale" : 1,
+              "panelOpacity" : 0.64,
+              "showGaugeTicks" : true
+            }
+          },
+          "sourceIn" : 0,
+          "timelineStart" : 0
+        }
+      ],
+      "id" : "overlay",
+      "isEnabled" : true,
+      "isLocked" : false,
+      "kind" : "overlay",
+      "name" : "Weather, clock, route and speed"
+    }
+  ]
+}

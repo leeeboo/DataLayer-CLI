@@ -85,14 +85,21 @@ final class VideoExportOperationTests: XCTestCase {
     }
 
     func testAdvancingFramesKeepTheWriterAlive() throws {
-        let result = try VideoExportSupport.performWriting(cancellationHandler: nil, renderTimeout: 0.04) { control in
-            for frame in 0..<20 {
-                control.recordDiagnostic(.init(stage: .awaitReady, phase: .update, frameIndex: frame))
-                Thread.sleep(forTimeInterval: 0.01)
-            }
-            return 20
+        var now: TimeInterval = 0
+        var diagnostics = 0
+        let control = VideoExportOperation(cancellationHandler: nil, progressHandler: nil,
+            diagnosticsHandler: { _ in diagnostics += 1 }, clock: { now })
+        defer { control.finish() }
+        for frame in 0..<20 {
+            now += 0.03
+            control.recordDiagnostic(.init(stage: .awaitReady, phase: .update, frameIndex: frame))
+            XCTAssertNil(control.stopIfNeeded(renderTimeout: 0.04, finishTimeout: 1))
         }
-        XCTAssertEqual(result, 20)
+        XCTAssertEqual(diagnostics, 20)
+        // Repeating the same diagnostic must not hide a real stall.
+        now += 0.05
+        control.recordDiagnostic(.init(stage: .awaitReady, phase: .update, frameIndex: 19))
+        XCTAssertEqual(control.stopIfNeeded(renderTimeout: 0.04, finishTimeout: 1) as? VideoExportWaitError, .stalled)
     }
 
     func testFinishWritingHasABoundedWait() throws {

@@ -98,6 +98,7 @@ enum PortableMedia {
             var height: Int?
             var avg_frame_rate: String?
             var duration: String?
+            var start_time: String?
             var bit_rate: String?
             var color_primaries: String?
             var color_transfer: String?
@@ -293,26 +294,31 @@ enum PortableVideoExport {
             "-f", "rawvideo", "-pixel_format", "bgra", "-video_size", "\(config.width)x\(config.height)", "-framerate", rate, "-i", "pipe:0"]
         var filters: [String] = [], audioLabels: [String] = [], videoLabel = "0:v"
         if config.codec.exportMode == .video {
-            filters.append("color=c=black:s=\(config.width)x\(config.height):r=\(rate):d=\(PortableMedia.number(timing.outputDuration.seconds)),format=rgba[base0]")
+            filters.append("color=c=black:s=\(config.width)x\(config.height):r=\(rate):d=\(PortableMedia.number(timing.outputDuration.seconds)),format=rgba,settb=1/120000000[base0]")
             videoLabel = "base0"
             let clips = try project?.validatedVideoClipsForExport(timelineStart: config.timelineStart, duration: config.duration) ?? []
             for (offset, clip) in clips.enumerated() {
                 guard let asset = project?.asset(id: clip.assetID) else { throw OverlayVideoError.invalidConfiguration("Missing video asset.") }
                 let probe = try PortableMedia.probe(asset.url)
-                guard probe.video != nil else { throw OverlayVideoError.unreadableVideo("No video stream in \(asset.displayName).") }
-                arguments += ["-i", asset.url.path]
+                guard let stream = probe.video else { throw OverlayVideoError.unreadableVideo("No video stream in \(asset.displayName).") }
+                arguments += ["-threads", "2", "-i", asset.url.path]
                 let input = offset + 1, start = max(config.timelineStart, clip.timelineStart)
                 let duration = min(config.timelineStart + config.duration, clip.timelineEnd) - start
                 let source = clip.sourceIn + start - clip.timelineStart, destination = start - config.timelineStart
+                let trackStart = Double(stream.start_time ?? "") ?? 0
+                let sourceStart = trackStart + clip.sourceIn
+                let phase = trackStart + source - destination + timing.frameDuration.seconds / 2
                 let color = try colorFilters(clip: clip, asset: asset, directory: directory, index: offset)
-                filters.append("[\(input):v]trim=start=\(PortableMedia.number(source)):duration=\(PortableMedia.number(duration)),setpts=PTS-STARTPTS+\(PortableMedia.number(destination))/TB\(color),scale=\(config.width):\(config.height):force_original_aspect_ratio=decrease:flags=bicubic,pad=\(config.width):\(config.height):(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=rgba[clip\(offset)]")
+                // Preserve source PTS and preroll: Apple's reader accepts the latest frame within half an output frame.
+                filters.append("[\(input):v]trim=start=\(PortableMedia.number(trackStart)):end=\(PortableMedia.number(sourceStart + clip.duration)),settb=1/120000000,setpts=PTS-\(PortableMedia.number(phase))/TB\(color),scale=\(config.width):\(config.height):force_original_aspect_ratio=decrease:flags=bicubic,pad=\(config.width):\(config.height):(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=rgba[clip\(offset)]")
                 let next = "base\(offset + 1)"
-                filters.append("[\(videoLabel)][clip\(offset)]overlay=eof_action=pass:repeatlast=0:format=rgb:enable='gte(t,\(PortableMedia.number(destination)))*lt(t,\(PortableMedia.number(destination+duration)))'[\(next)]")
+                filters.append("[\(videoLabel)][clip\(offset)]overlay=eof_action=repeat:repeatlast=1:format=rgb:x='if(gte(t,\(PortableMedia.number(destination)))*lt(t,\(PortableMedia.number(destination+duration))),0,NAN)'[\(next)]")
                 videoLabel = next
                 for stream in probe.audio {
                     let label = "audio\(input)_\(stream.index)"
                     let delay = Int64((destination * 48_000).rounded())
-                    filters.append("[\(input):\(stream.index)]atrim=start=\(PortableMedia.number(source)):duration=\(PortableMedia.number(duration)),asetpts=PTS-STARTPTS,aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,adelay=\(delay)S:all=1[\(label)]")
+                    let audioStart = (Double(stream.start_time ?? "") ?? 0) + source
+                    filters.append("[\(input):\(stream.index)]atrim=start=\(PortableMedia.number(audioStart)):duration=\(PortableMedia.number(duration)),asetpts=PTS-STARTPTS,aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,adelay=\(delay)S:all=1[\(label)]")
                     audioLabels.append(label)
                 }
             }
