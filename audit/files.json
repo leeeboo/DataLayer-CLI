@@ -55,7 +55,7 @@
   "Sources/OverlayCore/Video/VideoTimecode.swift",
   "Sources/VideoExportWorker/main.swift",
   "Sources/overlay/TimelineProjectExport.swift",
-  "Sources/overlay/main.swift",
+  "Sources/overlay/OverlayCLI.swift",
   "Tests/OverlayCLITests/CommandLineOptionsTests.swift",
   "Tests/OverlayCLITests/TimelineProjectExportTests.swift",
   "Tests/OverlayCoreTests/AltitudeProfileGeometryTests.swift",
