@@ -1,6 +1,6 @@
 {
   "upstream": "https://github.com/leeeboo/DataLayer-Studio",
-  "revision": "c6e52fa0cbbe8cac2acf1b8f69ad9cb5aff19cb6",
+  "revision": "5cf40d79dee7c3d1be7ad1c881069ee7f611480c",
   "working_tree_dirty": false,
   "sha256": {
     ".github/workflows/ci.yml": "fcc5efa7afcdc11521bf461d8ab6be30c1e4f55de676df80a8a6b862bae18af4",
@@ -92,6 +92,6 @@
     "Tests/OverlayCoreTests/VideoMetadataTests.swift": "8b6aad05ff9346f582a5d7cc1553f2955fafd11d6f4a858ad430d40f6d6a426f",
     "Tests/OverlayCoreTests/VideoTimecodeTests.swift": "e35e828525da77effa3a7323b201505caa6c897bfd6df50f88b9d8a10e99f156",
     "examples/make_sample.py": "1aa545d7433f50b8ac8668391b2e1acba99388967480f21a21706b5c8d1fdcb8",
-    "scripts/package_release.sh": "c592f0155bf0a6eff01cacacaf6f6518b6ab54c6ae43b8ae83cf2c0fe1c4b10f"
+    "scripts/package_release.sh": "c002cf9410b7a5be397198fd376cee51e425673e515213e850d1bc031189e848"
   }
 }

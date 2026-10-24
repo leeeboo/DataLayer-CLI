@@ -22,7 +22,7 @@ cp LICENSE NOTICE.md README.md AUDIT.md SOURCE.json "$stage/$name/"
 codesign --force --options runtime --timestamp --sign "$identity" "$stage/$name/overlay"
 codesign --verify --strict --verbose=2 "$stage/$name/overlay"
 ditto -c -k --keepParent "$stage/$name" "$archive"
-ASC_BYPASS_KEYCHAIN=1 asc notarization submit --file "$archive" --wait --output json > "$stage/notary.json"
+asc notarization submit --file "$archive" --wait --output json > "$stage/notary.json"
 python3 - "$stage/notary.json" "$archive.notarization.json" <<'PY'
 import json, pathlib, sys
 data = json.loads(pathlib.Path(sys.argv[1]).read_text())
