@@ -67,10 +67,11 @@ avoid treating historical hashes as current source identity.
 
 Core changes are made and tested in DataLayer-CLI, then the GUI repository
 updates its submodule revision after integration validation. CI checks out
-submodules recursively and runs the standalone CLI/Core suite and GUI tests.
+the locked Core revision and runs the standalone CLI/Core suite and GUI tests.
 No export or source-copy synchronization is required. The CLI package's source
 boundary checks protect the audited file set, credential and UI import boundaries.
 Release packages generate SOURCE.json from the current CLI Git commit.
-Publish only after both repositories' required CI, real-path acceptance and
-signing/notarization gates pass. The public repository and release remain
-unpublished until the owner's current publication hold is lifted.
+Publish source only after both repositories' required CI and real-path
+acceptance pass. Binary releases additionally require signing and notarization.
+Only the CLI and shared Core are published under MIT; the GUI repository
+remains private under its existing license.

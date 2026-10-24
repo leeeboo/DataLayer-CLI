@@ -7,17 +7,12 @@ media-path recovery, export settings, layouts, and fractional frame-rate timing.
 
 The command remains `overlay`, preserving existing scripts. This repository
 contains the CLI and the single shared Core implementation used by the macOS
-and iOS apps; the DataLayer Studio GUI retains its separate
-license in the [upstream repository](https://github.com/leeeboo/DataLayer-Studio).
+and iOS apps. The DataLayer Studio GUI repository remains private under its
+existing separate license.
 
 ## Install
 
-Download the signed macOS arm64 ZIP from
-[Releases](https://github.com/leeeboo/DataLayer-CLI/releases), verify its SHA-256
-against the accompanying checksum, and place `overlay` in a directory on your
-`PATH`. Keep the included LICENSE and NOTICE when redistributing the package.
-
-Or build using Xcode command-line tools with Swift 5.9 or later:
+Build from source using Xcode command-line tools with Swift 5.9 or later:
 
 ```sh
 git clone https://github.com/leeeboo/DataLayer-CLI.git
@@ -25,6 +20,9 @@ cd DataLayer-CLI
 swift build -c release --product overlay
 .build/release/overlay --help
 ```
+
+Place the built `overlay` in a directory on your `PATH`. Keep the included
+LICENSE and NOTICE when redistributing the package.
 
 No third-party Swift packages are required. Windows and Linux are not supported;
 rendering and encoding use Apple's system frameworks. Available codecs depend
