@@ -1,6 +1,6 @@
 import XCTest
 import OverlayCore
-@testable import overlay
+@testable import DataLayerCLICommand
 
 final class CommandLineOptionsTests: XCTestCase {
     func testTimeZoneOptionsPreserveSyncAndAllowProjectOverride() throws {

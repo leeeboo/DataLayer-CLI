@@ -2,7 +2,7 @@ import AVFoundation
 import CoreVideo
 import OverlayCore
 import XCTest
-@testable import overlay
+@testable import DataLayerCLICommand
 
 final class TimelineProjectExportTests: XCTestCase {
     func testSavedExportSettingsAndRangeAreInherited() throws {

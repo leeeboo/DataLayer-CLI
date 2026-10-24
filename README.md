@@ -6,7 +6,8 @@ Open DataLayer Studio `.dlsproj` projects with the same renderer, cached weather
 media-path recovery, export settings, layouts, and fractional frame-rate timing.
 
 The command remains `overlay`, preserving existing scripts. This repository
-contains the CLI and shared core; the DataLayer Studio GUI retains its separate
+contains the CLI and the single shared Core implementation used by the macOS
+and iOS apps; the DataLayer Studio GUI retains its separate
 license in the [upstream repository](https://github.com/leeeboo/DataLayer-Studio).
 
 ## Install
@@ -63,6 +64,7 @@ Video durations are rounded to complete frames at the selected frame rate.
 ## Development
 
 ```sh
+git config core.hooksPath .githooks
 swift build -c release --product overlay
 swift test
 ```
@@ -72,13 +74,17 @@ project files, credentials, or build output. Hardware-specific encoder tests
 may skip on machines without that encoder; actual hardware validation remains
 necessary before releasing Alpha export changes.
 
-This is a generated distribution of one shared implementation. Submit shared
-code changes to [DataLayer-Studio](https://github.com/leeeboo/DataLayer-Studio)
-under its CLI/core MIT contribution terms. `SOURCE.json` records the upstream
-revision and SHA-256 of every exported file. See [AUDIT.md](AUDIT.md) for scope
-and provenance. See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md) for licensing.
+Core changes and their regression tests are maintained in this repository.
+DataLayer Studio consumes the `OverlayCore` Swift package product through a
+Git submodule pinned to a tested commit; it does not keep a second Core copy.
+The package supports macOS 13+ and iOS 26+ for Core; the CLI is macOS-only.
 
-Maintainers package a clean, tested snapshot with
+`ORIGIN.json` preserves the initial import revision and hashes as historical
+provenance; current source identity is the Git commit. See [AUDIT.md](AUDIT.md)
+for scope and provenance, and [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md)
+for licensing. Run `python3 -B scripts/test_source_boundary.py` before committing.
+
+Maintainers package a clean, tested commit with
 `DEVELOPER_ID_APPLICATION="your existing identity" scripts/package_release.sh vX.Y.Z`.
 This requires configured Developer ID signing and `asc` public-API notarization
 credentials. It verifies the signature, requires Apple's Accepted result, and

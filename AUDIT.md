@@ -7,9 +7,9 @@ Audit date: 2026-10-24. Baseline: DataLayer-Studio commit
 
 The project owner explicitly authorized a standalone public DataLayer-CLI
 repository under MIT, including its required shared core. The GUI retains
-its existing license. The exact current export allowlist is maintained in
-`distribution/cli/files.json` upstream; each snapshot's `SOURCE.json` records
-its source revision and per-file SHA-256. No upstream Git history is exported.
+its existing license. The initially audited Swift file set is maintained in `audit/files.json` in
+DataLayer-CLI. `ORIGIN.json` preserves the initial import revision and hashes;
+current source identity is the CLI Git commit. No private Git history is exported.
 
 The audited code covers OverlayCore, the CLI, the video worker, their tests,
 and the two project-persistence/export services and their tests moved from
@@ -46,8 +46,8 @@ schema, and export validation behavior are preserved.
 
 ## Ongoing checks and limits
 
-New files require an allowlist update and renewed provenance review. New
-dependencies or copied/adapted code require compatible notices before export.
+New Swift files require an audit/files.json update and renewed provenance review.
+New dependencies or copied/adapted code require compatible notices before publication.
 Public CLI/core contributions are MIT; other upstream contributions retain
 the existing GUI/project terms. Project names and logos have separate rights.
 
@@ -55,13 +55,22 @@ This is a repository-history, source-header, dependency, and distribution-tree
 audit. Git authorship alone cannot prove all possible off-repository provenance;
 the report does not certify patent rights or ownership of unrecorded material.
 
-## Maintainer synchronization
+## Single-Core maintenance
 
-Run `python3 scripts/export_cli_repository.py /path/to/new/cli-snapshot` from
-the upstream repository. The destination must not exist. Review the exported
-file hashes and require `SOURCE.json` to report a clean working tree. The
-upstream CI builds and tests this standalone package as well as the complete
-GUI app. Publish a snapshot only after that upstream revision's entire CI is
-successful; publish release assets only after the standalone repository's CI
-and signing/notarization checks are successful. Updates flow upstream to the
-CLI repository; do not maintain a second implementation in the snapshot.
+As of 2026-10-24, DataLayer-CLI owns OverlayCore and its tests. DataLayer
+Studio removes its duplicate Core and consumes the `OverlayCore` Swift package
+product from the `Packages/DataLayer-CLI` Git submodule, including its native
+macOS Xcode project and the iOS package graph. The gitlink pins an exact CLI
+commit. Core files retain their original contents during this dependency change.
+The initial import metadata was renamed from SOURCE.json to ORIGIN.json to
+avoid treating historical hashes as current source identity.
+
+Core changes are made and tested in DataLayer-CLI, then the GUI repository
+updates its submodule revision after integration validation. CI checks out
+submodules recursively and runs the standalone CLI/Core suite and GUI tests.
+No export or source-copy synchronization is required. The CLI package's source
+boundary checks protect the audited file set, credential and UI import boundaries.
+Release packages generate SOURCE.json from the current CLI Git commit.
+Publish only after both repositories' required CI, real-path acceptance and
+signing/notarization gates pass. The public repository and release remain
+unpublished until the owner's current publication hold is lifted.
