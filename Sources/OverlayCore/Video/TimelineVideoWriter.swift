@@ -1,3 +1,4 @@
+#if canImport(AVFoundation)
 import AVFoundation
 import CoreGraphics
 import CoreImage
@@ -5,6 +6,10 @@ import CoreMedia
 import CoreVideo
 import Darwin
 import Foundation
+
+#else
+import Foundation
+#endif
 
 public struct TimelineVideoWriterConfig: Codable {
     enum CodingKeys: String, CodingKey {
@@ -59,6 +64,7 @@ public struct TimelineVideoWriterConfig: Codable {
 /// One resolved, visible video interval rendered directly from its original source during export.
 /// The timeline composition remains the audio source; avoiding its video compositor prevents
 /// incompatible source formats from stalling an `AVAssetReaderVideoCompositionOutput` at frame 0.
+#if canImport(AVFoundation)
 struct TimelineVideoSegment {
     let clipID: String
     let sourceDisplayName: String
@@ -71,6 +77,8 @@ struct TimelineVideoSegment {
     var colorSettings: VideoColorSettings? = nil
     var lut: ClipLUT? = nil
 }
+
+#endif
 
 /// Resolves the visible overlay clip on each enabled overlay track without revisiting every clip
 /// for every rendered frame. Tracks stay in project order; each cursor preserves the last clip in
@@ -212,6 +220,7 @@ final class TimelineOverlayTimeIndex {
     }
 }
 
+#if canImport(AVFoundation)
 public final class TimelineVideoWriter {
     private let outputURL: URL
     private let project: TimelineProject
@@ -1429,3 +1438,5 @@ private final class TimelineRenderDiagnosticStageTracker: @unchecked Sendable {
         return event
     }
 }
+
+#endif

@@ -126,12 +126,16 @@ extension VideoExportSupport {
         let result = VideoExportOperationResult<Value>()
         let finished = DispatchSemaphore(value: 0)
         DispatchQueue.global(qos: .userInitiated).async {
+            #if os(macOS) || os(iOS)
             let access = securityScopedURLs.map { ($0, $0.startAccessingSecurityScopedResource()) }
+            #endif
             result.result = Result {
                 try throwIfCancelled({ control.isCancelled })
                 return try operation(control)
             }
+            #if os(macOS) || os(iOS)
             access.forEach { url, started in if started { url.stopAccessingSecurityScopedResource() } }
+            #endif
             control.finish()
             finished.signal()
         }

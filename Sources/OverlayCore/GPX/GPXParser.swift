@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationXML)
+import FoundationXML
+#endif
 
 public enum GPXError: Error, CustomStringConvertible, LocalizedError {
     case unreadable(String)

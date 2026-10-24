@@ -1,3 +1,4 @@
+#if canImport(AVFoundation)
 import AVFoundation
 import CoreGraphics
 import CoreImage
@@ -6,6 +7,10 @@ import CoreVideo
 import Darwin
 import Foundation
 import VideoToolbox
+
+#else
+import Foundation
+#endif
 
 public enum OverlayExportMode: String, Codable, CaseIterable, Hashable, Identifiable, Sendable {
     case overlay
@@ -16,7 +21,11 @@ public enum OverlayExportMode: String, Codable, CaseIterable, Hashable, Identifi
     public var defaultCodec: OverlayVideoCodec {
         switch self {
         case .overlay:
+            #if os(Linux) || os(Windows)
+            return .proRes4444
+            #else
             return .hevcAlpha
+            #endif
         case .video:
             return .hevc
         }
@@ -31,6 +40,7 @@ public enum OverlayVideoCodec: String, Codable, CaseIterable, Hashable, Identifi
 
     public var id: String { rawValue }
 
+    #if canImport(AVFoundation)
     var avCodecType: AVVideoCodecType {
         switch self {
         case .hevcAlpha:
@@ -43,6 +53,8 @@ public enum OverlayVideoCodec: String, Codable, CaseIterable, Hashable, Identifi
             return .h264
         }
     }
+
+    #endif
 
     public var exportMode: OverlayExportMode {
         switch self {
@@ -220,6 +232,7 @@ public struct TransparentVideoFrameTiming {
     }
 }
 
+#if canImport(AVFoundation)
 public final class TransparentVideoWriter {
     private static let temporaryFilePrefix = "DataLayerStudio-"
 
@@ -1236,3 +1249,5 @@ enum VideoExportSupport {
         }
     }
 }
+
+#endif

@@ -1,3 +1,4 @@
+#if canImport(AVFoundation)
 import CoreGraphics
 import CoreImage
 import CoreVideo
@@ -159,3 +160,5 @@ private struct RendererCache {
     var config: OverlayRenderConfig
     var renderer: OverlayRenderer
 }
+
+#endif

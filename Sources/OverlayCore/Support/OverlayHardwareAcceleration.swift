@@ -1,9 +1,14 @@
+#if canImport(Metal)
 import CoreMedia
 import CoreImage
 import CoreVideo
 import Foundation
 import Metal
 import VideoToolbox
+
+#else
+import Foundation
+#endif
 
 public struct OverlayHardwareEncoder: Equatable, Sendable {
     public let codec: OverlayVideoCodec
@@ -74,6 +79,9 @@ public struct OverlayHardwareProfile: Equatable, Sendable {
     }
 
     public var displaySummary: String {
+        #if os(Linux) || os(Windows)
+        return "Cairo/Pango rendering; FFmpeg software encoding"
+        #else
         var parts = [isAppleSiliconProcess ? "Apple Silicon arm64" : "unsupported CPU"]
         if let metalDeviceName {
             parts.append("Metal: \(metalDeviceName)")
@@ -93,8 +101,10 @@ public struct OverlayHardwareProfile: Equatable, Sendable {
             parts.append("hardware encoders: \(codecs)")
         }
         return parts.joined(separator: ", ")
+        #endif
     }
 
+    #if canImport(Metal)
     private static func detect() -> OverlayHardwareProfile {
         #if arch(arm64)
         let isAppleSiliconProcess = true
@@ -191,8 +201,14 @@ public struct OverlayHardwareProfile: Equatable, Sendable {
 
         return first
     }
+    #else
+    private static func detect() -> OverlayHardwareProfile {
+        OverlayHardwareProfile(isAppleSiliconProcess: false, metalDeviceName: nil, highestSupportedAppleGPUFamily: nil)
+    }
+    #endif
 }
 
+#if canImport(CoreImage)
 enum OverlayCIContextFactory {
     static func makeContext(profile: OverlayHardwareProfile = .current) -> CIContext {
         let options: [CIContextOption: Any] = [
@@ -222,3 +238,5 @@ enum OverlayPixelBufferAttributes {
         ]
     }
 }
+
+#endif

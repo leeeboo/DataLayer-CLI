@@ -3,6 +3,30 @@ import OverlayCore
 import XCTest
 
 final class TimelineProjectPersistenceServiceTests: XCTestCase {
+    func testMovedUnicodeDirectoryRestoresRealFilesAndPreservesWeatherAndExportSettings() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let original = root.appendingPathComponent("original 工程")
+        let moved = root.appendingPathComponent("moved 工程")
+        try FileManager.default.createDirectory(at: original.appendingPathComponent("媒体"), withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let media = original.appendingPathComponent("媒体/測試.gpx")
+        try Data("synthetic fixture".utf8).write(to: media)
+        let projectURL = original.appendingPathComponent("test.dlsproj")
+        let record = TimelineWeatherRecord(timestamp: Date(timeIntervalSince1970: 100_000), temperatureCelsius: 31, humidityPercent: 57, summary: "Clear")
+        var project = makeProject(asset: MediaAsset(id: "activity", kind: .activity, url: media, displayName: "測試.gpx", duration: 6, weatherRecords: [record]))
+        project.exportSettings = TimelineProjectExportSettings(timelineStart: 1.35, timelineEnd: 5.85, exportMode: .video, codec: .h264, bitRateKbps: 4300)
+        try TimelineProjectPersistenceService.jsonData(for: project, relativeTo: projectURL).write(to: projectURL)
+        try FileManager.default.moveItem(at: original, to: moved)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: media.path))
+        let newProjectURL = moved.appendingPathComponent("test.dlsproj")
+        let loaded = try TimelineProjectPersistenceService.project(from: Data(contentsOf: newProjectURL), relativeTo: newProjectURL)
+        XCTAssertEqual(loaded.assets[0].relativePath, "媒体/測試.gpx")
+        XCTAssertEqual(loaded.assets[0].url, moved.appendingPathComponent("媒体/測試.gpx"))
+        XCTAssertTrue(FileManager.default.isReadableFile(atPath: loaded.assets[0].url.path))
+        XCTAssertEqual(loaded.assets[0].weatherRecords, [record])
+        XCTAssertEqual(loaded.exportSettings, project.exportSettings)
+    }
+
     func testSavingUsesCurrentSchemaBookmarkAndRelativeMediaPath() throws {
         let projectURL = URL(fileURLWithPath: "/Projects/Race/race.dlsproj")
         let mediaURL = URL(fileURLWithPath: "/Projects/Race/Media/run.gpx")

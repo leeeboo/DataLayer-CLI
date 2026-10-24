@@ -1,3 +1,4 @@
+#if canImport(AVFoundation)
 import AudioToolbox
 import AVFoundation
 import CoreMedia
@@ -1323,3 +1324,5 @@ private extension OverlayVideoError {
         }
     }
 }
+
+#endif

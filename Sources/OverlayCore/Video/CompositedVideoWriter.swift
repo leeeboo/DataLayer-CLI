@@ -1,3 +1,4 @@
+#if canImport(AVFoundation)
 import AudioToolbox
 import AVFoundation
 import CoreGraphics
@@ -7,6 +8,10 @@ import CoreVideo
 import Darwin
 import Foundation
 import VideoToolbox
+
+#else
+import Foundation
+#endif
 
 public struct CompositedVideoWriterConfig {
     public var width: Int
@@ -80,6 +85,7 @@ public struct CompositedVideoWriterConfig {
     }
 }
 
+#if canImport(AVFoundation)
 public final class CompositedVideoWriter {
     private let outputURL: URL
     private let sourceAsset: AVAsset?
@@ -1430,3 +1436,5 @@ private final class RenderDiagnosticStageTracker: @unchecked Sendable {
         lock.unlock()
     }
 }
+
+#endif

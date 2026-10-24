@@ -1,4 +1,6 @@
+#if canImport(CoreMedia)
 import CoreMedia
+#endif
 import XCTest
 @testable import OverlayCore
 

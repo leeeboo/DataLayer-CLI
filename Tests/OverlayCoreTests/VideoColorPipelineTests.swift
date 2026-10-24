@@ -1,3 +1,4 @@
+#if canImport(AVFoundation)
 import AVFoundation
 import CoreImage
 import CoreMedia
@@ -384,3 +385,5 @@ final class VideoColorPipelineTests: XCTestCase {
         return readHalfBuffer(buffer).first?.0 ?? .nan
     }
 }
+
+#endif

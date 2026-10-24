@@ -1,4 +1,6 @@
+#if canImport(CoreGraphics)
 import CoreGraphics
+#endif
 import Foundation
 
 public enum OverlayDistanceUnit: String, CaseIterable, Codable, Identifiable {

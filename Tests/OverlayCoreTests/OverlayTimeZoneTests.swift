@@ -1,5 +1,7 @@
+#if canImport(AVFoundation)
 import AVFoundation
 import CoreVideo
+#endif
 import Foundation
 @testable import OverlayCore
 import XCTest
@@ -104,6 +106,7 @@ final class OverlayTimeZoneTests: XCTestCase {
         XCTAssertEqual(workerConfig.timeZone, config.timeZone)
     }
 
+    #if canImport(AVFoundation)
     func testPreviewTimeZoneChangeInvalidatesCachedPixels() throws {
         let date = ISO8601DateFormatter().date(from: "2026-10-17T23:30:00Z")!
         let series = TelemetrySeries(samples: [TelemetrySample(elapsed: 0, date: date)])
@@ -170,6 +173,8 @@ final class OverlayTimeZoneTests: XCTestCase {
             XCTAssertNotEqual(frames[0], frames[2], "Manual UTC must change encoded clock/date: \(codec), \(clipCount) clips")
         }
     }
+
+    #endif
 
     private func gpx(_ time: String?) -> Data {
         Data("<gpx version=\"1.1\"><trk><trkseg><trkpt lat=\"0\" lon=\"0\">\(time.map { "<time>\($0)</time>" } ?? "")</trkpt></trkseg></trk></gpx>".utf8)

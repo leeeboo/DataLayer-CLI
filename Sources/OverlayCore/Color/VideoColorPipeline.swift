@@ -1,3 +1,4 @@
+#if canImport(AVFoundation)
 import AVFoundation
 import CoreImage
 import CoreVideo
@@ -288,3 +289,5 @@ public enum VideoColorPipeline {
         return nil
     }
 }
+
+#endif

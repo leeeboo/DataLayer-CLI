@@ -1,3 +1,4 @@
+#if canImport(AVFoundation)
 import AudioToolbox
 import AVFoundation
 import CoreMedia
@@ -362,3 +363,5 @@ final class TimelineAudioTrackReuseTests: XCTestCase {
         return count > 0 ? total / Double(count) : 0
     }
 }
+
+#endif

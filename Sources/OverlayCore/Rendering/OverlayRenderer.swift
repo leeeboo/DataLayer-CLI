@@ -1,7 +1,13 @@
+#if canImport(CoreGraphics)
 import CoreGraphics
 import CoreText
 import CoreVideo
 import Darwin
+#elseif os(Linux)
+import Glibc
+#elseif os(Windows)
+import ucrt
+#endif
 import Foundation
 
 struct OverlayRenderFrame: Equatable {

@@ -1,4 +1,7 @@
 import Foundation
+#if os(Windows)
+import ucrt
+#endif
 import OverlayCore
 
 struct CommandLineOptions {
@@ -337,7 +340,8 @@ enum CLIError: Error, CustomStringConvertible {
       --bitrate KBPS     Average HEVC bitrate in kbps. Default: 12000.
                          Existing values above 1000000 are accepted as legacy bps.
       --bitrate-bps BPS  Legacy explicit bps bitrate.
-      --codec NAME       overlay mode: hevc-alpha (default), prores-4444. video mode: hevc (default), h264.
+      --codec NAME       overlay: hevc-alpha (Apple only), prores-4444; default: \(OverlayExportMode.overlay.defaultCodec.rawValue).
+                         video: hevc (default), h264.
       --distance-unit U  Distance unit for overlay labels: km (default) or m.
       --time-zone ZONE   Absolute clock/date zone: activity (default), system, or an IANA
                          identifier such as Asia/Shanghai. Activity falls back to system.
@@ -440,6 +444,9 @@ func loadTimelineProject(from fileURL: URL) throws -> TimelineProject {
 func run() async throws {
     TransparentVideoWriter.removeStaleTemporaryOutputs()
     let options = try CommandLineOptions.parse(arguments: CommandLine.arguments)
+    #if os(Linux) || os(Windows)
+    if !options.inspectOnly { TransparentVideoWriter.removeStaleTemporaryOutputs(in: options.outputURL.deletingLastPathComponent()) }
+    #endif
     if let timelineProjectURL = options.timelineProjectURL {
         try renderTimelineProject(options: options, projectURL: timelineProjectURL)
         return
@@ -589,9 +596,11 @@ func run() async throws {
 func renderTimelineProject(options: CommandLineOptions, projectURL: URL) throws {
     var project = try loadTimelineProject(from: projectURL)
     let options = try options.resolvingTimelineExportSettings(project)
+    #if os(macOS)
     let scopedURLs = project.assets.filter { $0.bookmarkData != nil }.map(\.url)
         .filter { $0.startAccessingSecurityScopedResource() }
     defer { scopedURLs.forEach { $0.stopAccessingSecurityScopedResource() } }
+    #endif
     if let distanceUnit = options.distanceUnitOverride {
         project.distanceUnit = distanceUnit
     }

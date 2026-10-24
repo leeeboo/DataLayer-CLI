@@ -50,11 +50,13 @@ func timelineExportRequest(project: TimelineProject, options: CommandLineOptions
 }
 
 func resolveTimelineBookmark(_ data: Data) -> URL? {
+    #if os(macOS)
     for options: URL.BookmarkResolutionOptions in [[.withSecurityScope, .withoutUI], [.withoutUI]] {
         var isStale = false
         if let url = try? URL(resolvingBookmarkData: data, options: options, relativeTo: nil, bookmarkDataIsStale: &isStale) {
             return url
         }
     }
+    #endif
     return nil
 }

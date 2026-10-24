@@ -1,5 +1,7 @@
+#if canImport(CoreMedia)
 import CoreMedia
 import CoreVideo
+#endif
 import Foundation
 
 public enum VideoColorInput: String, Codable, CaseIterable, Sendable {
@@ -45,6 +47,7 @@ public struct VideoColorInfo: Codable, Equatable, Sendable {
         if logTransferFunction == "com.apple.rec2020.apple-log"
             || logTransferFunction == "com.apple.apple-wide-gamut.apple-log" { return .log }
 
+        #if canImport(CoreVideo)
         switch (colorPrimaries, transferFunction) {
         case let (primaries?, transfer?) where primaries == (kCVImageBufferColorPrimaries_ITU_R_709_2 as String)
             && transfer == (kCVImageBufferTransferFunction_ITU_R_709_2 as String):
@@ -61,11 +64,21 @@ public struct VideoColorInfo: Codable, Equatable, Sendable {
         default:
             return nil
         }
+        #else
+        switch transferFunction?.lowercased() {
+        case "bt709", "itu_r_709_2": return .rec709
+        case "iec61966-2-1", "srgb": return .sRGB
+        case "arib-std-b67", "itu_r_2100_hlg": return .hlg
+        case "smpte2084", "smpte_st_2084_pq": return .pq
+        default: return nil
+        }
+        #endif
     }
 
     /// True when the source labels do not identify one of the supported input profiles.
     public var isAssumed: Bool { detectedInput == nil }
 
+    #if canImport(CoreMedia)
     public static func read(from formatDescription: CMFormatDescription) -> VideoColorInfo? {
         guard let rawExtensions = CMFormatDescriptionGetExtensions(formatDescription) else { return nil }
         let extensions = rawExtensions as NSDictionary
@@ -84,4 +97,5 @@ public struct VideoColorInfo: Codable, Equatable, Sendable {
         return info.colorPrimaries == nil && info.transferFunction == nil && info.yCbCrMatrix == nil
             && info.isFullRange == nil && info.logTransferFunction == nil ? nil : info
     }
+    #endif
 }

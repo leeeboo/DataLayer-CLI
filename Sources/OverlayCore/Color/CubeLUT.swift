@@ -1,4 +1,6 @@
+#if canImport(CoreImage)
 import CoreImage
+#endif
 import Foundation
 
 /// A validated 3D .cube LUT. Embedded in clips so projects never depend on the local library.
@@ -115,6 +117,7 @@ public struct ClipLUT: Codable, Equatable, Sendable {
         intensity = decodedIntensity
     }
 
+    #if canImport(CoreImage)
     public func applying(to image: CIImage) throws -> CIImage {
         guard intensity > 0 else { return image }
         // .cube tables use display-referred RGB; explicitly use sRGB, not CI's linear default.
@@ -155,4 +158,5 @@ public struct ClipLUT: Codable, Equatable, Sendable {
         guard let output = context.createCGImage(result, from: result.extent) else { throw CubeLUT.Failure.invalidCube }
         return output
     }
+    #endif
 }

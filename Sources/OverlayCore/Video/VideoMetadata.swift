@@ -1,5 +1,7 @@
+#if canImport(AVFoundation)
 import AVFoundation
 import CoreGraphics
+#endif
 import Foundation
 
 public struct VideoMetadata {
@@ -30,6 +32,7 @@ public struct VideoMetadata {
         self.colorInfo = colorInfo
     }
 
+    #if canImport(AVFoundation)
     public static func load(from url: URL) throws -> VideoMetadata {
         let semaphore = DispatchSemaphore(value: 0)
         let resultBox = VideoMetadataResultBox()
@@ -138,10 +141,16 @@ public struct VideoMetadata {
         }
     }
 
-    private static func importFileDiagnostics(_ url: URL) -> [String: Any] {
+    #endif
+
+    static func importFileDiagnostics(_ url: URL) -> [String: Any] {
         guard url.isFileURL else { return [:] }
         let manager = FileManager.default
+        #if canImport(AVFoundation)
         let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey, .isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey])
+        #else
+        let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
+        #endif
         var details: [String: Any] = [
             "source_exists": manager.fileExists(atPath: url.path),
             "source_readable": manager.isReadableFile(atPath: url.path),
@@ -149,13 +158,18 @@ public struct VideoMetadata {
         ]
         if let size = values?.fileSize { details["source_file_bytes"] = size }
         if let regular = values?.isRegularFile { details["source_regular_file"] = regular }
+        #if canImport(AVFoundation)
         if let cloud = values?.isUbiquitousItem { details["source_ubiquitous"] = cloud }
         if let status = values?.ubiquitousItemDownloadingStatus {
             details["source_cloud_available"] = status != .notDownloaded
         }
+        let availableLocally = values?.isUbiquitousItem != true || values?.ubiquitousItemDownloadingStatus == .current || values?.ubiquitousItemDownloadingStatus == .downloaded
+        #else
+        let availableLocally = true
+        #endif
         // Read only the 16-byte container signature of an available local file; never record bytes.
         if values?.isRegularFile == true,
-           (values?.isUbiquitousItem != true || values?.ubiquitousItemDownloadingStatus == .current || values?.ubiquitousItemDownloadingStatus == .downloaded),
+           availableLocally,
            let file = try? FileHandle(forReadingFrom: url) {
             defer { try? file.close() }
             if let header = try? file.read(upToCount: 16) {
@@ -232,9 +246,17 @@ public enum OverlayVideoError: Error, CustomStringConvertible, LocalizedError, C
         case .cannotCreateBitmapContext:
             return "Could not create a bitmap context for overlay rendering."
         case let .cannotStartWriter(message, _):
+            #if canImport(AVFoundation)
             return "Could not start AVAssetWriter: \(message)"
+            #else
+            return "Could not start the video encoder: \(message)"
+            #endif
         case let .writerFailed(message, _):
+            #if canImport(AVFoundation)
             return "AVAssetWriter failed: \(message)"
+            #else
+            return "Video encoder failed: \(message)"
+            #endif
         case let .unsupportedEncoder(message):
             return message
         case let .invalidConfiguration(message):

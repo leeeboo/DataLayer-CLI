@@ -1,5 +1,7 @@
+#if canImport(AVFoundation)
 import AVFoundation
 import CoreVideo
+#endif
 import OverlayCore
 import XCTest
 @testable import DataLayerCLICommand
@@ -27,7 +29,7 @@ final class TimelineProjectExportTests: XCTestCase {
             "--width", "640", "--time-zone", "UTC"
         ]).resolvingTimelineExportSettings(project)
         XCTAssertEqual(options.exportMode, .overlay)
-        XCTAssertEqual(options.codec, .hevcAlpha)
+        XCTAssertEqual(options.codec, OverlayExportMode.overlay.defaultCodec)
         XCTAssertEqual(options.averageBitRate, 1_000_000)
         XCTAssertEqual(options.activityTrim, ActivityTrim(startSeconds: 0, endSeconds: 3))
         XCTAssertEqual(timelineExportRequest(project: project, options: options).width, 640)
@@ -47,7 +49,7 @@ final class TimelineProjectExportTests: XCTestCase {
         project.exportSettings = nil
         let legacy = try options().resolvingTimelineExportSettings(project)
         XCTAssertEqual(legacy.exportMode, .overlay)
-        XCTAssertEqual(legacy.codec, .hevcAlpha)
+        XCTAssertEqual(legacy.codec, OverlayExportMode.overlay.defaultCodec)
         XCTAssertEqual(legacy.averageBitRate, 12_000_000)
         XCTAssertEqual(legacy.activityTrim, .none)
         XCTAssertEqual(timelineExportRequest(project: project, options: legacy).duration, 4)
@@ -73,10 +75,14 @@ final class TimelineProjectExportTests: XCTestCase {
         XCTAssertEqual(relative.assets[0].url, media)
         XCTAssertEqual(relative.tracks, project.tracks)
 
+        #if os(macOS)
         project.assets[0].bookmarkData = try media.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
         project.assets[0].relativePath = nil
         try JSONEncoder().encode(project).write(to: projectURL)
         XCTAssertEqual(try loadTimelineProject(from: projectURL).assets[0].url.standardizedFileURL, media.standardizedFileURL)
+        #else
+        XCTAssertNil(resolveTimelineBookmark(Data([1, 2, 3])))
+        #endif
     }
 
     func testMissingMediaAndFutureProjectRemainErrors() throws {
@@ -131,6 +137,7 @@ final class TimelineProjectExportTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: first.path))
     }
 
+    #if canImport(AVFoundation)
     func testEncodedCLIProjectMatchesGUIWriterSettingsWeatherAndTrim() async throws {
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -225,6 +232,8 @@ final class TimelineProjectExportTests: XCTestCase {
         }
     }
 
+    #endif
+
     private func options(_ extra: [String] = []) throws -> CommandLineOptions {
         try CommandLineOptions.parse(arguments: ["overlay", "--timeline-project", "project.dlsproj", "--output", "output.mov"] + extra)
     }
@@ -244,6 +253,7 @@ final class TimelineProjectExportTests: XCTestCase {
         return url
     }
 
+    #if canImport(AVFoundation)
     private func decodedFrames(_ url: URL) async throws -> [Data] {
         let asset = AVURLAsset(url: url)
         let reader = try AVAssetReader(asset: asset)
@@ -267,6 +277,8 @@ final class TimelineProjectExportTests: XCTestCase {
         XCTAssertEqual(reader.status, .completed)
         return frames
     }
+
+    #endif
 
     private var gpx: String {
         """

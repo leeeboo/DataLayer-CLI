@@ -1,3 +1,4 @@
+#if canImport(AVFoundation)
 import AVFoundation
 import CoreMedia
 import Foundation
@@ -160,3 +161,5 @@ final class NonCooperativeDecodeAttempt: TimelineSegmentDecodeAttempt, @unchecke
         condition.withLock { released = true; condition.broadcast() }
     }
 }
+
+#endif

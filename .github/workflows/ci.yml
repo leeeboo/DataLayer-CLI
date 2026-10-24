@@ -1,7 +1,7 @@
 name: CLI CI
 on:
   push:
-    branches: [main]
+    branches: [main, 'codex/**']
   pull_request:
   workflow_dispatch:
 permissions:
@@ -25,3 +25,62 @@ jobs:
         run: swift test
       - name: Check command entry point
         run: .build/release/overlay --help
+  linux:
+    runs-on: ubuntu-24.04
+    container: swift:6.1.2-noble
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install portable media and graphics runtimes
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends python3 git ffmpeg libcairo2 libpangocairo-1.0-0 fonts-liberation fonts-dejavu-core
+      - name: Check audited source boundary
+        run: python3 -B scripts/test_source_boundary.py
+      - name: Build release CLI
+        run: swift build -c release --product overlay -j 4
+      - name: Run shared and portable media regressions
+        run: swift test -j 4
+      - name: Check command entry point
+        run: .build/release/overlay --help
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Install Swift and Windows SDK
+        uses: compnerd/gha-setup-swift@775d3f4111c5be58a0f62f2efdd353bb8fac15c7
+        with:
+          swift-version: swift-6.1.2-release
+          swift-build: 6.1.2-RELEASE
+      - name: Install native Windows media and graphics runtimes
+        id: msys2
+        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-pango
+            mingw-w64-ucrt-x86_64-cairo
+            mingw-w64-ucrt-x86_64-ffmpeg
+            mingw-w64-ucrt-x86_64-ttf-dejavu
+      - name: Make runtime DLLs available to the native Swift executable
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          "$env:MSYS2_LOCATION\ucrt64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Check audited source boundary
+        run: python -B scripts/test_source_boundary.py
+      - name: Build release CLI
+        run: swift build -c release --product overlay -j 4
+      - name: Run shared and portable media regressions
+        run: swift test -j 4
+      - name: Check command entry point
+        shell: pwsh
+        run: |
+          $binary = Join-Path (swift build -c release --show-bin-path) 'overlay.exe'
+          & $binary --help

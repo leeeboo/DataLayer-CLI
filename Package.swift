@@ -10,7 +10,12 @@ let package = Package(
         .library(name: "OverlayCore", targets: ["OverlayCore"])
     ],
     targets: [
-        .target(name: "OverlayCore"),
+        .target(name: "OverlayCore", dependencies: [
+            .target(name: "CCairoRuntime", condition: .when(platforms: [.linux, .windows]))
+        ]),
+        .target(name: "CCairoRuntime", linkerSettings: [
+            .linkedLibrary("dl", .when(platforms: [.linux]))
+        ]),
         .executableTarget(name: "DataLayerCLICommand", dependencies: ["OverlayCore"], path: "Sources/overlay"),
         .executableTarget(name: "DataLayerVideoWorker", dependencies: ["OverlayCore"], path: "Sources/VideoExportWorker"),
         .testTarget(name: "OverlayCoreTests", dependencies: ["OverlayCore"]),

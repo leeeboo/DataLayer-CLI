@@ -1,3 +1,4 @@
+#if canImport(AVFoundation)
 import AVFoundation
 import Foundation
 
@@ -316,3 +317,5 @@ public enum TimelineVideoCompositionBuilder {
         CMTimeCompare(lhs, rhs) >= 0 ? lhs : rhs
     }
 }
+
+#endif

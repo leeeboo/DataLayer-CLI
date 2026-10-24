@@ -1,3 +1,4 @@
+#if canImport(AVFoundation)
 import AVFoundation
 import CoreGraphics
 import CoreMedia
@@ -462,3 +463,5 @@ private extension OverlayVideoError {
         }
     }
 }
+
+#endif

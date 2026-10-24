@@ -1,3 +1,4 @@
+#if canImport(AVFoundation)
 import AVFoundation
 import CoreImage
 
@@ -74,3 +75,5 @@ final class LUTVideoCompositor: NSObject, AVVideoCompositing {
         }
     }
 }
+
+#endif

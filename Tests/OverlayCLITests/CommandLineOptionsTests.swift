@@ -38,7 +38,7 @@ final class CommandLineOptionsTests: XCTestCase {
         XCTAssertEqual(options.width, 1920)
         XCTAssertEqual(options.height, 1080)
         XCTAssertEqual(options.exportMode, .overlay)
-        XCTAssertEqual(options.codec, .hevcAlpha)
+        XCTAssertEqual(options.codec, OverlayExportMode.overlay.defaultCodec)
         XCTAssertEqual(options.activityOffsetMilliseconds, 0)
         XCTAssertEqual(options.fitClockOffsetMilliseconds, 0)
     }

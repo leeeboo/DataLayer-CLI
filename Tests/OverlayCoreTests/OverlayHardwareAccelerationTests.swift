@@ -1,3 +1,4 @@
+#if canImport(AVFoundation)
 import AVFoundation
 import CoreMedia
 import CoreVideo
@@ -119,3 +120,5 @@ final class OverlayHardwareAccelerationTests: XCTestCase {
         }
     }
 }
+
+#endif

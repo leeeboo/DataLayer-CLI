@@ -1,5 +1,7 @@
+#if canImport(CoreVideo)
 import CoreGraphics
 import CoreVideo
+#endif
 @testable import OverlayCore
 import XCTest
 
@@ -100,10 +102,15 @@ final class OverlayElementBoundsTests: XCTestCase {
     }
 
     private func render(_ renderer: OverlayRenderer) throws -> Data {
+        #if canImport(CoreVideo)
         var buffer: CVPixelBuffer?
         let attributes = [kCVPixelBufferCGImageCompatibilityKey: true, kCVPixelBufferCGBitmapContextCompatibilityKey: true] as CFDictionary
         XCTAssertEqual(CVPixelBufferCreate(nil, Int(size.width), Int(size.height), kCVPixelFormatType_32BGRA, attributes, &buffer), kCVReturnSuccess)
         let pixelBuffer = try XCTUnwrap(buffer)
+        #else
+        try PortableGraphics.check()
+        let pixelBuffer = CVPixelBuffer(width: Int(size.width), height: Int(size.height))
+        #endif
         try renderer.render(videoTime: 5, into: pixelBuffer)
         CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }

@@ -1,3 +1,4 @@
+#if canImport(AVFoundation)
 import AVFoundation
 import CoreMedia
 import CoreVideo
@@ -532,3 +533,5 @@ private final class AVTimelineSegmentDecodeAttempt: TimelineSegmentDecodeAttempt
         CMTimeCompare(lhs, rhs) >= 0 ? lhs : rhs
     }
 }
+
+#endif

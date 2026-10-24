@@ -75,3 +75,16 @@ Publish source only after both repositories' required CI and real-path
 acceptance pass. Binary releases additionally require signing and notarization.
 Only the CLI and shared Core are published under MIT; the GUI repository
 remains private under its existing license.
+
+## Windows/Linux backend review (development branch)
+
+The new C ABI adapter and Swift platform adapters are original project code.
+They implement only the graphics operations used by the existing shared renderer;
+no Cairo, Pango, FFmpeg, font or other vendor implementation/binary is copied.
+Portable platform dependencies are runtime shared libraries or separate processes.
+Their individual licenses remain applicable when separately distributing them.
+Apple implementations remain behind their platform conditions; the component
+renderer, models, telemetry, project format and fractional timing are maintained
+once. Native Apple tests remain enabled on macOS, and shared/portable tests run
+on Linux and Windows. Cross-platform release remains gated on all three CI jobs,
+Apple GUI/iOS integration and same-project real-export acceptance.

@@ -125,6 +125,7 @@ public struct LayoutPresetStore {
     private let synchronizeCloudStore: (() -> Bool)?
 
     public init(defaults: UserDefaults = .standard, key: String = Self.storageKey) {
+        #if os(macOS) || os(iOS)
         let ubiquitousStore = NSUbiquitousKeyValueStore.default
         self.init(
             defaults: defaults,
@@ -141,6 +142,9 @@ public struct LayoutPresetStore {
                 ubiquitousStore.synchronize()
             }
         )
+        #else
+        self.init(defaults: defaults, key: key, loadCloudData: nil, saveCloudData: nil, synchronizeCloudStore: nil)
+        #endif
     }
 
     init(

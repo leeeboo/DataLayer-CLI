@@ -1,4 +1,6 @@
+#if canImport(CoreImage)
 import CoreImage
+#endif
 @testable import OverlayCore
 import XCTest
 
@@ -23,6 +25,7 @@ final class LUTTests: XCTestCase {
         }
     }
 
+    #if canImport(CoreImage)
     func testIdentityInvertAndIntensityPixels() throws {
         let context = CIContext()
         let image = CIImage(color: CIColor(red: 0.2, green: 0.4, blue: 0.7, alpha: 1,
@@ -53,6 +56,8 @@ final class LUTTests: XCTestCase {
         let clear = CIImage(color: .clear).cropped(to: image.extent)
         XCTAssertEqual(pixel(try invert.applying(to: clear))[3], 0)
     }
+
+    #endif
 
     func testLegacyClipEmbeddedRoundtripAndSplit() throws {
         let legacy = Data(#"{"id":"v","assetID":"a","timelineStart":0,"duration":2}"#.utf8)

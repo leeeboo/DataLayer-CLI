@@ -1,5 +1,7 @@
 @testable import OverlayCore
+#if canImport(CoreVideo)
 import CoreVideo
+#endif
 import XCTest
 
 final class OverlayRendererTests: XCTestCase {
@@ -789,6 +791,7 @@ final class OverlayRendererTests: XCTestCase {
         let path = try XCTUnwrap(OverlayRenderer.routePath(points, in: CGRect(x: 0, y: 0, width: 100, height: 100)))
         var moveCount = 0
         var lineCount = 0
+        #if canImport(CoreGraphics)
         path.applyWithBlock { element in
             switch element.pointee.type {
             case .moveToPoint:
@@ -799,6 +802,16 @@ final class OverlayRendererTests: XCTestCase {
                 break
             }
         }
+
+        #else
+        for command in path.commands {
+            switch command {
+            case .move: moveCount += 1
+            case .line: lineCount += 1
+            default: break
+            }
+        }
+        #endif
 
         XCTAssertEqual(moveCount, 2)
         XCTAssertEqual(lineCount, 2)
@@ -961,6 +974,7 @@ final class OverlayRendererTests: XCTestCase {
     }
 
     private func makePixelBuffer(width: Int, height: Int) throws -> CVPixelBuffer {
+        #if canImport(CoreVideo)
         let attributes: [String: Any] = [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
             kCVPixelBufferWidthKey as String: width,
@@ -983,5 +997,9 @@ final class OverlayRendererTests: XCTestCase {
             throw OverlayVideoError.cannotCreatePixelBuffer
         }
         return pixelBuffer
+        #else
+        try PortableGraphics.check()
+        return CVPixelBuffer(width: width, height: height)
+        #endif
     }
 }

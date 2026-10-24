@@ -1,4 +1,6 @@
+#if canImport(CoreMedia)
 import CoreMedia
+#endif
 import Foundation
 
 /// Normalizes the common NTSC frame-rate aliases at runtime while leaving the

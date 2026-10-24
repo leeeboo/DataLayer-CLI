@@ -1,3 +1,4 @@
+#if canImport(AVFoundation)
 import CoreGraphics
 @testable import OverlayCore
 import XCTest
@@ -58,3 +59,5 @@ final class OverlayPreviewRendererTests: XCTestCase {
         }
     }
 }
+
+#endif

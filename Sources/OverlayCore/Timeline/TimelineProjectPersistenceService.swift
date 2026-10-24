@@ -90,11 +90,19 @@ public enum TimelineProjectPersistenceService {
     }
 
     public static func relativeMediaPath(for mediaURL: URL, projectURL: URL) -> String? {
+        #if os(Windows)
+        let directory = projectURL.deletingLastPathComponent().standardizedFileURL.pathComponents
+        let media = mediaURL.standardizedFileURL.pathComponents
+        guard media.count > directory.count,
+              zip(directory, media).allSatisfy({ $0.caseInsensitiveCompare($1) == .orderedSame }) else { return nil }
+        return media.dropFirst(directory.count).joined(separator: "/")
+        #else
         let directoryPath = projectURL.deletingLastPathComponent().standardizedFileURL.path
         let mediaPath = mediaURL.standardizedFileURL.path
         let prefix = directoryPath.hasSuffix("/") ? directoryPath : directoryPath + "/"
         guard mediaPath.hasPrefix(prefix) else { return nil }
         let relative = String(mediaPath.dropFirst(prefix.count))
         return relative.isEmpty ? nil : relative
+        #endif
     }
 }
