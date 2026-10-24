@@ -113,6 +113,28 @@ enum PortableMedia {
     }
 
     static func number(_ value: Double) -> String { String(format: "%.9f", locale: Locale(identifier: "en_US_POSIX"), value) }
+
+    static func filterGraphOption(for executable: URL) throws -> String {
+        let process = Process(), output = Pipe()
+        process.executableURL = executable; process.arguments = ["-hide_banner", "-h", "full"]
+        process.standardOutput = output; process.standardError = FileHandle.nullDevice; process.standardInput = FileHandle.nullDevice
+        try process.run()
+        let watchdog = MediaProcessWatchdog(process: process, cancellation: nil)
+        defer { watchdog.stop(); try? output.fileHandleForReading.close() }
+        var data = Data()
+        while let chunk = try output.fileHandleForReading.read(upToCount: 65_536), !chunk.isEmpty {
+            data.append(chunk)
+            if data.count > 4 * 1_024 * 1_024 {
+                process.terminate(); process.waitUntilExit()
+                throw OverlayVideoError.invalidConfiguration("FFmpeg help exceeds the 4 MiB limit.")
+            }
+        }
+        process.waitUntilExit()
+        if let error = watchdog.error { throw error }
+        guard process.terminationStatus == 0 else { throw OverlayVideoError.invalidConfiguration("Could not inspect FFmpeg filter graph support.") }
+        // New FFmpeg removed the deprecated option in favor of the generic file-argument syntax.
+        return String(decoding: data, as: UTF8.self).contains("-filter_complex_script") ? "-filter_complex_script" : "-/filter_complex"
+    }
 }
 
 /// The watchdog also breaks a blocked pipe write if an encoder exits or stops reading input.
@@ -289,6 +311,7 @@ enum PortableVideoExport {
         let timing = TransparentVideoFrameTiming(framesPerSecond: config.framesPerSecond, duration: config.duration)
         guard !timing.frameCountWasClamped else { throw OverlayVideoError.invalidConfiguration("Export frame count is too large.") }
         let rate = "\(timing.frameDuration.timescale)/\(timing.frameDuration.value)"
+        let frameClock = "settb=AVTB,setpts=N*\(timing.frameDuration.value)*1000000/\(timing.frameDuration.timescale)"
         let temp = directory.appendingPathComponent("output.mov"), log = directory.appendingPathComponent("stderr.log")
         var arguments = ["-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-threads", "2", "-filter_complex_threads", "1",
             "-f", "rawvideo", "-pixel_format", "bgra", "-video_size", "\(config.width)x\(config.height)", "-framerate", rate, "-i", "pipe:0"]
@@ -309,8 +332,10 @@ enum PortableVideoExport {
                 let sourceStart = trackStart + clip.sourceIn
                 let phase = trackStart + source - destination + timing.frameDuration.seconds / 2
                 let color = try colorFilters(clip: clip, asset: asset, directory: directory, index: offset)
+                let matrix = stream.color_space == "bt2020nc" ? "bt2020" : stream.color_space == "smpte170m" || stream.color_space == "bt470bg" ? "bt601" : "bt709"
+                let range = stream.color_range == "pc" ? "pc" : "tv"
                 // Preserve source PTS and preroll: Apple's reader accepts the latest frame within half an output frame.
-                filters.append("[\(input):v]trim=start=\(PortableMedia.number(trackStart)):end=\(PortableMedia.number(sourceStart + clip.duration)),settb=1/120000000,setpts=PTS-\(PortableMedia.number(phase))/TB\(color),scale=\(config.width):\(config.height):force_original_aspect_ratio=decrease:flags=bicubic,pad=\(config.width):\(config.height):(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=rgba[clip\(offset)]")
+                filters.append("[\(input):v]trim=start=\(PortableMedia.number(trackStart)):end=\(PortableMedia.number(sourceStart + clip.duration)),settb=1/120000000,setpts=PTS-\(PortableMedia.number(phase))/TB\(color),scale=\(config.width):\(config.height):in_color_matrix=\(matrix):in_range=\(range):out_range=pc:force_original_aspect_ratio=decrease:flags=bicubic,pad=\(config.width):\(config.height):(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=rgba[clip\(offset)]")
                 let next = "base\(offset + 1)"
                 filters.append("[\(videoLabel)][clip\(offset)]overlay=eof_action=repeat:repeatlast=1:format=rgb:x='if(gte(t,\(PortableMedia.number(destination)))*lt(t,\(PortableMedia.number(destination+duration))),0,NAN)'[\(next)]")
                 videoLabel = next
@@ -322,7 +347,10 @@ enum PortableVideoExport {
                     audioLabels.append(label)
                 }
             }
-            filters.append("[\(videoLabel)][0:v]overlay=shortest=1:format=rgb,scale=out_color_matrix=bt709:out_range=tv,format=yuv420p[video]")
+            // Core Image composites sRGB overlay colors over Rec.709 video in linear light.
+            filters.append("[\(videoLabel)]fps=fps=\(rate):start_time=0:round=near,format=gbrpf32le,zscale=transferin=709:transfer=linear:primariesin=709:primaries=709:matrixin=gbr:matrix=gbr:rangein=full:range=full,\(frameClock)[linearVideo]")
+            filters.append("[0:v]split[overlayRGB][overlayAlpha];[overlayRGB]format=gbrpf32le,zscale=transferin=iec61966-2-1:transfer=linear:primariesin=709:primaries=709:matrixin=gbr:matrix=gbr:rangein=full:range=full,\(frameClock)[linearOverlay];[overlayAlpha]alphaextract,setparams=range=full,format=gbrp16le,format=gbrpf32le,\(frameClock)[alphaMask]")
+            filters.append("[linearVideo][linearOverlay][alphaMask]maskedmerge,zscale=transferin=linear:transfer=709:primariesin=709:primaries=709:matrixin=gbr:matrix=709:rangein=full:range=limited,format=yuv420p[video]")
             videoLabel = "video"
             if !audioLabels.isEmpty {
                 filters.append(audioLabels.map { "[\($0)]" }.joined() + "amix=inputs=\(audioLabels.count):normalize=0,apad,atrim=duration=\(PortableMedia.number(config.duration))[audio]")
@@ -331,7 +359,7 @@ enum PortableVideoExport {
         if !filters.isEmpty {
             let script = directory.appendingPathComponent("filters.txt")
             try filters.joined(separator: ";\n").write(to: script, atomically: true, encoding: .utf8)
-            arguments += ["-filter_complex_script", script.path, "-map", "[\(videoLabel)]"]
+            arguments += [try PortableMedia.filterGraphOption(for: executable), script.path, "-map", "[\(videoLabel)]"]
         } else { arguments += ["-map", "0:v"] }
         if audioLabels.isEmpty { arguments += ["-an"] }
         else { arguments += ["-map", "[audio]", "-c:a", "aac", "-ar", "48000", "-ac", "2", "-b:a", "192k"] }

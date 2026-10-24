@@ -97,6 +97,10 @@ final class VideoExportDiagnosticEventTests: XCTestCase {
             XCTAssertEqual(hints.failureParentExists, role == .other ? nil : false)
             XCTAssertFalse(String(decoding: try JSONEncoder().encode(hints), as: UTF8.self).contains("private"))
         }
+        #if os(Windows)
+        let windowsError = NSError(domain: NSCocoaErrorDomain, code: 4, userInfo: [NSFilePathErrorKey: target.path.uppercased().replacingOccurrences(of: "/", with: "\\")])
+        XCTAssertEqual(VideoExportFileSystemHints.capture(sourceURL: source, targetURL: target, error: windowsError).failurePathRole, .target)
+        #endif
     }
 
     func testAllStandardCompositedStagesAreRepresentedInSchemaV1() {

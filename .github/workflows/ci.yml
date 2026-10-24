@@ -141,3 +141,23 @@ jobs:
           name: export-windows
           path: export-windows/
           retention-days: 7
+  compare:
+    needs: [test, linux, windows]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install media comparison runtime
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: export-*
+          path: exports
+      - name: Compare every frame, Alpha plane and audible samples
+        run: python3 -B scripts/compare_export_fixture.py exports comparison.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: export-comparison
+          path: comparison.json
+          retention-days: 7

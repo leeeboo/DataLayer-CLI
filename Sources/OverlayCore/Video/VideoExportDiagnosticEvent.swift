@@ -271,7 +271,7 @@ public struct VideoExportFileSystemHints: Codable, Sendable, Equatable {
         var current = error.map { $0 as NSError }
         var seen = Set<ObjectIdentifier>()
         while let value = current, seen.count < 5, seen.insert(ObjectIdentifier(value)).inserted {
-            if let path = value.userInfo[NSFilePathErrorKey] as? String, path.hasPrefix("/") {
+            if let path = value.userInfo[NSFilePathErrorKey] as? String, Self.isAbsoluteFilePath(path) {
                 failureURL = URL(fileURLWithPath: path).standardizedFileURL
                 break
             }
@@ -282,11 +282,11 @@ public struct VideoExportFileSystemHints: Codable, Sendable, Equatable {
             current = value.userInfo[NSUnderlyingErrorKey] as? NSError
         }
         let role: FailurePathRole? = failureURL.map { url in
-            let path = url.path
-            let targetPath = targetURL.standardizedFileURL.path
-            if path == sourceURL?.standardizedFileURL.path { return .source }
+            let path = Self.comparisonPath(url)
+            let targetPath = Self.comparisonPath(targetURL)
+            if path == sourceURL.map(Self.comparisonPath) { return .source }
             if path == targetPath { return .target }
-            if path == parent.standardizedFileURL.path { return .parent }
+            if path == Self.comparisonPath(parent) { return .parent }
             if targetPath == "/" || path.hasPrefix(targetPath + "/") { return .targetChild }
             return .other
         }
@@ -304,6 +304,24 @@ public struct VideoExportFileSystemHints: Codable, Sendable, Equatable {
             failurePathExists: failureURL.flatMap { role == .other ? nil : manager.fileExists(atPath: $0.path) },
             failureParentExists: failureURL.flatMap { role == .other ? nil : manager.fileExists(atPath: $0.deletingLastPathComponent().path) }
         )
+    }
+
+    private static func isAbsoluteFilePath(_ path: String) -> Bool {
+        #if os(Windows)
+        return path.hasPrefix("/") || path.hasPrefix("\\\\")
+            || path.range(of: #"^[A-Za-z]:[/\\]"#, options: .regularExpression) != nil
+        #else
+        return path.hasPrefix("/")
+        #endif
+    }
+
+    private static func comparisonPath(_ url: URL) -> String {
+        let path = url.standardizedFileURL.path
+        #if os(Windows)
+        return path.replacingOccurrences(of: "\\", with: "/").lowercased()
+        #else
+        return path
+        #endif
     }
 
     /// Fixed keys and primitive values only. Paths and volume identifiers never enter this record.

@@ -94,6 +94,18 @@ final class PortableMediaTests: XCTestCase {
         XCTAssertEqual(timing.outputDuration.seconds, 4.5045, accuracy: 0.000000001)
     }
 
+    func testOpaqueVideoCompositesAlphaInLinearLight() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let output = directory.appendingPathComponent("linear.mov")
+        try PortableVideoExport.write(outputURL: output, project: nil, config: .init(width: 16, height: 16, framesPerSecond: 30, duration: 0.1, codec: .h264)) { _, buffer in
+            buffer.pixels.initializeMemory(as: UInt8.self, repeating: 128, count: buffer.bytesPerRow * buffer.height)
+        }
+        let pixel = try firstFrame(output)[0]
+        XCTAssertGreaterThan(pixel, 170, "A gamma-space blend would incorrectly produce 128")
+        XCTAssertLessThan(pixel, 195)
+    }
+
     func testFractionalTrimAndCutSelectSourceFramesWithinApplesHalfFrameTolerance() throws {
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
