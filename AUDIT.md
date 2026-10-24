@@ -77,7 +77,7 @@ acceptance pass. macOS binary releases additionally require signing and notariza
 Only the CLI and shared Core are published under MIT; the GUI repository
 remains private under its existing license.
 
-## Windows/Linux backend review (development branch)
+## Windows/Linux backend review
 
 The new C ABI adapter and Swift platform adapters are original project code.
 They implement only the graphics operations used by the existing shared renderer;
@@ -89,3 +89,16 @@ renderer, models, telemetry, project format and fractional timing are maintained
 once. Native Apple tests remain enabled on macOS, and shared/portable tests run
 on Linux and Windows. Cross-platform release remains gated on all three CI jobs,
 Apple GUI/iOS integration and same-project real-export acceptance.
+
+The owner accepted Apple/portable font and rendering differences provided the GUI
+keeps its existing behavior. Acceptance therefore requires identical fixture inputs,
+saved settings, timing, audible audio and real Alpha on every platform, plus strict
+picture/Alpha parity between Windows and Linux. Apple/portable visual differences
+remain visible in the comparison report and release notes, rather than being called
+pixel-identical. No GUI font replacement, migration mode or schema change is included.
+
+Portable binary archives contain only the project's native executable, existing
+notices and source-identity metadata. Swift runtimes, Cairo/Pango, FFmpeg and fonts
+must be installed separately under their respective licenses. CI verifies archive
+checksums, unpacks each archive, and performs the real exports with the packaged
+executable. macOS archives retain the existing signing/notarization requirements.

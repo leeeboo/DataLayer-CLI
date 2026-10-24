@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail the release gate on visual, Alpha, audio or shared-fixture differences."""
+"""Gate portable visual parity and all-platform audio; report Apple rendering differences."""
 import argparse
 import array
 import json
@@ -36,27 +36,35 @@ def compare(root, output):
     root, output = pathlib.Path(root).resolve(), pathlib.Path(output).resolve()
     reports = {name: json.loads((root / ("export-" + name) / "report.json").read_text()) for name in ["macos", "linux", "windows"]}
     assert all(r["fixture"] == reports["macos"]["fixture"] for r in reports.values()), "Platforms used different input media or projects"
-    comparisons, failures = {}, []
+    comparisons, failures, visual_differences = {}, [], []
     for left, right in [("macos", "linux"), ("macos", "windows"), ("linux", "windows")]:
         pair = left + "-" + right
+        require_visual_parity = (left, right) == ("linux", "windows")
         comparisons[pair] = {}
         for codec in ["h264", "hevc", "prores-4444"]:
             a, b = root / ("export-" + left) / codec, root / ("export-" + right) / codec
             picture = similarity(a.with_suffix(".mov"), b.with_suffix(".mov"))
-            result = {"picture": picture}
+            result = {"picture": picture, "visual_parity_required": require_visual_parity}
             if picture["mean"] < .995 or picture["minimum"] < .99:
-                failures.append(pair + "/" + codec + ": picture differs")
+                difference = pair + "/" + codec + ": picture differs"
+                visual_differences.append(difference)
+                if require_visual_parity:
+                    failures.append(difference)
             if codec == "prores-4444":
                 result["alpha"] = similarity(a.with_suffix(".mov"), b.with_suffix(".mov"), alpha=True)
                 if result["alpha"]["mean"] < .995 or result["alpha"]["minimum"] < .99:
-                    failures.append(pair + "/" + codec + ": Alpha differs")
+                    difference = pair + "/" + codec + ": Alpha differs"
+                    visual_differences.append(difference)
+                    if require_visual_parity:
+                        failures.append(difference)
             else:
                 result["audio"] = audio(a.with_suffix(".pcm"), b.with_suffix(".pcm"))
                 if result["audio"]["correlation"] < .995 or result["audio"]["rms_delta"] > .01:
                     failures.append(pair + "/" + codec + ": audio differs")
             comparisons[pair][codec] = result
-    output.write_text(json.dumps({"passed": not failures, "failures": failures, "comparisons": comparisons}, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"passed": not failures, "failures": failures}))
+    output.write_text(json.dumps({"passed": not failures, "failures": failures,
+        "visual_differences": visual_differences, "comparisons": comparisons}, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps({"passed": not failures, "failures": failures, "visual_differences": visual_differences}))
     return not failures
 
 

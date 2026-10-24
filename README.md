@@ -2,9 +2,9 @@
 
 MIT-licensed telemetry graphics and video export.
 
-Windows/Linux support is being validated on the `codex/cross-platform-cli` branch;
-no cross-platform release is published until its complete CI and media acceptance pass.
-The stable macOS backend continues to require **macOS 13+ on Apple Silicon**.
+Native CLI backends support macOS, Windows and Linux. The macOS backend requires
+**macOS 13+ on Apple Silicon**. Portable binaries target **Windows x86_64** and
+**Ubuntu 24.04 x86_64**; other distributions and architectures are not binary release targets.
 Render FIT/GPX activities as transparent overlays or composite them with video.
 Open DataLayer Studio `.dlsproj` projects with the same renderer, cached weather,
 media-path recovery, export settings, layouts, and fractional frame-rate timing.
@@ -16,7 +16,15 @@ existing separate license.
 
 ## Install
 
-Build from source using Xcode command-line tools with Swift 5.9 or later:
+Download the matching archive and SHA-256 file from
+[GitHub Releases](https://github.com/leeeboo/DataLayer-CLI/releases).
+The macOS executable is Developer ID signed and notarized. Windows/Linux archives
+contain the native executable and notices; install the Swift 6.1.2 runtime/toolchain
+and media/graphics dependencies listed below before running them. Those dependencies
+are installed separately rather than bundled or relicensed under MIT.
+
+To build from source, use Swift 5.9+ on macOS (with Xcode command-line tools), or
+the tested Swift 6.1.2 toolchain on Windows/Linux:
 
 ```sh
 git clone https://github.com/leeeboo/DataLayer-CLI.git
@@ -45,12 +53,16 @@ weather, trim, layout and relative asset paths saved in projects are preserved.
 Apple security-scoped bookmarks are Apple-only; moved projects resolve their
 relative media paths on Windows/Linux.
 
-Apple font selections use explicit DejaVu substitutes on Windows/Linux. This
-keeps portable platforms reproducible; Apple and portable glyph rasterization
-can differ and is part of the media acceptance comparison. No Apple font files
-are copied or distributed. Existing macOS/iOS font selection and rendering remain
-unchanged. Available Apple codecs depend on the hardware/OS; unavailable Alpha
-codecs always fail without silently changing the codec.
+Apple font selections use explicit DejaVu substitutes on Windows/Linux. Glyphs,
+shadow edges, antialiasing and video composition can visibly differ from the
+native Apple backend; the CLI does not promise identical Apple/portable pixels
+or Alpha edges. Cross-platform visual metrics are retained in CI reports. Audio,
+timing, saved settings, media recovery and real transparency remain required;
+Windows/Linux picture and Alpha parity also remain release gates. No Apple font
+files are copied or distributed. Existing macOS/iOS fonts, rendering, defaults
+and project formats remain unchanged; no GUI migration mode is introduced.
+Available Apple codecs depend on the hardware/OS; unavailable Alpha codecs always
+fail without silently changing the codec.
 
 ## Use
 
@@ -98,22 +110,26 @@ necessary before releasing Alpha export changes.
 Core changes and their regression tests are maintained in this repository.
 DataLayer Studio consumes the `OverlayCore` Swift package product through a
 Git submodule pinned to a tested commit; it does not keep a second Core copy.
-The package supports macOS 13+ and iOS 26+ for Core. The released CLI is macOS-only;
-this development branch adds native Windows and Linux CLI backends.
+The package supports macOS 13+ and iOS 26+ for Core, plus native Windows/Linux CLI backends.
 
 CI generates one synthetic moved project and shares its exact media/project bytes
 across macOS, Windows and Linux. It exports H.264, HEVC and ProRes 4444, checks every
 frame timestamp, saved settings, audio duration and Alpha, then compares decoded
-picture, Alpha and audible PCM. Visual differences remain a failing release gate.
+picture, Alpha and audible PCM. All-platform audio and Windows/Linux visual parity
+are hard gates. Apple/portable picture and Alpha differences are reported without
+changing the GUI or claiming pixel equivalence. CI also unpacks the Windows/Linux
+release archives and exports the fixture using those packaged executables.
 
 `ORIGIN.json` preserves the initial import revision and hashes as historical
 provenance; current source identity is the Git commit. See [AUDIT.md](AUDIT.md)
 for scope and provenance, and [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md)
 for licensing. Run `python3 -B scripts/test_source_boundary.py` before committing.
 
-Maintainers package a clean, tested commit with
+Maintainers package the macOS binary from a clean, tested commit with
 `DEVELOPER_ID_APPLICATION="your existing identity" scripts/package_release.sh vX.Y.Z`.
 This requires configured Developer ID signing and `asc` public-API notarization
 credentials. It verifies the signature, requires Apple's Accepted result, and
 verifies the online notarization ticket before producing a SHA-256 checksum. Raw command executables
 use online notarization tickets; they cannot carry a stapled app-bundle ticket.
+Windows/Linux CI produces verified native archives with the current source revision,
+binary SHA-256, MIT license and notices via `scripts/package_portable_release.py`.

@@ -3,3 +3,4 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 python3 -B scripts/test_source_boundary.py
 python3 -B scripts/check_source_boundary.py --staged
+python3 -B scripts/test_release_checks.py
