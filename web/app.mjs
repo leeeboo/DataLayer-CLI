@@ -1,6 +1,7 @@
-import { accents, fonts, gauges, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, bounds, History } from './model.mjs?v=20261025-i18n12';
-import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261025-i18n12';
-import { escapeXML, gaugeSVG } from './render.mjs?v=20261025-i18n12';
+import { accents, fonts, gauges, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, History } from './model.mjs?v=20261025-nativegauges';
+import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261025-nativegauges';
+import { genericRGBToSRGB, sRGBToGenericRGB } from './render-color.mjs?v=20261025-nativegauges';
+import { escapeXML, renderLayout, svgDefinitions, fontsReady } from './render.mjs?v=20261025-nativegauges';
 
 const $ = id => document.getElementById(id);
 let language = languageFrom(new URLSearchParams(location.search).get('lang') || navigator.language);
@@ -10,7 +11,7 @@ data.layout.elements = data.layout.elements.filter(e => !['cadence', 'timeDate']
 let activeID = data.id, selectedID = data.layout.elements[1].id;
 let history = new History(snapshot()), saved = exportDocument(data, activeID), drag = null;
 const drafts = new Map();
-let width = 1920, height = 1080;
+let width = 1920, height = 1080, canvasScene = [];
 function snapshot() { return { data, activeID, selectedID }; }
 function restore(value) { ({ data, activeID, selectedID } = clone(value)); }
 const preset = () => presets(data).find(p => p.id === activeID) ?? presets(data)[0];
@@ -56,7 +57,7 @@ function control(parent, key, options) {
   }
   input.onchange = () => {
     if (!input.checkValidity()) { input.reportValidity(); return; }
-    const next = type === 'checkbox' ? input.checked : ['number', 'range'].includes(type) ? (input.value === '' ? undefined : Number(input.value)) : input.value;
+    const next = choices ? input.value : type === 'checkbox' ? input.checked : ['number', 'range'].includes(type) ? (input.value === '' ? undefined : Number(input.value)) : input.value;
     change(next);
   };
   if (type === 'checkbox') wrapper.append(input, caption); else wrapper.append(caption, input);
@@ -73,7 +74,7 @@ function renderGlobal() {
   const change = (key, value) => mutate(() => { style[key] = value; });
   control(fields, 'accent', { value: style.accentColor, choices: accentOptions(false), change: v => change('accentColor', v) });
   control(fields, 'opacity', { type: 'range', value: style.panelOpacity, min: 0, max: 1, step: 0.01, change: v => change('panelOpacity', v) });
-  control(fields, 'textScale', { value: style.metricScale, min: 0.1, max: 4, step: 0.05, change: v => change('metricScale', v) });
+  control(fields, 'textScale', { value: style.metricScale, min: 0.1, max: 4, step: 0.05, change: v => mutate(() => { const ratio = v / style.metricScale; style.metricScale = v; for (const e of preset().layout.elements) e.frame.style.textScale = Math.max(0.1, Math.min(4, e.frame.style.textScale * ratio)); }) });
   control(fields, 'ticks', { type: 'checkbox', value: style.showGaugeTicks, change: v => change('showGaugeTicks', v) });
 }
 function renderInspector() {
@@ -107,9 +108,12 @@ function renderInspector() {
   }
   const colorFields = element('div', 'field-grid'); appearance.append(colorFields);
   for (const key of ['valueColor', 'labelColor', 'unitColor']) {
-    const fallback = key === 'valueColor' ? accents[e.frame.style.accentColor ?? preset().layout.style.accentColor] : '#cedae1';
-    const value = c[key] ? '#' + ['red', 'green', 'blue'].map(channel => Math.round(c[key][channel] * 255).toString(16).padStart(2, '0')).join('') : fallback;
-    control(colorFields, key, { type: 'color', value, change: v => change(key, { red: parseInt(v.slice(1, 3), 16) / 255, green: parseInt(v.slice(3, 5), 16) / 255, blue: parseInt(v.slice(5, 7), 16) / 255, alpha: c[key]?.alpha ?? 1 }) });
+    const accent = accents[e.frame.style.accentColor ?? preset().layout.style.accentColor];
+    const fallback = key === 'valueColor' ? { red: parseInt(accent.slice(1,3),16)/255, green: parseInt(accent.slice(3,5),16)/255, blue: parseInt(accent.slice(5,7),16)/255, alpha:.98 }
+      : key === 'labelColor' ? {red:.74,green:.80,blue:.86,alpha:.92} : {red:.66,green:.72,blue:.78,alpha:.82};
+    const source = c[key] ?? fallback, displayed = genericRGBToSRGB(source);
+    const value = '#' + ['red','green','blue'].map(channel => Math.round(displayed[channel]*255).toString(16).padStart(2,'0')).join('');
+    control(colorFields, key, { type:'color', value, change:v => change(key, sRGBToGenericRGB({red:parseInt(v.slice(1,3),16)/255,green:parseInt(v.slice(3,5),16)/255,blue:parseInt(v.slice(5,7),16)/255,alpha:source.alpha})) });
   }
   button(appearance, 'resetColor', () => mutate(() => { for (const key of ['valueColor', 'labelColor', 'unitColor']) delete c[key]; }), 'text-button');
   const advanced = element('details'); advanced.id = 'advanced'; advanced.append(element('summary', '', t('advanced')), element('p', 'hint', t('advancedHelp')));
@@ -139,7 +143,8 @@ function renderCanvas() {
   const layout = preset().layout, svg = $('canvas');
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`); svg.style.aspectRatio = `${width}/${height}`;
   $('canvas-wrap').style.setProperty('--canvas-ratio', width / height);
-  let content = '';
+  let content = svgDefinitions;
+  canvasScene = renderLayout(layout, width, height);
   if ($('grid').checked) {
     content += '<g fill="none" stroke="#bdccd5" stroke-opacity=".09" stroke-width="1">';
     for (let n = 1; n < 10; n++) content += `<path d="M ${width * n / 10} 0 V ${height} M 0 ${height * n / 10} H ${width}"/>`;
@@ -147,12 +152,12 @@ function renderCanvas() {
   }
   layout.elements.forEach((e, index) => {
     if (!e.frame.isVisible) return;
-    const b = bounds(e, width, height);
-    content += `<g data-index="${index}" role="button" tabindex="0" aria-label="${escapeXML(title(e))}" aria-pressed="${e.id === selectedID}"><rect class="hit" x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" fill="transparent"/>${gaugeSVG(e, layout, width, height)}</g>`;
+    const { bounds: b, svg: artwork } = canvasScene[index];
+    content += `<g data-index="${index}" role="button" tabindex="0" aria-label="${escapeXML(title(e))}" aria-pressed="${e.id === selectedID}"><rect class="hit" x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" fill="transparent"/>${artwork}</g>`;
   });
   const e = selected();
   if (e) {
-    const b = bounds(e, width, height), handle = Math.max(9, width / (svg.clientWidth || 960) * 9);
+    const b = canvasScene.find(item => item.id === e.id).bounds, handle = Math.max(9, width / (svg.clientWidth || 960) * 9);
     content += `<g pointer-events="none"><rect x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" fill="none" stroke="#75f794" stroke-width="1.5" vector-effect="non-scaling-stroke"${e.frame.isVisible ? '' : ' stroke-dasharray="5 5"'}/></g><rect data-resize="true" x="${b.x + b.width - handle / 2}" y="${b.y + b.height - handle / 2}" width="${handle}" height="${handle}" fill="#75f794" stroke="#143522" vector-effect="non-scaling-stroke"/>`;
   }
   svg.innerHTML = content;
@@ -229,12 +234,18 @@ $('canvas').onpointerdown = event => {
   if (!target && !resize) return;
   if (target) selectedID = preset().layout.elements[Number(target.dataset.index)].id;
   const e = selected(); if (!e) return;
-  const p = point(event); drag = { start: p, frame: clone(e.frame), box: bounds(e, width, height), resize, previous: clone(snapshot()) };
+  const p = point(event); drag = { start: p, frame: clone(e.frame), box: canvasScene.find(item => item.id === e.id).bounds, resize, previous: clone(snapshot()) };
   $('canvas').setPointerCapture(event.pointerId); event.preventDefault(); render(); $('canvas').focus({ preventScroll: true });
 };
 $('canvas').onpointermove = event => {
   if (!drag) return; const e = selected(), p = point(event);
-  if (drag.resize) e.frame.scale = Math.max(0.1, Math.min(4, drag.frame.scale * Math.max((p.x - drag.box.x) / drag.box.width, (p.y - drag.box.y) / drag.box.height)));
+  if (drag.resize) {
+    e.frame.scale = Math.max(0.1, Math.min(4, drag.frame.scale * Math.max(1 + (p.x - drag.start.x) / drag.box.width, 1 + (p.y - drag.start.y) / drag.box.height)));
+    e.frame.x = drag.frame.x; e.frame.y = drag.frame.y;
+    const next = renderLayout(preset().layout, width, height).find(item => item.id === e.id).bounds;
+    e.frame.x = Math.max(-1, Math.min(2, e.frame.x + (drag.box.x - next.x) / width));
+    e.frame.y = Math.max(-1, Math.min(2, e.frame.y + (drag.box.y - next.y) / height));
+  }
   else { e.frame.x = Math.max(-1, Math.min(2, drag.frame.x + (p.x - drag.start.x) / width)); e.frame.y = Math.max(-1, Math.min(2, drag.frame.y + (p.y - drag.start.y) / height)); }
   renderCanvas();
 };
@@ -266,3 +277,4 @@ document.addEventListener('drop', event => { event.preventDefault(); $('canvas-w
 window.addEventListener('beforeunload', event => { if (dirty()) { event.preventDefault(); event.returnValue = ''; } });
 new ResizeObserver(renderCanvas).observe($('canvas'));
 render(); status(t('ready'));
+fontsReady.then(renderCanvas);

@@ -23,7 +23,7 @@ jobs:
       - name: Check editor modules and native JSON compatibility
         run: |
           for file in web/*.mjs; do node --check "$file"; done
-          node --test scripts/test_web_editor.mjs
+          npm --prefix web run test:unit
       - name: Check audited file boundary
         run: python3 -B scripts/check_source_boundary.py
       - name: Install browser test tools

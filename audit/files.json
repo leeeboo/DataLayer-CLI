@@ -142,7 +142,11 @@
   "web/package.json",
   "web/playwright.config.mjs",
   "web/prepare-site.mjs",
+  "web/render-color.mjs",
+  "web/render-special.mjs",
   "web/render.mjs",
   "web/style.css",
-  "web/tests/editor.spec.mjs"
+  "web/tests/editor.spec.mjs",
+  "web/tests/native-rules.spec.mjs",
+  "web/tests/render-rules.test.mjs"
 ]

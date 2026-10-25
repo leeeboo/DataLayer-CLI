@@ -73,7 +73,7 @@ test('import, edit, drag, resize, undo and export preserve unrelated data', asyn
   await expect(page.locator('#field-inspector-x')).toHaveValue('0.15');
   await page.locator('#undo').click(); await expect(page.locator('#field-inspector-x')).toHaveValue('0.025');
   await page.locator('#redo').click(); await expect(page.locator('#field-inspector-x')).toHaveValue('0.15');
-  const gauge = await page.locator('#canvas [data-index="0"]').boundingBox();
+  const gauge = await page.locator('#canvas [data-index="0"] .hit').boundingBox();
   await page.mouse.move(gauge.x + 25, gauge.y + 25); await page.mouse.down();
   await page.mouse.move(gauge.x + 80, gauge.y - 10, { steps: 5 }); await page.mouse.up();
   const handle = await page.locator('[data-resize]').boundingBox();
