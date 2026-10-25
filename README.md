@@ -1,147 +1,77 @@
 # DataLayer-CLI
 
-MIT-licensed telemetry graphics and video export.
+**English** · [简体中文](https://github.com/leeeboo/DataLayer-CLI/blob/main/README.zh-CN.md) · [繁體中文](https://github.com/leeeboo/DataLayer-CLI/blob/main/README.zh-TW.md) · [日本語](https://github.com/leeeboo/DataLayer-CLI/blob/main/README.ja.md) · [한국어](https://github.com/leeeboo/DataLayer-CLI/blob/main/README.ko.md) · [Español](https://github.com/leeeboo/DataLayer-CLI/blob/main/README.es.md) · [Français](https://github.com/leeeboo/DataLayer-CLI/blob/main/README.fr.md) · [Deutsch](https://github.com/leeeboo/DataLayer-CLI/blob/main/README.de.md) · [Português (Brasil)](https://github.com/leeeboo/DataLayer-CLI/blob/main/README.pt-BR.md) · [Русский](https://github.com/leeeboo/DataLayer-CLI/blob/main/README.ru.md) · [العربية](https://github.com/leeeboo/DataLayer-CLI/blob/main/README.ar.md) · [हिन्दी](https://github.com/leeeboo/DataLayer-CLI/blob/main/README.hi.md)
 
-Native CLI backends support macOS, Windows and Linux. The macOS backend requires
-**macOS 13+ on Apple Silicon**. Portable binaries target **Windows x86_64** and
-**Ubuntu 24.04 x86_64**; other distributions and architectures are not binary release targets.
-Render FIT/GPX activities as transparent overlays or composite them with video.
-Open DataLayer Studio `.dlsproj` projects with the same renderer, cached weather,
-media-path recovery, export settings, layouts, and fractional frame-rate timing.
-
-The command remains `overlay`, preserving existing scripts. This repository
-contains the CLI and the single shared Core implementation used by the macOS
-and iOS apps. The DataLayer Studio GUI repository remains private under its
-existing separate license.
+Turn FIT/GPX activity data into transparent telemetry overlays or finished videos. Export DataLayer Studio `.dlsproj` projects from your terminal. The command is `overlay`.
 
 ## Install
 
-Download the matching archive and SHA-256 file from
-[GitHub Releases](https://github.com/leeeboo/DataLayer-CLI/releases).
-The macOS executable is Developer ID signed and notarized. Windows/Linux archives
-contain the native executable and notices; install the Swift 6.1.2 runtime/toolchain
-and media/graphics dependencies listed below before running them. Those dependencies
-are installed separately rather than bundled or relicensed under MIT.
+Download the matching archive and its `.sha256` checksum from [Releases](https://github.com/leeeboo/DataLayer-CLI/releases/latest), verify the checksum, then extract.
 
-To build from source, use Swift 5.9+ on macOS (with Xcode command-line tools), or
-the tested Swift 6.1.2 toolchain on Windows/Linux:
+| System | Archive ending |
+| --- | --- |
+| macOS 13+ / Apple Silicon | `macOS-arm64.zip` |
+| Windows / x86_64 | `Windows-x86_64.zip` |
+| Ubuntu 24.04 / x86_64 | `Linux-x86_64.tar.gz` |
 
-```sh
-git clone https://github.com/leeeboo/DataLayer-CLI.git
-cd DataLayer-CLI
-swift build -c release --product overlay
-.build/release/overlay --help
-```
+The macOS binary is signed and notarized. No extra runtime installation is needed.
 
-Place the built `overlay` in a directory on your `PATH`. Keep the included
-LICENSE and NOTICE when redistributing the package.
+Windows/Linux require **Swift 6.1.2**, FFmpeg, Cairo/Pango and DejaVu fonts, installed separately. [Setup guide (English)](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md)
 
-No third-party Swift packages are required. macOS/iOS retain their existing Apple
-system-framework backend. The Windows/Linux backend uses the same Core renderer,
-layout, telemetry, project schema, cache and frame-timing logic, with Cairo/Pango
-for drawing and FFmpeg/ffprobe as separate media processes. It currently uses
-software encoding. Install the official Swift toolchain and these runtime dependencies:
-
-- Ubuntu: `ffmpeg libcairo2 libpangocairo-1.0-0 fonts-dejavu-core`.
-- Windows: native UCRT64 Cairo, Pango, FFmpeg and DejaVu fonts from MSYS2; add
-  the UCRT64 `bin` directory to `PATH`. The CLI itself runs as a native Windows executable.
-
-Use the [official Swift Linux installation guide](https://www.swift.org/install/linux/)
-or [Windows guide and previous installers](https://www.swift.org/install/windows/)
-to install/select **6.1.2** for the prebuilt portable binaries. On Windows, restart
-the terminal after installation and ensure the Swift runtime DLL directory and
-MSYS2 UCRT64 `bin` are on `PATH`.
-On Linux, expose the selected toolchain's libraries when running the downloaded binary:
+Add the executable’s folder to `PATH`. Without that, replace `overlay` below with `./overlay` on macOS/Linux or `.\overlay.exe` in Windows PowerShell.
 
 ```sh
-export LD_LIBRARY_PATH="$(swift -print-target-info | python3 -c 'import json,sys; print(":".join(json.load(sys.stdin)["paths"]["runtimeLibraryPaths"]))')${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-./overlay --help
+overlay --help
 ```
 
-Portable codecs are H.264, HEVC and ProRes 4444 with Alpha. Explicit HEVC Alpha
-requests fail before writing any output. Activity-only portable exports default
-to ProRes 4444; Apple platforms retain their HEVC Alpha default. Codec, bit rate,
-weather, trim, layout and relative asset paths saved in projects are preserved.
-Apple security-scoped bookmarks are Apple-only; moved projects resolve their
-relative media paths on Windows/Linux.
+## Quick start
 
-Apple font selections use explicit DejaVu substitutes on Windows/Linux. Glyphs,
-shadow edges, antialiasing and video composition can visibly differ from the
-native Apple backend; the CLI does not promise identical Apple/portable pixels
-or Alpha edges. Cross-platform visual metrics are retained in CI reports. Audio,
-timing, saved settings, media recovery and real transparency remain required;
-Windows/Linux picture and Alpha parity also remain release gates. No Apple font
-files are copied or distributed. Existing macOS/iOS fonts, rendering, defaults
-and project formats remain unchanged; no GUI migration mode is introduced.
-Available Apple codecs depend on the hardware/OS; unavailable Alpha codecs always
-fail without silently changing the codec.
-
-## Use
+Create a transparent overlay from an activity:
 
 ```sh
-# Export a GUI project, inheriting saved output settings.
-overlay --timeline-project /path/to/project.dlsproj --output /path/to/result.mov
-
-# Export a transparent intermediate from an activity.
-overlay --fit /path/to/activity.fit --codec prores-4444 --output /path/to/overlay.mov
-
-# Composite telemetry onto footage, retaining its audio.
-overlay --fit /path/to/activity.gpx --video /path/to/video.mov \
-  --export-mode video --codec hevc --output /path/to/finished.mov
-
-# Generate synthetic telemetry, without using personal activity data.
-python3 examples/make_sample.py /tmp/datalayer-sample.gpx
-overlay --fit /tmp/datalayer-sample.gpx --codec prores-4444 \
-  --output /tmp/datalayer-overlay.mov
+overlay --fit "activity.fit" --codec prores-4444 --output "overlay.mov"
 ```
 
-Supported codecs: `h264`, `hevc` (composited video); `hevc-alpha`, `prores-4444`
-(transparent overlays). Transparent overlays do not include an audio track.
-Use `--help` for alignment, activity trimming, layout, units, time zones, and
-inspection options. Project weather caches are restored locally; the CLI does
-not fetch new weather or initialize Sentry.
-
-Existing outputs require `--force`; input files are always protected from
-overwrite. Place moved projects and their media in the same relative layout
-to recover paths. Bookmarks remain subject to macOS file-access permissions.
-Video durations are rounded to complete frames at the selected frame rate.
-
-## Development
+Burn telemetry into a video, keeping its audio:
 
 ```sh
-git config core.hooksPath .githooks
-swift build -c release --product overlay
-swift test
+overlay --fit "activity.gpx" --video "video.mov" --export-mode video --codec h264 --output "finished.mov"
 ```
 
-Tests synthesize media at runtime; do not commit personal videos, activities,
-project files, credentials, or build output. Hardware-specific encoder tests
-may skip on machines without that encoder; actual hardware validation remains
-necessary before releasing Alpha export changes.
+Export a saved GUI project using its export settings:
 
-Core changes and their regression tests are maintained in this repository.
-DataLayer Studio consumes the `OverlayCore` Swift package product through a
-Git submodule pinned to a tested commit; it does not keep a second Core copy.
-The package supports macOS 13+ and iOS 26+ for Core, plus native Windows/Linux CLI backends.
+```sh
+overlay --timeline-project "project.dlsproj" --output "result.mov"
+```
 
-CI generates one synthetic moved project and shares its exact media/project bytes
-across macOS, Windows and Linux. It exports H.264, HEVC and ProRes 4444, checks every
-frame timestamp, saved settings, audio duration and Alpha, then compares decoded
-picture, Alpha and audible PCM. All-platform audio and Windows/Linux visual parity
-are hard gates. Apple/portable picture and Alpha differences are reported without
-changing the GUI or claiming pixel equivalence. CI also unpacks the Windows/Linux
-release archives and exports the fixture using those packaged executables.
+## Useful options
 
-`ORIGIN.json` preserves the initial import revision and hashes as historical
-provenance; current source identity is the Git commit. See [AUDIT.md](AUDIT.md)
-for scope and provenance, and [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md)
-for licensing. Run `python3 -B scripts/test_source_boundary.py` before committing.
+- `--sync-video 12 --sync-fit 45` (FIT/GPX): align video 12s with activity 45s.
+- `--width 1920 --height 1080 --fps 30`: set output dimensions and frame rate; dimensions must be even, from 2 to 16384.
+- `--layout-preset "layout.json"`: use an exported layout JSON with FIT/GPX input.
+- `--force`: replace existing outputs; input files are always protected.
 
-Maintainers package the macOS binary from a clean, tested commit with
-`DEVELOPER_ID_APPLICATION="your existing identity" scripts/package_release.sh vX.Y.Z`.
-This requires configured Developer ID signing and `asc` public-API notarization
-credentials. It verifies the signature, requires Apple's Accepted result, and
-verifies the online notarization ticket before producing a SHA-256 checksum. Raw command executables
-use online notarization tickets; they cannot carry a stapled app-bundle ticket.
-Windows/Linux CI produces verified native archives with the current source revision,
-binary SHA-256, MIT license and notices via `scripts/package_portable_release.py`.
+Run `overlay --help` for bitrate, units, time zones, trimming and `--inspect` (metadata without rendering).
+
+## Codecs
+
+- **H.264 / HEVC** (`h264`, `hevc`): finished video with source audio.
+- **ProRes 4444** (`prores-4444`): transparent overlays on all three platforms.
+- **HEVC Alpha** (`hevc-alpha`): macOS only, when supported by the system/encoder. Windows/Linux reject it without falling back to an opaque format.
+
+Transparent overlays have no audio track.
+
+## Good to know
+
+- Projects restore saved export settings. Explicit CLI options override the corresponding settings.
+- When moving a project, keep its media in the same relative folder layout. Apple bookmarks still depend on macOS file-access permissions.
+- Saved weather is restored from the project cache; the CLI does not fetch new weather.
+- Windows/Linux use software encoding and substitute fonts. Text, shadows, antialiasing and Alpha edges can differ from macOS.
+
+## Build and contribute
+
+[Build from source (English)](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md) · [Development guide (English)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
+
+MIT — see [LICENSE](LICENSE) and third-party notices in [NOTICE.md](NOTICE.md).
+
+The macOS/iOS apps and CLI share one Core. The GUI is maintained separately under its existing license.
