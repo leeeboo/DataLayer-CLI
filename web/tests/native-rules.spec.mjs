@@ -310,9 +310,10 @@ test('long timeDate resize pins its measured top-left, follows the pointer and u
   const after = await logicalBox(hit);
   expect(Math.abs(after.x - before.x)).toBeLessThan(1);
   expect(Math.abs(after.y - before.y)).toBeLessThan(1);
-  expect(Math.abs(after.width - before.width * ratio)).toBeLessThan(1);
-  expect(Math.abs(after.height - before.height * ratio)).toBeLessThan(1);
-  expect((await download(page)).layout.elements[0].frame.scale).toBeGreaterThan(e.frame.scale);
+  // Remeasured fallback glyph widths are not strictly linear; allow less than one screen pixel.
+  expect(Math.abs(after.width - before.width * ratio) * screenScale.x).toBeLessThan(1);
+  expect(Math.abs(after.height - before.height * ratio) * screenScale.y).toBeLessThan(1);
+  expect((await download(page)).layout.elements[0].frame.scale).toBeCloseTo(e.frame.scale * ratio, 6);
   await page.locator('#undo').click();
   expect((await download(page)).layout.elements[0].frame).toEqual(e.frame);
   const restored = await logicalBox(hit);
