@@ -1,6 +1,7 @@
 [
   ".githooks/pre-commit",
   ".github/workflows/ci.yml",
+  ".github/workflows/pages.yml",
   ".gitignore",
   "AUDIT.md",
   "CONTRIBUTING.md",
@@ -129,5 +130,13 @@
   "scripts/prepare_export_fixture.py",
   "scripts/test_release_checks.py",
   "scripts/test_source_boundary.py",
-  "scripts/verify_export_fixture.py"
+  "scripts/test_web_editor.mjs",
+  "scripts/verify_export_fixture.py",
+  "web/app.mjs",
+  "web/i18n.mjs",
+  "web/index.html",
+  "web/mark.svg",
+  "web/model.mjs",
+  "web/render.mjs",
+  "web/style.css"
 ]

@@ -4,6 +4,8 @@
 
 Transformez des activités FIT/GPX en incrustations de télémétrie transparentes ou en vidéos finales. Exportez des projets DataLayer Studio `.dlsproj` depuis le terminal. La commande est `overlay`.
 
+**[Ouvrir l’éditeur de disposition des jauges](https://leeeboo.github.io/DataLayer-CLI/?lang=en)** — Créez, importez et modifiez des dispositions dans le navigateur, puis téléchargez le JSON pour `--layout-preset`. Les fichiers restent dans votre navigateur.
+
 ## Installation
 
 Téléchargez l’archive de votre plateforme et son fichier `.sha256` depuis [Releases](https://github.com/leeeboo/DataLayer-CLI/releases/latest), vérifiez la somme de contrôle, puis décompressez.

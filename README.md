@@ -4,6 +4,8 @@
 
 Turn FIT/GPX activity data into transparent telemetry overlays or finished videos. Export DataLayer Studio `.dlsproj` projects from your terminal. The command is `overlay`.
 
+**[Open the gauge layout editor](https://leeeboo.github.io/DataLayer-CLI/?lang=en)** — Create, import and edit layouts in your browser, then download JSON for `--layout-preset`. Files stay in your browser.
+
 ## Install
 
 Download the matching archive and its `.sha256` checksum from [Releases](https://github.com/leeeboo/DataLayer-CLI/releases/latest), verify the checksum, then extract.

@@ -4,6 +4,8 @@
 
 Transforme atividades FIT/GPX em sobreposições transparentes de telemetria ou vídeos finalizados. Exporte projetos `.dlsproj` do DataLayer Studio pelo terminal. O comando é `overlay`.
 
+**[Abrir o editor de layouts de indicadores](https://leeeboo.github.io/DataLayer-CLI/?lang=en)** — Crie, importe e edite layouts no navegador e baixe o JSON para usar com `--layout-preset`. Os arquivos ficam no seu navegador.
+
 ## Instalação
 
 Baixe o arquivo da sua plataforma e a soma `.sha256` em [Releases](https://github.com/leeeboo/DataLayer-CLI/releases/latest), verifique a soma e extraia o arquivo.

@@ -4,6 +4,8 @@
 
 حوّل بيانات الأنشطة بصيغة FIT/GPX إلى طبقات بيانات شفافة أو فيديوهات جاهزة. يمكنك أيضًا تصدير مشاريع DataLayer Studio بصيغة `.dlsproj` من الطرفية. اسم الأمر هو `overlay`.
 
+**[فتح محرر تخطيط المؤشرات](https://leeeboo.github.io/DataLayer-CLI/?lang=en)** — أنشئ التخطيطات واستوردها وعدّلها في المتصفح، ثم نزّل JSON لاستخدامه مع `--layout-preset`. تبقى الملفات داخل المتصفح.
+
 ## التثبيت
 
 نزّل الأرشيف المناسب لنظامك وملف التحقق `.sha256` من [Releases](https://github.com/leeeboo/DataLayer-CLI/releases/latest)، ثم تحقّق من البصمة وفك الضغط.

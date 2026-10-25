@@ -4,6 +4,8 @@
 
 FIT/GPX 활동 데이터를 투명한 텔레메트리 오버레이 또는 합성 동영상으로 내보냅니다. 터미널에서 DataLayer Studio `.dlsproj` 프로젝트도 내보낼 수 있습니다. 명령어 이름은 `overlay`입니다.
 
+**[게이지 레이아웃 편집기 열기](https://leeeboo.github.io/DataLayer-CLI/?lang=en)** — 브라우저에서 레이아웃을 만들고 가져와 편집한 뒤, JSON을 다운로드하여 `--layout-preset`으로 사용하세요. 파일은 브라우저 안에서만 처리됩니다.
+
 ## 설치
 
 [Releases](https://github.com/leeeboo/DataLayer-CLI/releases/latest)에서 운영체제에 맞는 압축 파일과 `.sha256` 파일을 다운로드하고, 체크섬을 확인한 후 압축을 풉니다.
