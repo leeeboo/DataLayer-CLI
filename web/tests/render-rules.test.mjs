@@ -13,6 +13,25 @@ function cssChannels(source) {
   const c = genericRGBToSRGB(source); return [c.red * 255, c.green * 255, c.blue * 255, c.alpha];
 }
 const cssColor = source => `rgba(${cssChannels(source).join(',')})`;
+
+test('weather symbols use CoreText fallback faces while Menlo and custom text keep their font', () => {
+  const e = createElement('weather');
+  for (const [font, face] of [['helveticaNeue', 'W3'], ['helveticaNeueBold', 'W6'], ['avenirNextCondensedHeavy', 'W7'], ['futuraCondensedExtraBold', 'W8']]) {
+    e.customization.iconFont = font;
+    for (const icon of ['clear', 'clouds', 'rain']) {
+      e.customization.iconOverride = icon;
+      assert.ok(svg(e).includes(`font-family="DLS Weather ${face},`));
+    }
+    for (const [icon, family] of [['snow', 'DLS Weather Snow'], ['fog', 'DLS Weather Fog'], ['thunderstorm', 'Menlo']]) {
+      e.customization.iconOverride = icon;
+      assert.ok(svg(e).includes(`font-family="${family},`));
+    }
+  }
+  e.customization.iconFont = 'menloBold'; e.customization.iconOverride = 'clouds';
+  assert.ok(!svg(e).includes('DLS Weather'));
+  e.customization.unitOverride = 'My custom text'; e.customization.showsIcon = false;
+  assert.ok(!svg(e).includes('DLS Weather'));
+});
 const sample = {
   elapsed: 2568, speedMetersPerSecond: 3.6, distanceMeters: 12800, heartRate: 148, cadence: 176,
   totalCalories: 428, totalAscentMeters: 286, stepLengthMeters: 1.24, powerWatts: 248,

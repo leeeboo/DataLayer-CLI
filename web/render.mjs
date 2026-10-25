@@ -16,16 +16,35 @@ const fontStyles = {
   menloBold: ['Menlo,Consolas,monospace', '700'], avenirNextCondensedHeavy: ['Avenir Next Condensed,Arial Narrow,sans-serif', '900'],
   futuraCondensedExtraBold: ['DLS Futura Condensed,Futura,Arial Narrow,sans-serif', '800'],
 };
-// Firefox needs the PostScript face named explicitly to select the condensed glyphs.
+const localFaces = {
+  'DLS Futura Condensed': ['Futura-CondensedExtraBold', '800'],
+  'DLS Weather W3': ['HiraginoSans-W3', '300'], 'DLS Weather W6': ['HiraginoSans-W6', '600'],
+  'DLS Weather W7': ['HiraginoSans-W7', '700'], 'DLS Weather W8': ['HiraginoSans-W8', '800'],
+  'DLS Weather Snow': ['ZapfDingbatsITC', '400'], 'DLS Weather Fog': ['AppleSymbols', '400'],
+};
+const fontStyle = font => Array.isArray(font) ? font : fontStyles[font] ?? fontStyles.helveticaNeueBold;
+// Pin CoreText's weather fallback faces: Firefox otherwise selects smaller symbol glyphs.
+function weatherFont(font, symbol) {
+  const style = fontStyle(font);
+  if (font === 'menloBold') return style;
+  if (symbol === '⚡︎') return ['Menlo,Consolas,monospace', font === 'helveticaNeue' ? '400' : '700'];
+  const face = ['☀︎', '☁︎', '☂︎'].includes(symbol)
+    ? `DLS Weather ${{helveticaNeue:'W3',helveticaNeueBold:'W6',avenirNextCondensedHeavy:'W7',futuraCondensedExtraBold:'W8'}[font] ?? 'W6'}`
+    : symbol === '❄︎' ? 'DLS Weather Snow' : symbol === '≋' ? 'DLS Weather Fog' : null;
+  return face ? [`${face},${style[0]}`, localFaces[face][1]] : style;
+}
+// Use installed system faces only; unavailable fonts keep the original browser fallback.
 export const fontsReady = typeof document === 'undefined' || typeof FontFace === 'undefined' ? Promise.resolve() : (() => {
-  const face = new FontFace('DLS Futura Condensed', 'local("Futura-CondensedExtraBold")', {weight:'800'});
-  document.fonts.add(face);
-  return face.load().catch(() => {});
+  return Promise.all(Object.entries(localFaces).map(([family, [name, weight]]) => {
+    const face = new FontFace(family, `local("${name}")`, {weight});
+    document.fonts.add(face);
+    return face.load().catch(() => {});
+  }));
 })();
 const measuring = typeof document === 'undefined' ? null : document.createElement('canvas').getContext('2d');
 function metrics(value, size, font) {
   size = Math.max(.1, Math.round(size * 100) / 100);
-  const [family, weight] = fontStyles[font] ?? fontStyles.helveticaNeueBold;
+  const [family, weight] = fontStyle(font);
   if (measuring) { measuring.font = `${weight} ${size}px ${family}`; return measuring.measureText(value); }
   // Node-only schema tests have no font engine; browser and native comparison use measured glyphs.
   return { width: String(value).length * size * .6, actualBoundingBoxAscent: size * .8, actualBoundingBoxDescent: size * .2 };
@@ -97,7 +116,7 @@ function environment(e,layout,W,H,preview) {
   const text = (value,x,y,size,fill,font,anchor='start') => {
     value=String(value); const m=metrics(value,size,font), offset=anchor==='end'?m.width:anchor==='middle'?m.width/2:0;
     if(value) addBounds({x:x-offset-(m.actualBoundingBoxLeft??0),y:y-(m.actualBoundingBoxDescent??0),width:(m.actualBoundingBoxLeft??0)+(m.actualBoundingBoxRight??m.width),height:(m.actualBoundingBoxAscent??size*.8)+(m.actualBoundingBoxDescent??0)});
-    const [family,weight]=fontStyles[font]??fontStyles.helveticaNeueBold;
+    const [family,weight]=fontStyle(font);
     return `<text x="${x}" y="${H-y}" fill="${fill}" font-size="${Math.round(size*100)/100}" font-family="${family}" font-weight="${weight}" text-anchor="${anchor}">${escapeXML(value)}</text>`;
   };
   const rect=(b,radius,fill,stroke=null,strokeWidth=1)=>`<rect x="${b.x}" y="${H-b.y-b.height}" width="${b.width}" height="${b.height}" rx="${Math.max(0,Math.min(radius,b.width/2,b.height/2))}" fill="${fill}"${stroke?` stroke="${stroke}" stroke-width="${strokeWidth}"`:''}/>`;
@@ -123,7 +142,7 @@ function metricGeometry(e,env,content,aligned=0) {
   const lines=content.unit.split('\n'),weather=e.kind==='weather',topIcon=c.showsIcon&&!weather,top=(c.showsLabel||topIcon)?Math.max(ls,is):0;
   const gap=Math.max(2*s,us*.16)*(weather?(c.weatherIconSpacingScale??1):1);
   const unitHeight=c.showsUnit?(weather&&c.showsIcon?is:us)+(lines.length-1)*(us+gap):0;
-  const unitWidth=c.showsUnit?Math.max(...lines.map((v,i)=>weather&&c.showsIcon&&i===0?env.measure(weatherIcon(c,v),is,c.iconFont):env.measure(v,us,c.unitFont))):0;
+  const unitWidth=c.showsUnit?Math.max(...lines.map((v,i)=>weather&&c.showsIcon&&i===0?env.measure(weatherIcon(c,v),is,weatherFont(c.iconFont,weatherIcon(c,v))):env.measure(v,us,c.unitFont))):0;
   const valueHeight=Math.max(vs,unitHeight),icon=override(c.iconOverride,icons[e.kind]??descriptions[e.kind]?.[0]??(e.kind==='distance'?'DIST':'PACE'));
   const naturalWidth=Math.max(r.width,28*s+env.measure(content.value,vs,c.valueFont)+(c.showsUnit?10*s:0)+unitWidth,28*s+(c.showsLabel?env.measure(content.label,ls,c.labelFont):0)+(topIcon?12*s+env.measure(icon,is,c.iconFont):0));
   const height=Math.max(r.height,9*s+top+(top?Math.max(6*s,vs*.18):0)+valueHeight+14*s);
@@ -136,7 +155,7 @@ function drawMetric(e,env,g,content) {
   if(g.topIcon)svg+=text(g.icon,r.x+r.width-14*s,topBaseline,g.is,C.icon,c.iconFont,'end');
   svg+=text(content.value,r.x+14*s,valueBaseline,g.vs,C.value,c.valueFont);
   if(c.showsUnit){const step=Math.max(g.us,g.is*.72)+g.gap,first=valueBaseline+(g.lines.length-1)*step/2;
-    g.lines.forEach((v,i)=>{const icon=e.kind==='weather'&&c.showsIcon&&i===0;svg+=text(icon?weatherIcon(c,v):v,r.x+r.width-14*s,first-i*step,icon?g.is:g.us,icon?C.icon:C.unit,icon?c.iconFont:c.unitFont,'end');});}
+    g.lines.forEach((v,i)=>{const icon=e.kind==='weather'&&c.showsIcon&&i===0;svg+=text(icon?weatherIcon(c,v):v,r.x+r.width-14*s,first-i*step,icon?g.is:g.us,icon?C.icon:C.unit,icon?weatherFont(c.iconFont,weatherIcon(c,v)):c.unitFont,'end');});}
   return {svg,bounds:r};
 }
 function drawTime(e,env) {

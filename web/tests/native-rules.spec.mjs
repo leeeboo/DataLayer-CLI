@@ -168,6 +168,29 @@ test('font and accent selectors persist string enums, preserve other fields and 
   await expect(page.locator('#status')).not.toHaveClass(/error/);
 });
 
+test('macOS: weather cloud keeps the native glyph ink size rather than a smaller fallback', async ({ page }) => {
+  test.skip(process.platform !== 'darwin', 'Native weather glyph reference requires macOS system fonts');
+  const e = positioned('weather'); e.frame.scale = 1; e.frame.style.textScale = 1;
+  e.customization.iconFont = 'helveticaNeueBold'; e.customization.iconScale = 2; e.customization.iconOverride = 'clouds';
+  await page.goto('./?lang=en'); await upload(page, documentWith(e));
+  const icon = page.locator('#canvas text').filter({ hasText: /^☁︎$/ });
+  await expect(icon).toHaveAttribute('font-family', /^DLS Weather W6,/);
+  const ink = await icon.evaluate(async node => {
+    await document.fonts.ready;
+    const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 100;
+    const context = canvas.getContext('2d');
+    context.font = `${node.getAttribute('font-weight')} ${node.getAttribute('font-size')}px ${node.getAttribute('font-family')}`;
+    context.fillText(node.textContent, 40, 70);
+    const pixels = context.getImageData(0, 0, 128, 100).data, xs = [], ys = [];
+    for (let y = 0; y < 100; y++) for (let x = 0; x < 128; x++) if (pixels[(y * 128 + x) * 4 + 3] > 16) { xs.push(x); ys.push(y); }
+    return { width: Math.max(...xs) - Math.min(...xs) + 1, height: Math.max(...ys) - Math.min(...ys) + 1 };
+  });
+  // CoreText's 32pt cloud ink measures 29.6 × 20.192px before antialiasing.
+  expect(ink.width).toBeGreaterThanOrEqual(29); expect(ink.width).toBeLessThanOrEqual(33);
+  expect(ink.height).toBeGreaterThanOrEqual(20); expect(ink.height).toBeLessThanOrEqual(23);
+  expect((await download(page)).layout.elements[0]).toEqual(e);
+});
+
 test('long visible text expands aligned hit bounds and resizing one tile preserves its sibling', async ({ page }) => {
   const heart = positioned('heartRate'), pace = positioned('pace'); pace.frame.y = 0.5;
   await page.goto('./?lang=en'); await upload(page, documentWith(heart, pace));
