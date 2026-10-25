@@ -69,7 +69,7 @@ for (const prefix of ['', 'g:']) {
     const source = template('heartRate', 'cadence', 'speed', 'weather', 'distance', 'timeDate');
     await importTemplate(page, source);
     await importActivity(page, metricActivity(prefix));
-    await expect(page.locator('#activity-name')).toContainText('2 samples');
+    await expect(page.locator('#activity-name')).toContainText('11 samples');
     await expect(page.locator('#seek')).toHaveAttribute('max', '10');
     await value(page, 0, '140'); await value(page, 1, '160'); await value(page, 2, '07.2');
     await value(page, 3, '-4℃'); await value(page, 4, '0.00');
@@ -96,7 +96,7 @@ test('separate GPX track segments hold metrics through gaps without adding conne
     [[10, .01, 180], [12, .01001, 200]],
   ].map(segment => `<trkseg>${segment.map(([seconds, lon, hr]) => `<trkpt lat="0" lon="${lon}"><time>2026-01-01T00:00:${String(seconds).padStart(2, '0')}Z</time><extensions><hr>${hr}</hr></extensions></trkpt>`).join('')}</trkseg>`).join('')}</trk></gpx>`;
   await importActivity(page, xml);
-  await expect(page.locator('#activity-name')).toContainText('4 samples');
+  await expect(page.locator('#activity-name')).toContainText('6 samples');
   await seek(page, 2); await value(page, 0, '140'); await value(page, 1, '1.11');
   await seek(page, 6); await value(page, 0, '140'); await value(page, 1, '1.11');
   await seek(page, 10); await value(page, 0, '180'); await value(page, 1, '1.11');
@@ -183,4 +183,59 @@ test('200,000-point route and altitude series render finite, bounded SVG without
     expect(Object.values(output.bounds).every(Number.isFinite)).toBe(true);
     expect(output.bounds.width).toBeGreaterThan(0); expect(output.bounds.height).toBeGreaterThan(0);
   }
+});
+
+// User media stays local: CI runs the committed synthetic oracle cases instead.
+test('optional local FIT and preset: native samples, visible values and template round-trip', async ({ page }) => {
+  test.skip(!process.env.DLS_PRIVATE_NATIVE_INPUT, 'Set DLS_PRIVATE_NATIVE_INPUT to a local fixture manifest');
+  test.setTimeout(60000);
+  const paths = JSON.parse(await readFile(process.env.DLS_PRIVATE_NATIVE_INPUT, 'utf8'));
+  const [fit, presetText, referenceText] = await Promise.all([readFile(paths.fit), readFile(paths.preset, 'utf8'), readFile(paths.reference, 'utf8')]);
+  const source = parseDocument(presetText), reference = JSON.parse(referenceText);
+  const preset = source.layout ? source : source.presets.find(p => p.id === source.defaultPresetID) ?? source.presets[0];
+  await page.locator('#file').setInputFiles({ name: 'local.dlspreset', mimeType: 'application/json', buffer: Buffer.from(presetText) });
+  await expect(page.locator('#layout-name')).toHaveValue(preset.name);
+  await page.locator('#activity-file').setInputFiles({ name: 'local.fit', mimeType: 'application/octet-stream', buffer: fit });
+  await expect(page.locator('#activity-name')).toContainText(`${reference.samples.length} samples`);
+  await expect(page.locator('#seek')).toHaveAttribute('max', String(reference.duration));
+  const numeric = await page.evaluate(async ({ bytes, reference }) => {
+    const { parseFIT, previewAt } = await import('./telemetry.mjs?v=20261025-native-data');
+    const activity = parseFIT(Uint8Array.from(atob(bytes), c => c.charCodeAt(0)));
+    let checks = 0;
+    const compare = (actual, expected, path) => {
+      for (const key of new Set([...Object.keys(actual), ...Object.keys(expected)])) {
+        if (['wallElapsed', 'clock', 'calendar'].includes(key)) continue;
+        const a = actual[key], b = expected[key];
+        if (a == null && b == null) continue;
+        checks++;
+        if (typeof a === 'number' && typeof b === 'number') {
+          if (Math.abs(a - b) > (key === 'date' ? 1e-6 : 1e-8 + Math.abs(b) * 1e-12)) throw Error(`${path}.${key}: native mismatch`);
+        } else if (a !== b) throw Error(`${path}.${key}: native field mismatch`);
+      }
+    };
+    if (activity.samples.length !== reference.samples.length) throw Error('Native sample count mismatch');
+    activity.samples.forEach((sample, index) => compare(sample, reference.samples[index], `sample[${index}]`));
+    for (const query of reference.queries) {
+      const preview = previewAt(activity, query.wall);
+      compare(preview.sample, query.sample, 'preview');
+      compare({ date: preview.absoluteDate }, { date: query.date }, 'clock');
+    }
+    return checks;
+  }, { bytes: fit.toString('base64'), reference });
+  expect(numeric).toBeGreaterThan(reference.samples.length);
+  for (const query of reference.queries) {
+    await seek(page, query.wall);
+    for (const [index, element] of preset.layout.elements.entries()) {
+      const texts = await page.locator(`#canvas [data-index="${index}"] text`).allTextContents();
+      const keys = { pace: ['pace'], heartRate: ['heartRate'], cadence: ['cadence'], calories: ['calories'], weather: ['weatherTemperature'],
+        timeDate: element.customization.showsUnit ? ['elapsed', 'clock', 'calendar'] : ['elapsed'] }[element.kind];
+      for (const key of keys ?? []) expect(texts, `${element.kind} at ${query.wall}`).toContain(query.display[key]);
+      if (element.kind === 'topProgress' && (element.customization.distanceUnit ?? 'km') === 'km') {
+        const precision = element.customization.valuePrecision ?? 2, suffix = element.customization.unitOverride?.trim() || 'km';
+        if (element.customization.showsLabel) expect(texts).toContain(`${query.display[`distanceKmPrecision${precision}`]} ${suffix}`);
+        if (element.customization.showsUnit) expect(texts).toContain(`${query.display[`totalDistanceKm${precision}`]} ${suffix}`);
+      }
+    }
+  }
+  expect(await downloaded(page)).toEqual(source);
 });

@@ -84,7 +84,7 @@ test('video without activity shows missing metrics and never borrows demo teleme
 test('local FIT input drives real gauge values on the same wall-clock seek control',async({page})=>{
   await page.goto('./?lang=en');const source=await template(page);
   await page.locator('#activity-file').setInputFiles({name:'activity.fit',mimeType:'application/octet-stream',buffer:syntheticFIT});
-  await expect(page.locator('#activity-name')).toContainText('3 samples');
+  await expect(page.locator('#activity-name')).toContainText('5 samples');
   await expect(page.locator('#canvas text').filter({hasText:/^110$/})).toHaveCount(1);
   await page.locator('#seek').evaluate(node=>{node.value='4';node.dispatchEvent(new Event('input',{bubbles:true}));});
   await expect(page.locator('#canvas text').filter({hasText:/^130$/})).toHaveCount(1);

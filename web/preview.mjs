@@ -1,4 +1,4 @@
-import { parseTelemetryFile, previewAt } from './telemetry.mjs?v=20261025-realpreview';
+import { parseTelemetryFile, previewAt } from './telemetry.mjs?v=20261025-native-data';
 
 const $ = id => document.getElementById(id);
 const clamp = (value, max) => Math.max(0, Math.min(max, value));

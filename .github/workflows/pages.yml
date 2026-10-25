@@ -2,9 +2,9 @@ name: Gauge editor Pages
 on:
   push:
     branches: [main]
-    paths: ['web/**', 'scripts/test_web_editor.mjs', '.github/workflows/pages.yml', 'Sources/OverlayCore/Rendering/OverlayLayout.swift', 'Sources/OverlayCore/Rendering/OverlayRenderer.swift', 'Sources/OverlayCore/Rendering/OverlayRenderConfig.swift']
+    paths: ['web/**', 'scripts/test_web_editor.mjs', '.github/workflows/pages.yml', 'Sources/OverlayCore/Rendering/OverlayLayout.swift', 'Sources/OverlayCore/Rendering/OverlayRenderer.swift', 'Sources/OverlayCore/Rendering/OverlayRenderConfig.swift', 'Sources/OverlayCore/Rendering/OverlayTimeZone.swift', 'Sources/OverlayCore/Telemetry/**', 'Sources/OverlayCore/FIT/**']
   pull_request:
-    paths: ['web/**', 'scripts/test_web_editor.mjs', '.github/workflows/pages.yml', 'Sources/OverlayCore/Rendering/OverlayLayout.swift', 'Sources/OverlayCore/Rendering/OverlayRenderer.swift', 'Sources/OverlayCore/Rendering/OverlayRenderConfig.swift']
+    paths: ['web/**', 'scripts/test_web_editor.mjs', '.github/workflows/pages.yml', 'Sources/OverlayCore/Rendering/OverlayLayout.swift', 'Sources/OverlayCore/Rendering/OverlayRenderer.swift', 'Sources/OverlayCore/Rendering/OverlayRenderConfig.swift', 'Sources/OverlayCore/Rendering/OverlayTimeZone.swift', 'Sources/OverlayCore/Telemetry/**', 'Sources/OverlayCore/FIT/**']
   workflow_dispatch:
 permissions:
   contents: read

@@ -1,8 +1,8 @@
-import { accents, fonts, gauges, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, History } from './model.mjs?v=20261025-realpreview';
-import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261025-realpreview';
-import { genericRGBToSRGB, sRGBToGenericRGB } from './render-color.mjs?v=20261025-realpreview';
-import { escapeXML, renderLayout, svgDefinitions, fontsReady } from './render.mjs?v=20261025-realpreview';
-import { createPreview } from './preview.mjs?v=20261025-realpreview';
+import { accents, fonts, gauges, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, History } from './model.mjs?v=20261025-native-data';
+import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261025-native-data';
+import { genericRGBToSRGB, sRGBToGenericRGB } from './render-color.mjs?v=20261025-native-data';
+import { escapeXML, renderLayout, svgDefinitions, fontsReady } from './render.mjs?v=20261025-native-data';
+import { createPreview } from './preview.mjs?v=20261025-native-data';
 
 const $ = id => document.getElementById(id);
 let language = languageFrom(new URLSearchParams(location.search).get('lang') || navigator.language);

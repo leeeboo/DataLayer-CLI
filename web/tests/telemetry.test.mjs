@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TelemetryError, parseFIT, parseGPX, parseTelemetryFile, previewAt } from '../telemetry.mjs';
+import { createNativeSeries } from '../telemetry-series.mjs';
 
 const epoch = Date.UTC(1989, 11, 31);
 const origin = 1100000000;
@@ -90,7 +91,7 @@ test('FIT big endian signed values, fractional cycling cadence and invalid senti
   assert.equal(s.heartRate, undefined);
   assert.equal(s.powerWatts, undefined);
   assert.equal(s.verticalOscillationCentimeters, undefined);
-  assert.equal(s.distanceMeters, undefined);
+  assert.equal(s.distanceMeters, 0);
 });
 
 test('FIT compressed timestamps omit timestamp bytes and handle rollover and redefinition', () => {
@@ -99,8 +100,8 @@ test('FIT compressed timestamps omit timestamp bytes and handle rollover and red
     data(0, fields, { 3: 131 }, true, { compressed: 31 }), data(0, fields, { 3: 132 }, true, { compressed: 1 }),
     definition(1, 20, [hr]), data(1, [hr], { 3: 133 }, true, { compressed: 2 })]);
   const activity = parseFIT(bytes);
-  assert.deepEqual(activity.samples.map(p => p.wallElapsed), [0, 1, 3, 4]);
-  assert.deepEqual(activity.samples.map(p => p.heartRate), [130, 131, 132, 133]);
+  assert.deepEqual(activity.samples.map(p => p.wallElapsed), [0, 1, 2, 3, 4]);
+  assert.deepEqual(activity.samples.map(p => p.heartRate), [130, 131, 132, 132, 133]);
   rejects(() => parseFIT(fit([definition(0, 20, fields), data(0, fields, { 3: 140 }, true, { compressed: 1 })])), 'invalidFIT');
 });
 
@@ -119,7 +120,7 @@ test('FIT activity timezone controls clock/calendar while date stays UTC, includ
     definition(1, 34, timezone), data(1, timezone, { 253: utc + 10, 5: utc + 10 + 9 * 3600 })]);
   const activity = parseFIT(bytes), s = previewAt(activity, 3).sample;
   assert.equal(activity.timeZoneOffsetSeconds, 9 * 3600);
-  assert.equal(s.date, '2026-01-02T00:00:01.000Z');
+  assert.equal(s.date, Date.UTC(2026, 0, 2, 0, 0, 1) / 1000);
   assert.equal(s.clock, '09:00:01');
   assert.equal(s.calendar, '2026/01/02');
   const settings = [field(0, 1, 2), field(5, 2, 1)];
@@ -167,37 +168,40 @@ test('FIT pause holds every motion metric while UTC date advances and active tim
   assert.equal(early.sample.elapsed, 5);
   assert.equal(late.sample.elapsed, 5);
   for (const key of ['heartRate', 'cadence', 'distanceMeters', 'speedMetersPerSecond', 'altitudeMeters', 'totalAscentMeters']) assert.equal(early.sample[key], late.sample[key]);
-  assert.equal(late.sample.heartRate, 110);
-  assert.equal(Date.parse(late.sample.date) - Date.parse(early.sample.date), 8000);
-  assert.equal(Date.parse(late.sample.date), epoch + (origin + 14) * 1000);
+  assert.equal(late.sample.heartRate, 200);
+  assert.equal(late.sample.date, early.sample.date);
+  assert.equal(late.absoluteDate - early.absoluteDate, 8);
+  assert.equal(late.absoluteDate, epoch / 1000 + origin + 14);
   assert.equal(previewAt(activity, 16).sample.elapsed, 6);
   assert.equal(early.series, activity);
 });
 
-test('FIT calorie lap totals interpolate on active elapsed, including across a pause', () => {
+test('FIT calories are assigned before native resampling and freeze across a pause', () => {
   const base = pausedActivity(), fields = [timestamp, hr], event = [timestamp, field(0, 1, 0), field(1, 1, 0)];
   const lap = [timestamp, field(2), field(8), field(11, 2, 0x84)];
   const bytes = fit([definition(0, 20, fields), data(0, fields, { 253: origin, 3: 100 }), data(0, fields, { 253: origin + 20, 3: 120 }),
-    definition(1, 21, event), data(1, event, { 253: origin + 5, 0: 0, 1: 1 }), data(1, event, { 253: origin + 15, 0: 0, 1: 0 }),
+    definition(1, 21, event), data(1, event, { 253: origin, 0: 0, 1: 0 }), data(1, event, { 253: origin + 5, 0: 0, 1: 1 }), data(1, event, { 253: origin + 15, 0: 0, 1: 0 }),
     definition(2, 19, lap), data(2, lap, { 253: origin + 5, 2: origin, 8: 5000, 11: 10 }), data(2, lap, { 253: origin + 20, 2: origin + 15, 8: 5000, 11: 20 })]);
   const activity = parseFIT(bytes);
   assert.equal(base.duration, activity.duration);
   assert.equal(activity.samples.at(-1).totalCalories, 30);
-  assert.equal(previewAt(activity, 10).sample.totalCalories, 10);
-  assert.equal(previewAt(activity, 17.5).sample.totalCalories, 20);
+  // Sparse source records interpolate their assigned calories during native resampling.
+  assert.equal(previewAt(activity, 10).sample.totalCalories, 15);
+  assert.equal(previewAt(activity, 17.5).sample.totalCalories, 22.5);
 });
 
-test('unsorted FIT records sort safely and duplicate timestamps merge valid complementary fields', () => {
+test('FIT retains native source-order origin and duplicate resampling rules', () => {
   const fields = [timestamp, hr, distance, speed];
   const activity = parseFIT(records([{ 253: origin + 2, 3: 140, 5: 10200 }, { 253: origin, 3: 130, 5: 10000 },
     { 253: origin + 2, 6: 4000 }, { 253: origin + 3, 3: 142, 5: 10100 }], fields));
-  assert.deepEqual(activity.samples.map(p => p.wallElapsed), [0, 2, 3]);
-  assert.equal(activity.samples[1].heartRate, 140);
-  assert.equal(activity.samples[1].speedMetersPerSecond, 4);
+  assert.deepEqual(activity.samples.map(p => p.wallElapsed), [0, 1]);
+  assert.equal(activity.samples[0].heartRate, 130);
+  assert.equal(activity.samples[1].heartRate, 142);
+  assert.equal(activity.samples[1].speedMetersPerSecond, 2);
   assert.equal(activity.totalDistanceMeters, 2);
 });
 
-test('preview interpolates only fields with finite endpoints and uses native nearest/cadence rules', () => {
+test('preview uses native optional-field interpolation, nearest and cadence rules', () => {
   const fields = [timestamp, hr, distance, speed, cadence, field(7, 2, 0x84)];
   const activity = parseFIT(records([{ 3: 100, 4: 80, 5: 0, 6: 2000, 7: 200 }, { 3: 120, 4: 90, 5: 400, 6: 4000 }, { 3: 130, 4: 0, 5: 800, 6: 0 }], fields));
   const s = previewAt(activity, .6).sample;
@@ -205,7 +209,7 @@ test('preview interpolates only fields with finite endpoints and uses native nea
   close(s.distanceMeters, 2.4);
   assert.equal(s.heartRate, 120);
   assert.equal(s.cadence, 180);
-  assert.equal(s.powerWatts, undefined);
+  assert.equal(s.powerWatts, 200);
   assert.equal(previewAt(activity, 1.5).sample.cadence, 90);
   assert.equal(previewAt(activity, -5).inRange, false);
   assert.equal(previewAt(activity, 100).inRange, false);
@@ -215,9 +219,8 @@ test('preview interpolates only fields with finite endpoints and uses native nea
 });
 
 test('segment break holds metrics and GPS position instead of interpolating a route jump', () => {
-  const activity = { startDate: new Date(epoch + origin * 1000).toISOString(), duration: 10, totalDistanceMeters: 10,
-    samples: [{ wallElapsed: 0, elapsed: 0, trackSegmentIndex: 0, latitude: 0, longitude: 0, heartRate: 100 },
-      { wallElapsed: 10, elapsed: 10, trackSegmentIndex: 1, latitude: 1, longitude: 1, heartRate: 150 }] };
+  const activity = createNativeSeries([{ elapsed: 0, trackSegmentIndex: 0, latitude: 0, longitude: 0, heartRate: 100 },
+      { elapsed: 10, trackSegmentIndex: 1, latitude: 1, longitude: 1, heartRate: 150 }]);
   const middle = previewAt(activity, 5).sample;
   assert.equal(middle.latitude, 0);
   assert.equal(middle.longitude, 0);
@@ -246,6 +249,7 @@ test('FIT rejects invalid headers, CRC, truncation, undefined messages and missi
   rejects(() => parseFIT(fit([Buffer.from([0])])), 'invalidFIT');
   rejects(() => parseFIT(fit([definition(0, 20, [timestamp]), Buffer.from([0, 1])])), 'truncatedFIT');
   rejects(() => parseFIT(fit([definition(0, 20, [hr]), data(0, [hr], { 3: 100 })])), 'missingTime');
+  rejects(() => parseFIT(fit([definition(0, 20, [timestamp]), data(0, [timestamp], {})])), 'missingTime');
   rejects(() => parseFIT(fit([])), 'noSamples');
 });
 
@@ -267,4 +271,104 @@ test('file entry point reads only recognized local files and reports read/encodi
   await assert.rejects(parseTelemetryFile({ name: 'activity.csv', size: 1 }), { code: 'unsupportedFormat' });
   await assert.rejects(parseTelemetryFile({ name: 'activity.fit', size: 1, async arrayBuffer() { throw Error('private local path'); } }), { code: 'readFailed', message: 'readFailed' });
   await assert.rejects(parseTelemetryFile({ name: 'activity.gpx', size: 1, async arrayBuffer() { return new Uint8Array([255]).buffer; } }), { code: 'invalidGPX' });
+});
+
+const summaryFields = [timestamp, field(2), field(7), field(8), field(9), field(11, 2, 0x84)];
+function summary(local, global, values) {
+  return [definition(local, global, summaryFields), data(local, summaryFields, values)];
+}
+
+test('FIT timer start synthesizes the native startup sample and cadence ramp', () => {
+  const fields = [timestamp, hr, distance, speed, cadence], event = [timestamp, field(0, 1, 0), field(1, 1, 0)];
+  const activity = parseFIT(fit([definition(1, 21, event), data(1, event, { 253: origin, 0: 0, 1: 0 }), definition(0, 20, fields),
+    data(0, fields, { 253: origin + 8, 3: 151, 4: 84, 5: 120000, 6: 3000 }),
+    data(0, fields, { 253: origin + 10, 3: 154, 4: 86, 5: 120600, 6: 3400 })]));
+  assert.equal(activity.duration, 10);
+  assert.equal(activity.samples[0].cadence, 0);
+  assert.equal(activity.samples[0].distanceMeters, 0);
+  assert.equal(previewAt(activity, 4).sample.cadence, 84);
+  assert.equal(previewAt(activity, 8).sample.cadence, 168);
+  assert.equal(activity.samples[0].hasSyntheticDistance, false);
+});
+
+test('FIT fractional lap near a standstill sample merges distance without creating speed', () => {
+  const fields = [timestamp, hr, distance, speed, cadence];
+  const activity = parseFIT(fit([definition(0, 20, fields), ...Array.from({ length: 31 }, (_, t) => data(0, fields,
+    { 253: origin + t, 3: 150, 4: t <= 20 ? 90 : 0, 5: Math.min(t, 20) * 500, 6: t <= 20 ? 5000 : 0 })),
+    ...summary(1, 19, { 253: origin + 25, 2: origin, 7: 25050, 8: 25050, 9: 10061, 11: 20 }),
+    ...summary(2, 18, { 253: origin + 30, 2: origin, 7: 30000, 8: 30000, 9: 10061, 11: 20 })]));
+  assert.equal(activity.samples.length, 31);
+  close(previewAt(activity, 26).sample.distanceMeters, 100.61);
+  assert.equal(activity.samples.find(sample => sample.elapsed === 25).hasSyntheticDistance, true);
+  for (const sample of activity.samples.filter(sample => sample.elapsed > 21)) assert.equal(sample.speedMetersPerSecond, 0);
+});
+
+test('FIT fractional lap remains authoritative when records still lag its distance', () => {
+  const fields = [timestamp, hr, distance, speed, cadence];
+  const activity = parseFIT(fit([definition(0, 20, fields), ...[[0, 0], [182, 99300], [183, 99750], [184, 100200]].map(([t, d]) =>
+    data(0, fields, { 253: origin + t, 3: 150, 4: 80, 5: d, 6: 4500 })),
+    ...summary(2, 19, { 253: origin + 183, 2: origin, 7: 182680, 8: 182680, 9: 100000, 11: 42 })]));
+  const anchor = activity.samples.find(sample => Math.abs(sample.elapsed - 182.68) < 1e-6);
+  assert.equal(anchor.hasSyntheticDistance, true);
+  close(anchor.distanceMeters, 1000);
+  close(previewAt(activity, 182.68).sample.distanceMeters, 1000);
+});
+
+test('FIT final session sample preserves fractional duration and rejects a subsecond speed spike', () => {
+  const fields = [timestamp, hr, distance, speed, cadence];
+  const activity = parseFIT(fit([definition(0, 20, fields), ...[[0, 0], [185, 100800], [186, 101200]].map(([t, d]) =>
+    data(0, fields, { 253: origin + t, 3: 150, 4: 80, 5: d, 6: 4500 })),
+    ...summary(2, 18, { 253: origin + 186, 2: origin, 7: 186010, 8: 186010, 9: 101400, 11: 44 })]));
+  close(activity.duration, 186.01);
+  const last = activity.samples.at(-1);
+  assert.equal(last.hasSyntheticDistance, true);
+  close(last.distanceMeters, 1014);
+  close(last.speedMetersPerSecond, 4.5);
+  close(last.date, epoch / 1000 + origin + 186.01);
+  const after = previewAt(activity, 200);
+  assert.equal(after.inRange, false);
+  close(after.sample.distanceMeters, 1014);
+  close(after.sample.date, last.date);
+  assert.equal(after.absoluteDate, epoch / 1000 + origin + 200);
+});
+
+test('FIT ignores a lap cumulative distance beyond the session total', () => {
+  const fields = [timestamp, hr, distance, speed];
+  const activity = parseFIT(fit([definition(0, 20, fields), ...[[0, 0], [100, 40000], [101, 40400]].map(([t, d]) =>
+    data(0, fields, { 253: origin + t, 3: 150, 5: d, 6: 4000 })),
+    ...summary(1, 19, { 253: origin + 101, 2: origin, 7: 101000, 8: 101000, 9: 41000, 11: 20 }),
+    ...summary(2, 18, { 253: origin + 101, 2: origin, 7: 101500, 8: 101500, 9: 40500, 11: 20 })]));
+  close(previewAt(activity, 101).sample.distanceMeters, 404);
+  close(previewAt(activity, 101.5).sample.distanceMeters, 405);
+});
+
+test('FIT requires both packed speed and distance to be valid before accumulating', () => {
+  const packed = (speed, distance) => Buffer.from([speed & 255, speed >>> 8 | (distance & 15) << 4, distance >>> 4]);
+  const fields = [timestamp, field(8, 3, 13)];
+  const activity = parseFIT(records([{ 8: packed(400, 16) }, { 8: packed(4095, 32) }, { 8: packed(420, 48) }], fields));
+  close(activity.totalDistanceMeters, 2);
+  assert.equal(activity.samples[1].speedMetersPerSecond, 2);
+});
+
+
+test('preview preserves fractional clock precision while endpoint metrics clamp', () => {
+  const activity = parseFIT(records([{ 3: 100 }, { 3: 120 }], [timestamp, hr]));
+  const frame = previewAt(activity, 182.68);
+  assert.equal(frame.sample.heartRate, 120);
+  close(frame.absoluteDate, epoch / 1000 + origin + 182.68);
+  assert.equal(frame.sample.date, epoch / 1000 + origin + 1);
+  assert.equal(frame.sample.elapsed, 1);
+});
+
+
+test('preview outside the JavaScript calendar range omits display time without losing native time', () => {
+  const activity = parseFIT(records([{ 3: 100 }, { 3: 120 }], [timestamp, hr]));
+  Object.assign(activity.nativeSeries.samples.at(-1), { clock: '00:00:01', calendar: '2026/01/01' });
+  const frame = previewAt(activity, 1e100);
+  assert.equal(frame.inRange, false);
+  assert.equal(frame.sample.heartRate, 120);
+  assert.equal(frame.sample.clock, undefined);
+  assert.equal(frame.sample.calendar, undefined);
+  assert.equal(frame.absoluteDate, 1e100);
+  assert.ok(!JSON.stringify(frame.sample).includes('NaN'));
 });
