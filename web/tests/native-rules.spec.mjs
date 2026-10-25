@@ -293,14 +293,25 @@ test('long timeDate resize pins its measured top-left, follows the pointer and u
   });
   const delta = { x: before.width * 0.15, y: before.height * 0.15 };
   const start = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  // WebKit can quantize injected mouse coordinates; assert against delivered input.
+  await page.locator('#canvas').evaluate(canvas => {
+    for (const name of ['pointerdown', 'pointerup']) canvas.addEventListener(name, event => {
+      const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(canvas.getScreenCTM().inverse());
+      canvas.dataset[name] = JSON.stringify({ x: point.x, y: point.y });
+    }, { once: true });
+  });
   await page.mouse.move(start.x, start.y); await page.mouse.down();
   await page.mouse.move(start.x + delta.x * screenScale.x, start.y + delta.y * screenScale.y, { steps: 5 });
   await page.mouse.up();
+  const delivered = await page.locator('#canvas').evaluate(canvas => ({
+    start: JSON.parse(canvas.dataset.pointerdown), end: JSON.parse(canvas.dataset.pointerup),
+  }));
+  const ratio = 1 + Math.max((delivered.end.x - delivered.start.x) / before.width, (delivered.end.y - delivered.start.y) / before.height);
   const after = await logicalBox(hit);
   expect(Math.abs(after.x - before.x)).toBeLessThan(1);
   expect(Math.abs(after.y - before.y)).toBeLessThan(1);
-  expect(Math.abs(after.x + after.width - before.x - before.width - delta.x)).toBeLessThan(1);
-  expect(Math.abs(after.y + after.height - before.y - before.height - delta.y)).toBeLessThan(1);
+  expect(Math.abs(after.width - before.width * ratio)).toBeLessThan(1);
+  expect(Math.abs(after.height - before.height * ratio)).toBeLessThan(1);
   expect((await download(page)).layout.elements[0].frame.scale).toBeGreaterThan(e.frame.scale);
   await page.locator('#undo').click();
   expect((await download(page)).layout.elements[0].frame).toEqual(e.frame);
