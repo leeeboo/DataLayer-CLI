@@ -1,11 +1,11 @@
-import { accents, fonts, gauges, catalog, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, bounds, History } from './model.mjs';
-import { translations, languageFrom } from './i18n.mjs';
+import { accents, fonts, gauges, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, bounds, History } from './model.mjs';
+import { languages, translate, errorMessage, languageFrom } from './i18n.mjs';
 import { escapeXML, gaugeSVG } from './render.mjs';
 
 const $ = id => document.getElementById(id);
 let language = languageFrom(new URLSearchParams(location.search).get('lang') || navigator.language);
-const t = key => translations[language][key] ?? translations.en[key] ?? key;
-let data = createDocument();
+const t = (key, details) => translate(language, key, details);
+let data = createDocument(t('demoName'));
 data.layout.elements = data.layout.elements.filter(e => !['cadence', 'timeDate'].includes(e.kind));
 let activeID = data.id, selectedID = data.layout.elements[1].id;
 let history = new History(snapshot()), saved = exportDocument(data, activeID), drag = null;
@@ -18,7 +18,7 @@ const selected = () => preset().layout.elements.find(e => e.id === selectedID);
 const draftKey = () => `${activeID}/${selectedID}`;
 const dirty = () => drafts.size > 0 || exportDocument(data, activeID) !== saved;
 function status(message, error = false) { $('status').textContent = message; $('status').classList.toggle('error', error); }
-function title(element) { return catalog[element.kind].titles[language] ?? catalog[element.kind].titles.en; }
+function title(element) { return t(`gauge.${element.kind}`); }
 function mutate(action) {
   const previous = clone(snapshot());
   try {
@@ -26,7 +26,7 @@ function mutate(action) {
     if (before !== JSON.stringify(data)) { preset().updatedAt = swiftDate(); history.push(snapshot()); }
     render(); status(dirty() ? t('changed') : t('ready'));
     return true;
-  } catch (error) { restore(previous); render(); status(error.message, true); return false; }
+  } catch (error) { restore(previous); render(); status(errorMessage(error, language), true); return false; }
 }
 function element(tag, className, text) {
   const node = document.createElement(tag); if (className) node.className = className;
@@ -49,6 +49,7 @@ function control(parent, key, options) {
   else input.value = type === 'number' && typeof value === 'number' ? Number(value.toFixed(6)) : value ?? '';
   input.setAttribute('aria-label', label);
   if (type === 'text') input.maxLength = 500;
+  input.dir = type === 'text' ? 'auto' : 'ltr';
   if (type === 'range') {
     const output = element('span', 'range-value', Number(value).toFixed(2)); caption.append(output);
     input.oninput = () => { output.textContent = Number(input.value).toFixed(2); };
@@ -120,7 +121,7 @@ function renderInspector() {
       const next = parseJSON(json.value);
       validateCustomization(next); const key = draftKey();
       if (mutate(() => { e.customization = next; })) { drafts.delete(key); render(); }
-    } catch (error) { status(`${t('jsonError')}: ${error.message}`, true); }
+    } catch (error) { status(`${t('jsonError')}: ${errorMessage(error, language)}`, true); }
   });
   if (drafts.has(draftKey())) button(advanced, 'undo', () => { drafts.delete(draftKey()); render(); });
   container.append(advanced);
@@ -162,12 +163,15 @@ function render() {
   const focus = document.activeElement?.id, selection = document.activeElement?.selectionStart;
   const open = new Set([...document.querySelectorAll('details[open]')].map(node => node.id));
   document.documentElement.lang = language; document.title = `${t('title')} · DataLayer Studio`;
+  document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
   document.querySelectorAll('[data-t]').forEach(node => { node.textContent = t(node.dataset.t); });
+  document.querySelectorAll('[data-t-aria]').forEach(node => { node.setAttribute('aria-label', t(node.dataset.tAria)); });
+  $('language').replaceChildren(...Object.entries(languages).map(([code, name]) => { const option = element('option', '', name); option.value = code; return option; }));
   $('language').value = language; $('layout-name').value = preset().name;
   $('preset-picker').hidden = presets(data).length < 2;
   $('preset').replaceChildren(...presets(data).map(p => { const option = element('option', '', p.name); option.value = p.id; return option; })); $('preset').value = activeID;
   const kind = $('add-kind').value || 'speed';
-  $('add-kind').replaceChildren(...gauges.map(g => { const option = element('option', '', g.titles[language] ?? g.titles.en); option.value = g.kind; return option; })); $('add-kind').value = kind;
+  $('add-kind').replaceChildren(...gauges.map(g => { const option = element('option', '', t(`gauge.${g.kind}`)); option.value = g.kind; return option; })); $('add-kind').value = kind;
   const layers = $('layers'); layers.replaceChildren();
   preset().layout.elements.forEach(e => {
     const row = element('div', `layer${e.id === selectedID ? ' selected' : ''}${e.frame.isVisible ? '' : ' is-hidden'}`);
@@ -187,23 +191,23 @@ function confirmDiscard() { return !dirty() || window.confirm(t('dirty')); }
 async function importFile(file) {
   if (!file) return;
   try {
-    if (file.size > 5 * 1024 * 1024) throw Error(t('fileHelp'));
+    if (file.size > 5 * 1024 * 1024) { status(`${t('invalid')}: ${t('fileHelp')}`, true); return; }
     const next = parseDocument(await file.text()); if (!confirmDiscard()) return;
     data = next; activeID = data.defaultPresetID ?? presets(data)[0].id; selectedID = preset().layout.elements[0]?.id ?? null;
     drafts.clear(); history = new History(snapshot()); saved = exportDocument(data, activeID); render(); status(t('imported'));
-  } catch (error) { status(`${t('invalid')}: ${error.message}`, true); }
+  } catch (error) { status(`${t('invalid')}: ${errorMessage(error, language)}`, true); }
 }
 $('import').onclick = () => $('file').click();
 $('file').onchange = async () => { await importFile($('file').files[0]); $('file').value = ''; };
 $('download').onclick = () => {
   const invalid = document.querySelector('input:invalid');
-  if (invalid) { invalid.reportValidity(); status(`${t('invalid')}: ${invalid.getAttribute('aria-label')}`, true); return; }
+  if (invalid) { invalid.reportValidity(); status(`${t('errorInput')}: ${invalid.getAttribute('aria-label')}`, true); return; }
   if (drafts.size) { status(t('advancedHelp') + ' — ' + t('apply') + ' / ' + t('undo'), true); return; }
   try {
     const json = exportDocument(data, activeID), url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
     const link = element('a'); link.href = url; link.download = 'layout.json'; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     saved = json; status(t('downloaded'));
-  } catch (error) { status(error.message, true); }
+  } catch (error) { status(errorMessage(error, language), true); }
 };
 $('new').onclick = () => {
   if (!confirmDiscard()) return; data = createDocument(t('newName'), true); activeID = data.id; selectedID = null; drafts.clear(); history = new History(snapshot()); saved = ''; render(); status(t('changed'));

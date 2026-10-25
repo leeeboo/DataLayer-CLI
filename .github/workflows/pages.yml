@@ -14,7 +14,7 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
@@ -26,6 +26,21 @@ jobs:
           node --test scripts/test_web_editor.mjs
       - name: Check audited file boundary
         run: python3 -B scripts/check_source_boundary.py
+      - name: Install browser test tools
+        working-directory: web
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install Firefox and WebKit
+        working-directory: web
+        run: npx playwright install --with-deps firefox webkit
+      - name: Check all languages and browser editing workflows
+        working-directory: web
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: gauge-editor-browser-failures
+          path: web/test-results/
+          retention-days: 7
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: test
@@ -40,9 +55,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Prepare runtime files only
+        run: node web/prepare-site.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: web
+          path: .build/gauge-pages
       - uses: actions/deploy-pages@v4
         id: deployment

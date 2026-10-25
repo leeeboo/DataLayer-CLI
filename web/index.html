@@ -12,28 +12,28 @@
 </head>
 <body>
   <header class="app-header">
-    <a class="brand" href="https://github.com/leeeboo/DataLayer-CLI" aria-label="DataLayer-CLI on GitHub"><img src="./mark.svg" width="28" height="32" alt=""><strong>DataLayer Studio</strong></a>
+    <a class="brand" href="https://github.com/leeeboo/DataLayer-CLI" aria-label="DataLayer-CLI on GitHub" data-t-aria="repoLink"><img src="./mark.svg" width="28" height="32" alt=""><strong>DataLayer Studio</strong></a>
     <h1 data-t="title">Gauge Layout Editor</h1>
     <div class="header-actions">
-      <select id="language" aria-label="Language"><option value="en">English</option><option value="zh-CN">简体中文</option><option value="zh-TW">繁體中文</option><option value="ja">日本語</option></select>
+      <select id="language" aria-label="Language" data-t-aria="language"><option value="en">English</option><option value="zh-CN">简体中文</option><option value="zh-TW">繁體中文</option><option value="ja">日本語</option></select>
       <button id="import" data-t="import">Import JSON</button>
       <button id="download" class="primary" data-t="download">Download JSON</button>
       <input id="file" type="file" accept=".json,.dlspreset,application/json" hidden>
     </div>
   </header>
   <main class="editor">
-    <aside class="sidebar" aria-label="Layout">
+    <aside class="sidebar" aria-label="Layout" data-t-aria="layoutRegion">
       <div class="preset-picker" id="preset-picker" hidden><label for="preset" data-t="preset">Preset to export as default</label><select id="preset"></select></div>
-      <label for="layout-name" data-t="name">Layout name</label><input id="layout-name" maxlength="200" value="Weekend ride">
+      <label for="layout-name" data-t="name">Layout name</label><input id="layout-name" dir="auto" maxlength="200" value="Weekend ride">
       <label for="canvas-size" data-t="canvas">Preview canvas</label>
-      <select id="canvas-size"><option value="1920x1080">1920 × 1080 (16:9)</option><option value="1080x1920">1080 × 1920 (9:16)</option><option value="1080x1080">1080 × 1080 (1:1)</option><option value="3840x2160">3840 × 2160 (4K)</option></select>
+      <select id="canvas-size" dir="ltr"><option value="1920x1080">1920 × 1080 (16:9)</option><option value="1080x1920">1080 × 1920 (9:16)</option><option value="1080x1080">1080 × 1080 (1:1)</option><option value="3840x2160">3840 × 2160 (4K)</option></select>
       <label for="add-kind" data-t="addGauge">Add gauge</label><div class="add-row"><select id="add-kind"></select><button id="add" data-t="add">Add</button></div>
       <div class="section-heading"><h2 data-t="layers">Layers</h2><button id="new" class="text-button" data-t="new">New layout</button></div>
       <div id="layers" class="layers"></div>
       <details id="global-details"><summary data-t="global">Layout style</summary><div id="global-fields" class="fields"></div></details>
       <div class="sidebar-footer"><p data-t="privacy">Files stay in your browser.</p><a href="https://github.com/leeeboo/DataLayer-CLI#readme" data-t="source">Source &amp; help</a></div>
     </aside>
-    <section class="workspace" aria-label="Canvas editor">
+    <section class="workspace" aria-label="Canvas editor" data-t-aria="canvasRegion">
       <div class="toolbar">
         <button id="undo" data-t="undo">Undo</button><button id="redo" data-t="redo">Redo</button>
         <label class="toggle"><input id="grid" type="checkbox" checked><span data-t="grid">Grid</span></label>
@@ -41,7 +41,7 @@
         <button id="fit" data-t="fit">Fit</button>
       </div>
       <div id="canvas-wrap" class="canvas-wrap checker">
-        <svg id="canvas" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" tabindex="0" role="group" aria-label="Gauge layout canvas"></svg>
+        <svg id="canvas" direction="ltr" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" tabindex="0" role="group" aria-label="Gauge layout canvas" data-t-aria="canvasLabel"></svg>
         <p id="empty-canvas" data-t="empty" hidden>Add a gauge to start your layout.</p>
       </div>
       <p class="preview-note" data-t="preview">Layout preview · sample values · fonts and rendering can differ from native export.</p>
@@ -51,7 +51,7 @@
       <p id="status" class="status" role="status" aria-live="polite"></p>
       <noscript>This editor needs JavaScript. No files are uploaded to a server.</noscript>
     </section>
-    <aside id="inspector" class="inspector" aria-label="Gauge properties"></aside>
+    <aside id="inspector" class="inspector" aria-label="Gauge properties" data-t-aria="propertiesRegion"></aside>
   </main>
 </body>
 </html>

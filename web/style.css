@@ -136,14 +136,14 @@ h3 {
   flex-shrink: 0;
 }
 .app-header h1 {
-  padding-left: 20px;
-  border-left: 1px solid #69777f;
+  padding-inline-start: 20px;
+  border-inline-start: 1px solid #69777f;
   font-size: 17px;
   font-weight: 400;
   color: var(--muted);
 }
 .header-actions {
-  margin-left: auto;
+  margin-inline-start: auto;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -166,7 +166,7 @@ h3 {
   padding: 22px 18px;
 }
 .sidebar {
-  border-right: 1px solid var(--line);
+  border-inline-end: 1px solid var(--line);
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -236,7 +236,7 @@ h3 {
 .layer-name {
   flex: 1;
   border: 0;
-  text-align: left;
+  text-align: start;
   min-width: 0;
   background: none;
   font-size: 12px;
@@ -303,7 +303,7 @@ h3 {
   white-space: nowrap;
 }
 .toolbar #fit {
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 .canvas-wrap {
   position: relative;
@@ -408,7 +408,7 @@ h3 {
   color: var(--danger);
 }
 .inspector {
-  border-left: 1px solid var(--line);
+  border-inline-start: 1px solid var(--line);
   max-height: calc(100dvh - 73px);
   overflow-y: auto;
 }
@@ -461,7 +461,7 @@ h3 {
 .range-value {
   color: var(--text);
   font-variant-numeric: tabular-nums;
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 .field:not(.checkbox)>span {
   display: flex;
@@ -590,7 +590,7 @@ textarea {
     grid-row: 2;
     max-height: none;
     border-top: 1px solid var(--line);
-    border-left: 0;
+    border-inline-start: 0;
   }
   .inspector .fields {
     grid-template-columns: 1fr 1fr;
@@ -609,7 +609,7 @@ textarea {
     padding: 0;
   }
   .header-actions {
-    margin-left: auto;
+    margin-inline-start: auto;
   }
   .layers {
     max-height: 45dvh;
@@ -632,10 +632,10 @@ textarea {
     height: 25px;
   }
   .app-header h1 {
-    margin-left: auto;
+    margin-inline-start: auto;
     font-size: 12px;
     max-width: 46%;
-    text-align: right;
+    text-align: end;
   }
   .header-actions {
     width: 100%;
@@ -664,7 +664,7 @@ textarea {
     order: 1;
     width: 100%;
     min-height: 0;
-    border-right: 0;
+    border-inline-end: 0;
     border-top: 1px solid var(--line);
     padding: 18px 16px;
   }
@@ -694,7 +694,7 @@ textarea {
     min-height: 33px;
   }
   .toolbar #fit {
-    margin-left: 0;
+    margin-inline-start: 0;
   }
   .toolbar .toggle {
     gap: 5px;
@@ -720,4 +720,19 @@ textarea {
   button {
     transition: background-color .12s,border-color .12s;
   }
+}
+
+/* UI direction follows the language; layout coordinates and CLI syntax stay LTR. */
+#canvas,.command-strip code,.inspector textarea {
+  direction: ltr;
+}
+.command-strip code,.inspector textarea {
+  text-align: left;
+  unicode-bidi: isolate;
+}
+[dir="rtl"] .layer.selected {
+  box-shadow: inset -3px 0 var(--accent);
+}
+.header-actions button,.toolbar label,.inspector button {
+  overflow-wrap: anywhere;
 }

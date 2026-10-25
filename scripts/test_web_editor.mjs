@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { accents, fonts, gauges, createDocument, createElement, presets, parseJSON, parseDocument, validateDocument, exportDocument, bounds, History, clone } from '../web/model.mjs';
 import { escapeXML, gaugeSVG } from '../web/render.mjs';
-import { translations, languageFrom } from '../web/i18n.mjs';
+import { languages, translations, languageFrom, translate, errorMessage } from '../web/i18n.mjs';
 
 const source = readFileSync(new URL('../Sources/OverlayCore/Rendering/OverlayLayout.swift', import.meta.url), 'utf8');
 const nativeRenderer = readFileSync(new URL('../Sources/OverlayCore/Rendering/OverlayRenderer.swift', import.meta.url), 'utf8');
@@ -110,11 +110,26 @@ test('all 24 gauge previews render escaped user text without script or network m
   }
   assert.equal(escapeXML('<&"\''), '&lt;&amp;&quot;&apos;');
 });
-test('all four UI languages have the same keys and complete gauge labels', () => {
+test('all twelve UI languages have the same keys, placeholders and complete gauge labels', () => {
+  assert.equal(Object.keys(languages).length, 12);
+  assert.deepEqual(Object.keys(translations), Object.keys(languages));
   for (const [language, dictionary] of Object.entries(translations)) {
     assert.deepEqual(Object.keys(dictionary).sort(), Object.keys(translations.en).sort());
     for (const text of Object.values(dictionary)) assert.ok(typeof text === 'string' && text.trim());
-    for (const gauge of gauges) assert.ok(gauge.titles[language]);
+    for (const gauge of gauges) assert.ok(dictionary[`gauge.${gauge.kind}`]);
+    for (const key of Object.keys(dictionary)) assert.deepEqual([...dictionary[key].matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort(), [...translations.en[key].matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort(), `${language}.${key}`);
   }
-  assert.equal(languageFrom('zh-Hant-HK'), 'zh-TW'); assert.equal(languageFrom('ja-JP'), 'ja'); assert.equal(languageFrom('de-DE'), 'en');
+  assert.equal(languageFrom('zh-Hant-HK'), 'zh-TW'); assert.equal(languageFrom('ja-JP'), 'ja'); assert.equal(languageFrom('de-DE'), 'de');
+  for (const [locale,expected] of [['ko-KR','ko'],['es-419','es'],['fr-CA','fr'],['pt-PT','pt-BR'],['ru-RU','ru'],['ar-EG','ar'],['hi-IN','hi'],['zh_cn','zh-CN'],['it-IT','en'],['','en']]) assert.equal(languageFrom(locale),expected);
+});
+
+test('validation errors are localized without changing schema rejection or showing raw exceptions', () => {
+  const doc = createDocument(); doc.layout.elements[0].frame.x = 3;
+  let error; try { validateDocument(doc); } catch (caught) { error = caught; }
+  assert.equal(error.code, 'errorNumber');
+  for (const language of Object.keys(languages)) {
+    assert.equal(errorMessage(error, language), translate(language, 'errorNumber', { field: 'x', min: -1, max: 2 }));
+    assert.equal(errorMessage(new SyntaxError('browser-specific syntax'), language), translations[language].errorJSON);
+    assert.equal(errorMessage(new Error('private file details'), language), translations[language].errorUnknown);
+  }
 });
