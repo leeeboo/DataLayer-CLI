@@ -1,6 +1,6 @@
-import { accents, fonts, gauges, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, bounds, History } from './model.mjs';
-import { languages, translate, errorMessage, languageFrom } from './i18n.mjs';
-import { escapeXML, gaugeSVG } from './render.mjs';
+import { accents, fonts, gauges, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, bounds, History } from './model.mjs?v=20261025-i18n12';
+import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261025-i18n12';
+import { escapeXML, gaugeSVG } from './render.mjs?v=20261025-i18n12';
 
 const $ = id => document.getElementById(id);
 let language = languageFrom(new URLSearchParams(location.search).get('lang') || navigator.language);

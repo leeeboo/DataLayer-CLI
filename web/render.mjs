@@ -1,4 +1,4 @@
-import { accents, catalog, bounds } from './model.mjs';
+import { accents, catalog, bounds } from './model.mjs?v=20261025-i18n12';
 
 export const escapeXML = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
 export function color(value, fallback) {

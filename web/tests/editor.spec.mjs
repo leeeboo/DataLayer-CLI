@@ -20,6 +20,16 @@ async function download(page) {
   expect(file.suggestedFilename()).toBe('layout.json');
   return parseDocument(await readFile(await file.path(), 'utf8'));
 }
+test('new page bypasses a stale unversioned locale module', async ({ page }) => {
+  // Simulate a browser retaining the previous four-language module under its old URL.
+  await page.route('**/i18n.mjs', route => route.fulfill({
+    contentType: 'text/javascript',
+    body: "export const translations = {}; export function languageFrom() { return 'en'; }",
+  }));
+  await page.goto('./?lang=fr');
+  await expect(page.locator('h1')).toHaveText(translations.fr.title);
+  await expect(page.locator('#language option')).toHaveCount(12);
+});
 for (const language of Object.keys(languages)) {
   test(`${language}: localized controls, errors and responsive layout`, async ({ page }) => {
     const errors = []; page.on('pageerror', error => errors.push(error.message));
