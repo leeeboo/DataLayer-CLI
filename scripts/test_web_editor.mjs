@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { accents, fonts, gauges, createDocument, createElement, presets, parseDocument, validateDocument, exportDocument, bounds, History, clone } from '../web/model.mjs';
+import { accents, fonts, gauges, createDocument, createElement, presets, parseJSON, parseDocument, validateDocument, exportDocument, bounds, History, clone } from '../web/model.mjs';
 import { escapeXML, gaugeSVG } from '../web/render.mjs';
 import { translations, languageFrom } from '../web/i18n.mjs';
 
@@ -67,10 +67,12 @@ test('multi-preset library keeps other presets and metadata; selected preset is 
 test('invalid files and known field types are rejected before replacing current work', () => {
   for (const change of [
     d => { d.layout.elements[0].kind = 'unknown'; },
+    d => { d.layout.elements[0].kind = ['speed']; },
     d => { d.layout.elements[0].frame.x = 1e400; },
     d => { d.layout.elements[0].frame.x = 3; },
     d => { d.layout.elements[0].frame.isVisible = 'yes'; },
     d => { d.layout.elements[0].customization.valueFont = null; },
+    d => { d.layout.elements[0].customization.valueFont = ['menloBold']; },
     d => { delete d.layout.elements[0].customization.showsLabel; },
     d => { d.layout.elements[0].customization.valuePrecision = 1.5; },
     d => { d.layout.elements[0].customization.valueColor = { red: 1, green: 1, blue: 1 }; },
@@ -82,6 +84,7 @@ test('invalid files and known field types are rejected before replacing current 
   ]) { const doc = createDocument(); change(doc); assert.throws(() => parseDocument(JSON.stringify(doc))); }
   for (const text of ['{', 'null', '[]', '{"presets":[]}', '{"__proto__":{"polluted":true}}', ' '.repeat(5 * 1024 * 1024 + 1)]) assert.throws(() => parseDocument(text));
   assert.equal({}.polluted, undefined);
+  assert.throws(() => parseJSON('{"future":1e400}'));
 });
 test('native coordinate geometry handles aspect ratios and independent width customization', () => {
   const e = createElement('speed'); assert.deepEqual(bounds(e, 1920, 1080), { x: 48, y: 736.5600000000001, width: 420, height: 238 });

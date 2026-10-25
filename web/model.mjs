@@ -64,7 +64,7 @@ const object = (value, path) => { if (!value || typeof value !== 'object' || Arr
 const number = (value, min, max, path) => { if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) throw Error(`${path}: expected ${min}…${max}`); };
 const boolean = (value, path) => { if (typeof value !== 'boolean') throw Error(`${path}: expected true / false`); };
 const string = (value, path) => { if (typeof value !== 'string') throw Error(`${path}: expected text`); };
-const choice = (value, options, path) => { if (!Object.hasOwn(options, value)) throw Error(`${path}: unknown value`); };
+const choice = (value, options, path) => { if (typeof value !== 'string' || !Object.hasOwn(options, value)) throw Error(`${path}: unknown value`); };
 const optional = (obj, key, check) => { if (obj[key] != null) check(obj[key], key); };
 const ranges = {
   valuePrecision: [0, 3], gaugeMinimum: [0, 120], gaugeMaximum: [1, 180], lineWidth: [0.25, 64], lengthScale: [0.1, 4],
@@ -121,12 +121,16 @@ export function validateDocument(document) {
   optional(document, 'defaultPresetID', value => { if (!ids.has(value)) throw Error('defaultPresetID does not match a preset'); });
   return document;
 }
+export function parseJSON(text) {
+  return JSON.parse(text, (key, value) => {
+    if (['__proto__', 'prototype', 'constructor'].includes(key)) throw Error('Unsafe JSON property');
+    if (typeof value === 'number' && !Number.isFinite(value)) throw Error('JSON numbers must be finite');
+    return value;
+  });
+}
 export function parseDocument(text) {
   if (new TextEncoder().encode(text).length > 5 * 1024 * 1024) throw Error('Maximum file size: 5 MB');
-  const document = JSON.parse(text, (key, value) => {
-    if (['__proto__', 'prototype', 'constructor'].includes(key)) throw Error('Unsafe JSON property'); return value;
-  });
-  return validateDocument(document);
+  return validateDocument(parseJSON(text));
 }
 export function exportDocument(document, presetID) {
   const copy = clone(document);

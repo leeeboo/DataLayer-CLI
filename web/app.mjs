@@ -1,4 +1,4 @@
-import { accents, fonts, gauges, catalog, clone, createElement, createDocument, presets, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, bounds, History } from './model.mjs';
+import { accents, fonts, gauges, catalog, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, bounds, History } from './model.mjs';
 import { translations, languageFrom } from './i18n.mjs';
 import { escapeXML, gaugeSVG } from './render.mjs';
 
@@ -117,7 +117,7 @@ function renderInspector() {
   advanced.append(json);
   button(advanced, 'apply', () => {
     try {
-      const next = JSON.parse(json.value, (key, value) => { if (['__proto__', 'prototype', 'constructor'].includes(key)) throw Error('Unsafe JSON property'); return value; });
+      const next = parseJSON(json.value);
       validateCustomization(next); const key = draftKey();
       if (mutate(() => { e.customization = next; })) { drafts.delete(key); render(); }
     } catch (error) { status(`${t('jsonError')}: ${error.message}`, true); }
