@@ -1,7 +1,7 @@
 import { copyFile, mkdir, readdir } from 'node:fs/promises';
 
 // Publish runtime files only; browser-test dependencies and fixtures stay outside Pages.
-const files = ['index.html', 'mark.svg', 'style.css', 'app.mjs', 'model.mjs', 'render.mjs', 'render-special.mjs', 'render-color.mjs', 'i18n.mjs', 'preview.mjs', 'telemetry.mjs', 'telemetry-series.mjs', 'telemetry-altitude.mjs', 'weather.mjs'];
+const files = ['index.html', 'mark.svg', 'style.css', 'app.mjs', 'model.mjs', 'render.mjs', 'render-special.mjs', 'render-color.mjs', 'i18n.mjs', 'preview.mjs', 'telemetry.mjs', 'telemetry-series.mjs', 'telemetry-altitude.mjs', 'weather.mjs', 'default-preset.mjs'];
 const destination = new URL('../.build/gauge-pages/', import.meta.url);
 await mkdir(destination, { recursive: true });
 for (const file of files) await copyFile(new URL(file, import.meta.url), new URL(file, destination));

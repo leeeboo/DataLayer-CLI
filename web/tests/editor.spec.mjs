@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { languages, translations } from '../i18n.mjs';
 import { createDocument, createElement, parseDocument } from '../model.mjs';
+import { defaultPreset } from '../default-preset.mjs';
 
 function library() {
   const first = createDocument('Preserved preset'), second = createDocument('Editable preset');
@@ -43,7 +44,7 @@ for (const language of Object.keys(languages)) {
     await expect(page.locator('#add-kind option[value=weather]')).toHaveText(words['gauge.weather']);
     await expect(page.locator('#canvas')).toHaveAttribute('direction', 'ltr');
     await expect(page.locator('#canvas-size')).toHaveCSS('direction', 'ltr');
-    await expect(page.locator('#field-inspector-opacity')).toHaveValue('0.64');
+    await expect(page.locator('#field-inspector-opacity')).toHaveValue('0.42');
     for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
       await page.setViewportSize(viewport);
       const overflow = await page.evaluate(() => {
@@ -99,4 +100,21 @@ test('invalid customization and invalid files do not replace edited work', async
   await upload(page, { presets: [] });
   await expect(page.locator('#layout-name')).toHaveValue('Editable preset');
   expect(await download(page)).toEqual(source);
+});
+
+test('fresh editor starts with the supplied 703 layout, preserves it on export and keeps new templates blank', async ({ page }) => {
+  await page.goto('./?lang=en');
+  await expect(page.locator('#layout-name')).toHaveValue('703');
+  await expect(page.locator('#canvas [data-index]')).toHaveCount(8);
+  await expect(page.locator('#undo')).toBeDisabled();
+  const original = await download(page);
+  expect(original.name).toBe(defaultPreset.name);
+  expect(original.layout).toEqual(defaultPreset.layout);
+  for (const language of ['zh-CN', 'ja', 'ar']) {
+    await page.locator('#language').selectOption(language);
+    expect((await download(page)).layout).toEqual(defaultPreset.layout);
+    await expect(page.locator('#layout-name')).toHaveValue('703');
+  }
+  await page.locator('#new').click();
+  await expect(page.locator('#canvas [data-index]')).toHaveCount(0);
 });

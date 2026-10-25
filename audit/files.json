@@ -134,6 +134,7 @@
   "scripts/verify_export_fixture.py",
   "web/.gitignore",
   "web/app.mjs",
+  "web/default-preset.mjs",
   "web/i18n.mjs",
   "web/index.html",
   "web/mark.svg",

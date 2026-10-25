@@ -3,13 +3,13 @@ import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=2
 import { genericRGBToSRGB, sRGBToGenericRGB } from './render-color.mjs?v=20261025-weather';
 import { escapeXML, renderLayout, svgDefinitions, fontsReady } from './render.mjs?v=20261025-weather';
 import { createPreview } from './preview.mjs?v=20261025-weather';
+import { defaultPreset } from './default-preset.mjs?v=20261025-default-layout';
 
 const $ = id => document.getElementById(id);
 let language = languageFrom(new URLSearchParams(location.search).get('lang') || navigator.language);
 const t = (key, details) => translate(language, key, details);
-let data = createDocument(t('demoName'));
-data.layout.elements = data.layout.elements.filter(e => !['cadence', 'timeDate'].includes(e.kind));
-let activeID = data.id, selectedID = data.layout.elements[1].id;
+let data = { ...createDocument(defaultPreset.name, true), layout: clone(defaultPreset.layout) };
+let activeID = data.id, selectedID = data.layout.elements[0]?.id ?? null;
 let history = new History(snapshot()), saved = exportDocument(data, activeID), drag = null;
 const drafts = new Map();
 let width = 1920, height = 1080, canvasScene = [];
