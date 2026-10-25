@@ -16,7 +16,7 @@ Téléchargez l’archive de votre plateforme et son fichier `.sha256` depuis [R
 
 Le binaire macOS est signé et notarié. Aucun environnement d’exécution supplémentaire n’est nécessaire.
 
-Windows/Linux nécessitent **Swift 6.1.2**, FFmpeg, Cairo/Pango et les polices DejaVu, installés séparément. [Guide d’installation (anglais)](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md)
+Windows/Linux nécessitent **Swift 6.1.2**, FFmpeg, Cairo/Pango et les polices DejaVu, installés séparément. [Guide d’installation](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.fr.md)
 
 Ajoutez le dossier de l’exécutable au `PATH`. Sinon, remplacez `overlay` ci-dessous par `./overlay` sur macOS/Linux ou `.\overlay.exe` dans Windows PowerShell.
 
@@ -70,7 +70,7 @@ Les incrustations transparentes ne contiennent pas de piste audio.
 
 ## Compiler et contribuer
 
-[Compiler depuis les sources (anglais)](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md) · [Guide de développement (anglais)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
+[Compiler depuis les sources](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.fr.md) · [Guide de développement (anglais)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
 
 Licence MIT : voir [LICENSE](LICENSE) et les mentions tierces dans [NOTICE.md](NOTICE.md).
 

@@ -16,7 +16,7 @@
 
 macOS 版本已簽署並通過公證，不需額外安裝執行階段。
 
-Windows/Linux 需另外安裝 **Swift 6.1.2**、FFmpeg、Cairo/Pango 與 DejaVu 字型。 [安裝詳情（英文）](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md)
+Windows/Linux 需另外安裝 **Swift 6.1.2**、FFmpeg、Cairo/Pango 與 DejaVu 字型。 [安裝詳情](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.zh-TW.md)
 
 將執行檔所在目錄加入 `PATH`。尚未設定時，下方的 `overlay` 在 macOS/Linux 上改為 `./overlay`，Windows PowerShell 上改為 `.\overlay.exe`。
 
@@ -70,7 +70,7 @@ overlay --timeline-project "project.dlsproj" --output "result.mov"
 
 ## 編譯與貢獻
 
-[從原始碼編譯（英文）](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md) · [開發指南（英文）](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
+[從原始碼編譯](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.zh-TW.md) · [開發指南（英文）](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
 
 採用 MIT 授權，詳見 [LICENSE](LICENSE)；第三方聲明見 [NOTICE.md](NOTICE.md)。
 

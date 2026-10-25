@@ -16,7 +16,7 @@
 
 الملف التنفيذي لنظام macOS موقّع وموثّق لدى Apple، ولا يحتاج إلى تثبيت بيئة تشغيل إضافية.
 
-يتطلب Windows/Linux تثبيت **Swift 6.1.2** وFFmpeg وCairo/Pango وخطوط DejaVu بشكل منفصل. [دليل التثبيت (بالإنجليزية)](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md)
+يتطلب Windows/Linux تثبيت **Swift 6.1.2** وFFmpeg وCairo/Pango وخطوط DejaVu بشكل منفصل. [دليل التثبيت](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.ar.md)
 
 أضف مجلد الملف التنفيذي إلى `PATH`. إن لم تفعل، استبدل `overlay` في الأمثلة بـ `./overlay` على macOS/Linux أو بـ `.\overlay.exe` في Windows PowerShell.
 
@@ -70,7 +70,7 @@ overlay --timeline-project "project.dlsproj" --output "result.mov"
 
 ## البناء والمساهمة
 
-[البناء من المصدر (بالإنجليزية)](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md) · [دليل التطوير (بالإنجليزية)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
+[البناء من المصدر](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.ar.md) · [دليل التطوير (بالإنجليزية)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
 
 الترخيص MIT؛ راجع [LICENSE](LICENSE) وإشعارات الجهات الخارجية في [NOTICE.md](NOTICE.md).
 

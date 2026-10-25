@@ -16,7 +16,7 @@ Download the matching archive and its `.sha256` checksum from [Releases](https:/
 
 The macOS binary is signed and notarized. No extra runtime installation is needed.
 
-Windows/Linux require **Swift 6.1.2**, FFmpeg, Cairo/Pango and DejaVu fonts, installed separately. [Setup guide (English)](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md)
+Windows/Linux require **Swift 6.1.2**, FFmpeg, Cairo/Pango and DejaVu fonts, installed separately. [Setup guide](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md)
 
 Add the executable’s folder to `PATH`. Without that, replace `overlay` below with `./overlay` on macOS/Linux or `.\overlay.exe` in Windows PowerShell.
 
@@ -70,7 +70,7 @@ Transparent overlays have no audio track.
 
 ## Build and contribute
 
-[Build from source (English)](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md) · [Development guide (English)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
+[Build from source](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md) · [Development guide (English)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
 
 MIT — see [LICENSE](LICENSE) and third-party notices in [NOTICE.md](NOTICE.md).
 

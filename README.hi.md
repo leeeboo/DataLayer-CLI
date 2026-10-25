@@ -16,7 +16,7 @@ FIT/GPX गतिविधि डेटा से पारदर्शी ट�
 
 macOS बाइनरी हस्ताक्षरित है और Apple से नोटराइज़ की गई है। अलग रनटाइम इंस्टॉल करने की आवश्यकता नहीं है।
 
-Windows/Linux पर **Swift 6.1.2**, FFmpeg, Cairo/Pango और DejaVu फ़ॉन्ट अलग से इंस्टॉल करने होंगे। [इंस्टॉलेशन गाइड (अंग्रेज़ी)](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md)
+Windows/Linux पर **Swift 6.1.2**, FFmpeg, Cairo/Pango और DejaVu फ़ॉन्ट अलग से इंस्टॉल करने होंगे। [इंस्टॉलेशन गाइड](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.hi.md)
 
 एक्ज़ीक्यूटेबल का फ़ोल्डर `PATH` में जोड़ें। ऐसा न करने पर नीचे दिए गए `overlay` की जगह macOS/Linux में `./overlay` या Windows PowerShell में `.\overlay.exe` लिखें।
 
@@ -70,7 +70,7 @@ overlay --timeline-project "project.dlsproj" --output "result.mov"
 
 ## बिल्ड और योगदान
 
-[सोर्स से बिल्ड करें (अंग्रेज़ी)](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md) · [डेवलपमेंट गाइड (अंग्रेज़ी)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
+[सोर्स से बिल्ड करें](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.hi.md) · [डेवलपमेंट गाइड (अंग्रेज़ी)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
 
 MIT लाइसेंस: [LICENSE](LICENSE) और तृतीय-पक्ष सूचनाओं के लिए [NOTICE.md](NOTICE.md) देखें।
 

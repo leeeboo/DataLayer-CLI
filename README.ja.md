@@ -16,7 +16,7 @@ FIT/GPX のアクティビティデータから、透明なテレメトリーオ
 
 macOS 版は署名・公証済みです。追加のランタイムは不要です。
 
-Windows/Linux では **Swift 6.1.2**、FFmpeg、Cairo/Pango、DejaVu フォントを別途インストールしてください。 [セットアップ手順（英語）](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md)
+Windows/Linux では **Swift 6.1.2**、FFmpeg、Cairo/Pango、DejaVu フォントを別途インストールしてください。 [セットアップ手順](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.ja.md)
 
 実行ファイルのフォルダーを `PATH` に追加します。未設定の場合、以下の `overlay` を macOS/Linux では `./overlay`、Windows PowerShell では `.\overlay.exe` に置き換えてください。
 
@@ -70,7 +70,7 @@ overlay --timeline-project "project.dlsproj" --output "result.mov"
 
 ## ビルドと開発への参加
 
-[ソースからビルド（英語）](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md) · [開発ガイド（英語）](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
+[ソースからビルド](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.ja.md) · [開発ガイド（英語）](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
 
 MIT ライセンス：[LICENSE](LICENSE)。第三者に関する表記は [NOTICE.md](NOTICE.md) を参照してください。
 

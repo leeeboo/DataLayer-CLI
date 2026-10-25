@@ -16,7 +16,7 @@ Descarga el archivo de tu plataforma y su suma `.sha256` desde [Releases](https:
 
 El ejecutable para macOS está firmado y notarizado. No necesita un entorno de ejecución adicional.
 
-Windows/Linux requieren **Swift 6.1.2**, FFmpeg, Cairo/Pango y las fuentes DejaVu, instalados por separado. [Guía de instalación (inglés)](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md)
+Windows/Linux requieren **Swift 6.1.2**, FFmpeg, Cairo/Pango y las fuentes DejaVu, instalados por separado. [Guía de instalación](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.es.md)
 
 Añade la carpeta del ejecutable a `PATH`. Si no lo haces, sustituye `overlay` por `./overlay` en macOS/Linux o por `.\overlay.exe` en Windows PowerShell.
 
@@ -70,7 +70,7 @@ Las superposiciones transparentes no incluyen una pista de audio.
 
 ## Compilar y contribuir
 
-[Compilar desde el código fuente (inglés)](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md) · [Guía de desarrollo (inglés)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
+[Compilar desde el código fuente](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.es.md) · [Guía de desarrollo (inglés)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
 
 Licencia MIT: consulta [LICENSE](LICENSE) y los avisos de terceros en [NOTICE.md](NOTICE.md).
 

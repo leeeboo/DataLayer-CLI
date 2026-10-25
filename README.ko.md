@@ -16,7 +16,7 @@ FIT/GPX 활동 데이터를 투명한 텔레메트리 오버레이 또는 합성
 
 macOS 실행 파일은 서명 및 공증되었습니다. 별도 런타임 설치가 필요하지 않습니다.
 
-Windows/Linux는 **Swift 6.1.2**, FFmpeg, Cairo/Pango 및 DejaVu 글꼴을 별도로 설치해야 합니다. [설치 안내 (영어)](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md)
+Windows/Linux는 **Swift 6.1.2**, FFmpeg, Cairo/Pango 및 DejaVu 글꼴을 별도로 설치해야 합니다. [설치 안내](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.ko.md)
 
 실행 파일이 있는 폴더를 `PATH`에 추가하세요. 설정하지 않았다면 아래의 `overlay`를 macOS/Linux에서는 `./overlay`, Windows PowerShell에서는 `.\overlay.exe`로 바꾸세요.
 
@@ -70,7 +70,7 @@ overlay --timeline-project "project.dlsproj" --output "result.mov"
 
 ## 빌드 및 기여
 
-[소스에서 빌드 (영어)](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md) · [개발 안내 (영어)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
+[소스에서 빌드](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.ko.md) · [개발 안내 (영어)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
 
 MIT 라이선스입니다. [LICENSE](LICENSE)와 타사 고지 [NOTICE.md](NOTICE.md)를 확인하세요.
 

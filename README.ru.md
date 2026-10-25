@@ -16,7 +16,7 @@
 
 Файл для macOS подписан и нотариально заверен Apple. Дополнительная среда выполнения не нужна.
 
-Для Windows/Linux отдельно установите **Swift 6.1.2**, FFmpeg, Cairo/Pango и шрифты DejaVu. [Инструкция по установке (английский)](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md)
+Для Windows/Linux отдельно установите **Swift 6.1.2**, FFmpeg, Cairo/Pango и шрифты DejaVu. [Инструкция по установке](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.ru.md)
 
 Добавьте папку с исполняемым файлом в `PATH`. Иначе заменяйте `overlay` в примерах на `./overlay` в macOS/Linux или `.\overlay.exe` в Windows PowerShell.
 
@@ -70,7 +70,7 @@ overlay --timeline-project "project.dlsproj" --output "result.mov"
 
 ## Сборка и участие в разработке
 
-[Сборка из исходников (английский)](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md) · [Руководство разработчика (английский)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
+[Сборка из исходников](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.ru.md) · [Руководство разработчика (английский)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
 
 Лицензия MIT: см. [LICENSE](LICENSE) и уведомления о сторонних компонентах в [NOTICE.md](NOTICE.md).
 
