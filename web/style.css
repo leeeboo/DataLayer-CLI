@@ -355,7 +355,7 @@ h3 {
 .weather-settings { margin-top: 10px; }
 .weather-settings summary { cursor: pointer; font-size: 12px; }
 .weather-settings a { display: inline-block; margin-top: 8px; font-size: 12px; }
-.weather-settings label { margin-top: 10px; font-size: 12px; }
+.weather-settings label { display: block; margin-top: 10px; font-size: 12px; }
 .weather-controls { display: flex; flex-wrap: wrap; gap: 8px; }
 .weather-controls input { flex: 1 1 180px; width: 0; min-width: 120px; }
 .weather-controls button { font-size: 12px; }
