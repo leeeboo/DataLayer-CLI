@@ -1,5 +1,5 @@
-import { createNativeSeries, sampleNativeSeries, dateNativeSeries, wallElapsed, correctingRunningDecelerations } from './telemetry-series.mjs?v=20261025-native-data';
-import { applyingQuantizedAltitudeDisplaySmoothing } from './telemetry-altitude.mjs?v=20261025-native-data';
+import { createNativeSeries, sampleNativeSeries, dateNativeSeries, wallElapsed, correctingRunningDecelerations } from './telemetry-series.mjs?v=20261025-weather';
+import { applyingQuantizedAltitudeDisplaySmoothing } from './telemetry-altitude.mjs?v=20261025-weather';
 
 // Local-only parsing. FIT wire format: https://developer.garmin.com/fit/articles/fit-protocol/fit_protocol.html
 const MAX_BYTES = 50 * 1024 * 1024;
@@ -54,6 +54,23 @@ function finish(series, timeZoneOffsetSeconds, sport) {
   const samples = series.samples.map(sample => ({ ...sample, wallElapsed: wallElapsed(series, sample.elapsed), ...calendarFields(sample.date, timeZoneOffsetSeconds) }));
   return { ...series, samples, nativeSeries: series, startDate: finite(series.activityStartDate) ? new Date(series.activityStartDate * 1000).toISOString() : undefined,
     timeZoneOffsetSeconds, sport };
+}
+
+// Matches TimelineExportService.applyingWeatherRecords: nearest record, first on ties, at most six hours away.
+export function applyingWeatherRecords(activity, records) {
+  if (!records.length) return activity;
+  const source = activity.nativeSeries ?? activity;
+  const samples = source.samples.map(sample => {
+    if (!finite(sample.date)) return sample;
+    let nearest, distance = Infinity;
+    for (const record of records) {
+      const delta = Math.abs(record.timestamp - sample.date);
+      if (delta < distance) { nearest = record; distance = delta; }
+    }
+    return distance <= 6 * 3600 ? { ...sample, weatherTemperatureCelsius: nearest.temperatureCelsius,
+      weatherHumidityPercent: nearest.humidityPercent, weatherSummary: nearest.summary } : sample;
+  });
+  return finish(createNativeSeries(samples, source.pausedRanges), activity.timeZoneOffsetSeconds, activity.sport);
 }
 
 export function previewAt(activity, wall) {

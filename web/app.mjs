@@ -1,8 +1,8 @@
-import { accents, fonts, gauges, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, History } from './model.mjs?v=20261025-native-data';
-import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261025-native-data';
-import { genericRGBToSRGB, sRGBToGenericRGB } from './render-color.mjs?v=20261025-native-data';
-import { escapeXML, renderLayout, svgDefinitions, fontsReady } from './render.mjs?v=20261025-native-data';
-import { createPreview } from './preview.mjs?v=20261025-native-data';
+import { accents, fonts, gauges, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, History } from './model.mjs?v=20261025-weather';
+import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261025-weather';
+import { genericRGBToSRGB, sRGBToGenericRGB } from './render-color.mjs?v=20261025-weather';
+import { escapeXML, renderLayout, svgDefinitions, fontsReady } from './render.mjs?v=20261025-weather';
+import { createPreview } from './preview.mjs?v=20261025-weather';
 
 const $ = id => document.getElementById(id);
 let language = languageFrom(new URLSearchParams(location.search).get('lang') || navigator.language);

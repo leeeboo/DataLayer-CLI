@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Edit DataLayer Studio layout templates and preview local video with FIT/GPX activity data. All files stay in your browser.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src blob:; connect-src https://api.openweathermap.org; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Gauge Layout Editor · DataLayer Studio</title>
   <link rel="icon" href="./mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=20261025-native-data">
-  <script type="module" src="./app.mjs?v=20261025-native-data"></script>
+  <link rel="stylesheet" href="./style.css?v=20261025-weather">
+  <script type="module" src="./app.mjs?v=20261025-weather"></script>
 </head>
 <body>
   <header class="app-header">
@@ -47,6 +47,14 @@
           <div class="media-file"><button id="import-activity" data-t="importActivity">FIT / GPX</button><bdi class="file-name" id="activity-name"></bdi><button id="remove-activity" class="text-button" aria-label="Remove activity" data-t-aria="removeActivity" hidden>×</button></div>
         </div>
         <p class="hint" data-t="localPreviewHelp">Files stay in this browser and are not saved in the template.</p>
+        <details class="weather-settings">
+          <summary data-t="weatherSettings">Weather API (optional)</summary>
+          <p id="weather-help" class="hint" data-t="weatherHelp">Requires OpenWeather One Call 4.0. Clicking Load sends the activity’s start coordinates, time and Key to OpenWeather and uses your API quota. The Key stays on this page and is never saved in the template.</p>
+          <a href="https://home.openweathermap.org/api_keys" target="_blank" rel="noopener noreferrer" data-t="weatherGetKey">Get an API Key</a>
+          <label for="weather-key" data-t="weatherKey">OpenWeather API Key</label>
+          <div class="weather-controls"><input id="weather-key" type="password" autocomplete="off" spellcheck="false" maxlength="256" dir="ltr" aria-describedby="weather-help"><button id="load-weather" type="button" data-t="weatherLoad" disabled>Load weather</button><button id="clear-weather" type="button" data-t="weatherClear">Clear weather &amp; Key</button></div>
+          <p id="weather-status" class="status" role="status" aria-live="polite"></p>
+        </details>
         <input id="video-file" type="file" accept="video/*,.mp4,.mov,.m4v,.webm" hidden>
         <input id="activity-file" type="file" accept=".fit,.gpx" hidden>
       </section>

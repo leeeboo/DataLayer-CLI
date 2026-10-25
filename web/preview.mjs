@@ -1,4 +1,5 @@
-import { parseTelemetryFile, previewAt } from './telemetry.mjs?v=20261025-native-data';
+import { parseTelemetryFile, previewAt, applyingWeatherRecords } from './telemetry.mjs?v=20261025-weather';
+import { weatherAnchor, loadWeatherRecords, clearWeatherCache, WeatherError } from './weather.mjs?v=20261025-weather';
 
 const $ = id => document.getElementById(id);
 const clamp = (value, max) => Math.max(0, Math.min(max, value));
@@ -13,6 +14,8 @@ export function createPreview({ t, redraw, videoSize }) {
   let video = $('preview-video'), videoURL, videoName = '', activity, activityName = '', offset = 0, time = 0;
   let playing = false, raf = 0, lastDraw = 0, playStart = 0, playTime = 0, videoGeneration = 0, activityGeneration = 0;
   let pendingVideo, videoLoading = false, activityLoading = false, message;
+  let baseActivity, weatherRequest, weatherMessage;
+  $('weather-key').value = '';
   const duration = () => videoURL ? video.duration : activity?.duration ?? 0;
   const currentTime = () => videoURL ? video.currentTime : time;
   const frame = () => activity ? previewAt(activity, currentTime() + (videoURL ? offset : 0))
@@ -32,6 +35,10 @@ export function createPreview({ t, redraw, videoSize }) {
     $('range-warning').textContent = activity && !preview.inRange ? t('outsideActivity') : '';
     $('media-status').textContent = message ? t(message.key) : '';
     $('media-status').classList.toggle('error', !!message?.error);
+    $('load-weather').disabled = !!weatherRequest || activityLoading || !weatherAnchor(baseActivity) || !$('weather-key').value.trim();
+    $('load-weather').textContent = t(weatherRequest ? 'weatherLoading' : 'weatherLoad');
+    $('weather-status').textContent = t(weatherMessage?.key ?? (activity && activity !== baseActivity ? 'weatherLoaded' : 'weatherIdle'));
+    $('weather-status').classList.toggle('error', !!weatherMessage?.error);
   }
   function update() { refresh(); redraw(); }
   function stop() {
@@ -61,13 +68,15 @@ export function createPreview({ t, redraw, videoSize }) {
     update();
   }
   function resetTime() { offset = 0; $('sync-offset').value = '0'; seek(0); }
+  function cancelWeather() { weatherRequest?.abort(); weatherRequest = undefined; }
   async function loadActivity(file) {
     if (!file) return;
     const generation = ++activityGeneration; activityLoading = true; message = undefined; refresh();
     try {
       const next = await parseTelemetryFile(file);
       if (generation !== activityGeneration) return;
-      pause(); activity = next; activityName = file.name; resetTime();
+      cancelWeather(); weatherMessage = undefined;
+      pause(); activity = baseActivity = next; activityName = file.name; resetTime();
     } catch (error) {
       if (generation === activityGeneration) setMessage(activityErrors[error.code] ?? 'activityInvalid', true);
     } finally { if (generation === activityGeneration) { activityLoading = false; update(); } }
@@ -107,7 +116,26 @@ export function createPreview({ t, redraw, videoSize }) {
     const url = videoURL; videoURL = undefined; videoName = ''; video.removeAttribute('src'); video.load(); video.hidden = true;
     if (url) URL.revokeObjectURL(url); $('canvas-wrap').classList.remove('has-video'); message = undefined; resetTime(); update();
   };
-  $('remove-activity').onclick = () => { ++activityGeneration; activityLoading = false; pause(); activity = undefined; activityName = ''; message = undefined; resetTime(); update(); };
+  $('remove-activity').onclick = () => { ++activityGeneration; cancelWeather(); weatherMessage = undefined; activityLoading = false; pause(); activity = baseActivity = undefined; activityName = ''; message = undefined; resetTime(); update(); };
+  $('weather-key').oninput = () => { cancelWeather(); weatherMessage = undefined; refresh(); };
+  $('load-weather').onclick = async () => {
+    if (!baseActivity || !weatherAnchor(baseActivity)) { weatherMessage = { key: 'weatherNeedsLocation', error: true }; refresh(); return; }
+    cancelWeather();
+    const controller = new AbortController(), source = baseActivity;
+    weatherRequest = controller; weatherMessage = undefined; refresh();
+    try {
+      const result = await loadWeatherRecords(source, $('weather-key').value, document.documentElement.lang, controller.signal);
+      if (weatherRequest !== controller || baseActivity !== source) return;
+      activity = applyingWeatherRecords(source, result.records);
+      weatherMessage = { key: result.cached ? 'weatherCached' : 'weatherLoaded' };
+    } catch (error) {
+      if (weatherRequest === controller && !controller.signal.aborted) weatherMessage = { key: error instanceof WeatherError ? error.code : 'weatherRequestError', error: true };
+    } finally { if (weatherRequest === controller) { weatherRequest = undefined; update(); } }
+  };
+  $('clear-weather').onclick = () => {
+    cancelWeather(); clearWeatherCache(); $('weather-key').value = ''; activity = baseActivity;
+    weatherMessage = { key: 'weatherCleared' }; update();
+  };
   $('play').onclick = async () => {
     if (playing) { pause(); return; }
     if (currentTime() >= duration()) seek(0);
@@ -120,7 +148,7 @@ export function createPreview({ t, redraw, videoSize }) {
     if (input.value === '' || !input.checkValidity() || !Number.isFinite(value)) return;
     offset = value; update();
   };
-  window.addEventListener('pagehide', event => { if (!event.persisted) { ++videoGeneration; pendingVideo?.(); video.pause(); stop(); if (videoURL) URL.revokeObjectURL(videoURL); } });
+  window.addEventListener('pagehide', event => { if (!event.persisted) { cancelWeather(); $('weather-key').value = ''; clearWeatherCache(); ++videoGeneration; pendingVideo?.(); video.pause(); stop(); if (videoURL) URL.revokeObjectURL(videoURL); } });
   refresh();
   return { frame, renderLabels:refresh, pause, loadActivity, loadVideo };
 }

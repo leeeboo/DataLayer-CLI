@@ -1,6 +1,6 @@
-import { catalog, bounds as baseBounds } from './model.mjs?v=20261025-native-data';
-import { genericRGBToSRGB } from './render-color.mjs?v=20261025-native-data';
-import { drawSpecial } from './render-special.mjs?v=20261025-native-data';
+import { catalog, bounds as baseBounds } from './model.mjs?v=20261025-weather';
+import { genericRGBToSRGB } from './render-color.mjs?v=20261025-weather';
+import { drawSpecial } from './render-special.mjs?v=20261025-weather';
 
 export const escapeXML = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
 function nativeCSS(red, green, blue, alpha) {

@@ -164,5 +164,8 @@
   "web/tests/telemetry-altitude.test.mjs",
   "web/tests/telemetry-browser.spec.mjs",
   "web/tests/telemetry-series.test.mjs",
-  "web/tests/telemetry.test.mjs"
+  "web/tests/telemetry.test.mjs",
+  "web/tests/weather.spec.mjs",
+  "web/tests/weather.test.mjs",
+  "web/weather.mjs"
 ]

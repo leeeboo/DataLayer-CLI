@@ -352,6 +352,14 @@ h3 {
 .media-file button { flex-shrink: 0; padding: 8px; font-size: 12px; }
 .file-name { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .media-panel .hint { margin-top: 8px; font-size: 11px; }
+.weather-settings { margin-top: 10px; }
+.weather-settings summary { cursor: pointer; font-size: 12px; }
+.weather-settings a { display: inline-block; margin-top: 8px; font-size: 12px; }
+.weather-settings label { margin-top: 10px; font-size: 12px; }
+.weather-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.weather-controls input { flex: 1 1 180px; width: 0; min-width: 120px; }
+.weather-controls button { font-size: 12px; }
+.weather-settings .status { font-size: 11px; overflow-wrap: anywhere; }
 .playback-bar { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
 .playback-bar button { min-width: 72px; }
 .playback-bar output { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }

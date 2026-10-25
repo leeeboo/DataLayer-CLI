@@ -1,4 +1,4 @@
-import { activeElapsed } from './telemetry-series.mjs?v=20261025-native-data';
+import { activeElapsed } from './telemetry-series.mjs?v=20261025-weather';
 
 // Mirrors TelemetrySeries.applyingQuantizedAltitudeDisplaySmoothing; FIT alone gates manufacturer 294.
 export function applyingQuantizedAltitudeDisplaySmoothing(series) {
