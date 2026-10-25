@@ -17,7 +17,7 @@ async function download(page) {
   const pending = page.waitForEvent('download');
   await page.locator('#download').click();
   const file = await pending;
-  expect(file.suggestedFilename()).toBe('layout.json');
+  expect(file.suggestedFilename()).toBe('layout.dlspreset');
   return parseDocument(await readFile(await file.path(), 'utf8'));
 }
 test('new page bypasses a stale unversioned locale module', async ({ page }) => {

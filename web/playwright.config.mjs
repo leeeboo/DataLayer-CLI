@@ -3,6 +3,7 @@ import { defineConfig } from '@playwright/test';
 const externalURL = process.env.WEB_EDITOR_URL;
 export default defineConfig({
   testDir: './tests',
+  testMatch: '**/*.spec.mjs',
   timeout: 30000,
   workers: 2,
   fullyParallel: true,

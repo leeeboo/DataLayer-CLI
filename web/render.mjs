@@ -1,6 +1,6 @@
-import { catalog, bounds as baseBounds } from './model.mjs?v=20261025-nativegauges';
-import { genericRGBToSRGB } from './render-color.mjs?v=20261025-nativegauges';
-import { drawSpecial } from './render-special.mjs?v=20261025-nativegauges';
+import { catalog, bounds as baseBounds } from './model.mjs?v=20261025-realpreview';
+import { genericRGBToSRGB } from './render-color.mjs?v=20261025-realpreview';
+import { drawSpecial } from './render-special.mjs?v=20261025-realpreview';
 
 export const escapeXML = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
 function nativeCSS(red, green, blue, alpha) {

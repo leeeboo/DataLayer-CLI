@@ -1,7 +1,8 @@
-import { accents, fonts, gauges, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, History } from './model.mjs?v=20261025-nativegauges';
-import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261025-nativegauges';
-import { genericRGBToSRGB, sRGBToGenericRGB } from './render-color.mjs?v=20261025-nativegauges';
-import { escapeXML, renderLayout, svgDefinitions, fontsReady } from './render.mjs?v=20261025-nativegauges';
+import { accents, fonts, gauges, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, History } from './model.mjs?v=20261025-realpreview';
+import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261025-realpreview';
+import { genericRGBToSRGB, sRGBToGenericRGB } from './render-color.mjs?v=20261025-realpreview';
+import { escapeXML, renderLayout, svgDefinitions, fontsReady } from './render.mjs?v=20261025-realpreview';
+import { createPreview } from './preview.mjs?v=20261025-realpreview';
 
 const $ = id => document.getElementById(id);
 let language = languageFrom(new URLSearchParams(location.search).get('lang') || navigator.language);
@@ -12,6 +13,11 @@ let activeID = data.id, selectedID = data.layout.elements[1].id;
 let history = new History(snapshot()), saved = exportDocument(data, activeID), drag = null;
 const drafts = new Map();
 let width = 1920, height = 1080, canvasScene = [];
+const localPreview = createPreview({ t, redraw:renderCanvas, videoSize:(w,h) => {
+  const value = `${w}x${h}`, choices = $('canvas-size');
+  if (![...choices.options].some(option => option.value === value)) { const option = element('option', '', `${w} × ${h}`); option.value = value; choices.append(option); }
+  choices.value = value; width = w; height = h; render();
+} });
 function snapshot() { return { data, activeID, selectedID }; }
 function restore(value) { ({ data, activeID, selectedID } = clone(value)); }
 const preset = () => presets(data).find(p => p.id === activeID) ?? presets(data)[0];
@@ -144,7 +150,7 @@ function renderCanvas() {
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`); svg.style.aspectRatio = `${width}/${height}`;
   $('canvas-wrap').style.setProperty('--canvas-ratio', width / height);
   let content = svgDefinitions;
-  canvasScene = renderLayout(layout, width, height);
+  canvasScene = renderLayout(layout, width, height, localPreview.frame());
   if ($('grid').checked) {
     content += '<g fill="none" stroke="#bdccd5" stroke-opacity=".09" stroke-width="1">';
     for (let n = 1; n < 10; n++) content += `<path d="M ${width * n / 10} 0 V ${height} M 0 ${height * n / 10} H ${width}"/>`;
@@ -181,14 +187,15 @@ function render() {
   preset().layout.elements.forEach(e => {
     const row = element('div', `layer${e.id === selectedID ? ' selected' : ''}${e.frame.isVisible ? '' : ' is-hidden'}`);
     const select = element('button', 'layer-name', title(e)); select.type = 'button'; select.setAttribute('aria-pressed', String(e.id === selectedID));
-    select.onclick = () => { selectedID = e.id; render(); }; row.append(select);
+    select.onclick = () => { selectedID = e.id; render(); $('canvas').focus({ preventScroll:true }); }; row.append(select);
     const eye = element('button', 'layer-eye'); eye.type = 'button'; eye.setAttribute('aria-label', `${t(e.frame.isVisible ? 'hide' : 'show')} ${title(e)}`);
     eye.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
     eye.onclick = () => mutate(() => { e.frame.isVisible = !e.frame.isVisible; }); row.append(eye); layers.append(row);
   });
   renderGlobal(); renderInspector(); renderCanvas();
+  localPreview.renderLabels();
   $('undo').disabled = history.index === 0; $('redo').disabled = history.index >= history.entries.length - 1;
-  $('command').textContent = `overlay --fit "activity.fit" --layout-preset "layout.json" --width ${width} --height ${height} --codec prores-4444 --output "overlay.mov"`;
+  $('command').textContent = `overlay --fit "activity.fit" --layout-preset "layout.dlspreset" --width ${width} --height ${height} --codec prores-4444 --output "overlay.mov"`;
   for (const id of open) if ($(id)) $(id).open = true;
   if (focus && $(focus)) { $(focus).focus({ preventScroll: true }); if (typeof selection === 'number' && ['text', 'textarea'].includes($(focus).type)) $(focus).setSelectionRange(selection, selection); }
 }
@@ -205,12 +212,12 @@ async function importFile(file) {
 $('import').onclick = () => $('file').click();
 $('file').onchange = async () => { await importFile($('file').files[0]); $('file').value = ''; };
 $('download').onclick = () => {
-  const invalid = document.querySelector('input:invalid');
+  const invalid = document.querySelector('.sidebar input:invalid, .inspector input:invalid');
   if (invalid) { invalid.reportValidity(); status(`${t('errorInput')}: ${invalid.getAttribute('aria-label')}`, true); return; }
   if (drafts.size) { status(t('advancedHelp') + ' — ' + t('apply') + ' / ' + t('undo'), true); return; }
   try {
     const json = exportDocument(data, activeID), url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-    const link = element('a'); link.href = url; link.download = 'layout.json'; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const link = element('a'); link.href = url; link.download = 'layout.dlspreset'; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     saved = json; status(t('downloaded'));
   } catch (error) { status(errorMessage(error, language), true); }
 };
@@ -232,6 +239,7 @@ $('canvas').onpointerdown = event => {
   if (event.button !== 0) return;
   const target = event.target.closest('[data-index]'), resize = event.target.hasAttribute('data-resize');
   if (!target && !resize) return;
+  localPreview.pause();
   if (target) selectedID = preset().layout.elements[Number(target.dataset.index)].id;
   const e = selected(); if (!e) return;
   const p = point(event); drag = { start: p, frame: clone(e.frame), box: canvasScene.find(item => item.id === e.id).bounds, resize, previous: clone(snapshot()) };
@@ -242,7 +250,7 @@ $('canvas').onpointermove = event => {
   if (drag.resize) {
     e.frame.scale = Math.max(0.1, Math.min(4, drag.frame.scale * Math.max(1 + (p.x - drag.start.x) / drag.box.width, 1 + (p.y - drag.start.y) / drag.box.height)));
     e.frame.x = drag.frame.x; e.frame.y = drag.frame.y;
-    const next = renderLayout(preset().layout, width, height).find(item => item.id === e.id).bounds;
+    const next = renderLayout(preset().layout, width, height, localPreview.frame()).find(item => item.id === e.id).bounds;
     e.frame.x = Math.max(-1, Math.min(2, e.frame.x + (drag.box.x - next.x) / width));
     e.frame.y = Math.max(-1, Math.min(2, e.frame.y + (drag.box.y - next.y) / height));
   }
@@ -265,6 +273,8 @@ $('canvas').onkeydown = event => {
 document.addEventListener('keydown', event => {
   if (event.target.matches('input,textarea,select') || event.target.isContentEditable) return;
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); (event.shiftKey ? $('redo') : $('undo')).click(); return; }
+  // Safari can deliver media-control arrow keys to the page body instead of the slider.
+  if (!event.target.closest('#canvas, #layers')) return;
   const e = selected(); if (!e || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Delete', 'Backspace'].includes(event.key)) return;
   event.preventDefault();
   if (['Delete', 'Backspace'].includes(event.key)) { const b = document.querySelector('.inspector-actions .danger'); b?.click(); return; }
@@ -273,7 +283,14 @@ document.addEventListener('keydown', event => {
 });
 document.addEventListener('dragover', event => { if ([...event.dataTransfer.types].includes('Files')) { event.preventDefault(); $('canvas-wrap').classList.add('drop-active'); } });
 document.addEventListener('dragleave', event => { if (!event.relatedTarget) $('canvas-wrap').classList.remove('drop-active'); });
-document.addEventListener('drop', event => { event.preventDefault(); $('canvas-wrap').classList.remove('drop-active'); importFile(event.dataTransfer.files[0]); });
+document.addEventListener('drop', async event => {
+  event.preventDefault(); $('canvas-wrap').classList.remove('drop-active');
+  for (const file of event.dataTransfer.files) {
+    if (/\.(fit|gpx)$/i.test(file.name)) await localPreview.loadActivity(file);
+    else if (file.type.startsWith('video/') || /\.(mp4|mov|m4v|webm|mkv|avi)$/i.test(file.name)) await localPreview.loadVideo(file);
+    else await importFile(file);
+  }
+});
 window.addEventListener('beforeunload', event => { if (dirty()) { event.preventDefault(); event.returnValue = ''; } });
 new ResizeObserver(renderCanvas).observe($('canvas'));
 render(); status(t('ready'));

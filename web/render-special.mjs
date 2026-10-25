@@ -61,8 +61,8 @@ function drawRoute(e, env) {
   let points = series.samples.filter(p => finite(p.latitude ?? p.lat) && finite(p.longitude ?? p.lon));
   if (points.length < 2) return '';
   const lat = p => p.latitude ?? p.lat, lon = p => p.longitude ?? p.lon;
-  const minLat = Math.min(...points.map(lat)), maxLat = Math.max(...points.map(lat));
-  const minLon = Math.min(...points.map(lon)), maxLon = Math.max(...points.map(lon));
+  let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+  for (const p of points) { minLat = Math.min(minLat, lat(p)); maxLat = Math.max(maxLat, lat(p)); minLon = Math.min(minLon, lon(p)); maxLon = Math.max(maxLon, lon(p)); }
   const latSpan = Math.max(maxLat - minLat, 0.000001), lonSpan = Math.max(maxLon - minLon, 0.000001);
   const limit = env.routePointLimit ?? 900;
   if (limit <= 0) return '';
@@ -146,7 +146,8 @@ function altitudeGeometry(series) {
   const total = Math.max(series.totalDistanceMeters, vertices.at(-1).distanceMeters);
   if (total <= 0) return null;
   if (total > vertices.at(-1).distanceMeters + 0.000001) vertices.push({ distanceMeters: total, altitudeMeters: vertices.at(-1).altitudeMeters });
-  const minimum = Math.min(...vertices.map(v => v.altitudeMeters)), maximum = Math.max(...vertices.map(v => v.altitudeMeters));
+  let minimum = Infinity, maximum = -Infinity;
+  for (const vertex of vertices) { minimum = Math.min(minimum, vertex.altitudeMeters); maximum = Math.max(maximum, vertex.altitudeMeters); }
   if (vertices.length > 4096) {
     const source = vertices;
     vertices = Array.from({ length: 4096 }, (_, i) => source[Math.round(i * (source.length - 1) / 4095)]);

@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Create and edit DataLayer Studio gauge layouts in your browser. Import a preset, arrange gauges, and download JSON for DataLayer-CLI.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="description" content="Edit DataLayer Studio layout templates and preview local video with FIT/GPX activity data. All files stay in your browser.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Gauge Layout Editor · DataLayer Studio</title>
   <link rel="icon" href="./mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=20261025-nativegauges">
-  <script type="module" src="./app.mjs?v=20261025-nativegauges"></script>
+  <link rel="stylesheet" href="./style.css?v=20261025-realpreview">
+  <script type="module" src="./app.mjs?v=20261025-realpreview"></script>
 </head>
 <body>
   <header class="app-header">
@@ -16,8 +16,8 @@
     <h1 data-t="title">Gauge Layout Editor</h1>
     <div class="header-actions">
       <select id="language" aria-label="Language" data-t-aria="language"><option value="en">English</option><option value="zh-CN">简体中文</option><option value="zh-TW">繁體中文</option><option value="ja">日本語</option></select>
-      <button id="import" data-t="import">Import JSON</button>
-      <button id="download" class="primary" data-t="download">Download JSON</button>
+      <button id="import" data-t="import">Import template</button>
+      <button id="download" class="primary" data-t="download">Download template</button>
       <input id="file" type="file" accept=".json,.dlspreset,application/json" hidden>
     </div>
   </header>
@@ -40,14 +40,29 @@
         <label class="toggle"><input id="background" type="checkbox"><span data-t="background">Solid background</span></label>
         <button id="fit" data-t="fit">Fit</button>
       </div>
+      <section class="media-panel" aria-label="Local preview media" data-t-aria="mediaRegion">
+        <h2 data-t="previewSources">Preview media</h2>
+        <div class="media-files">
+          <div class="media-file"><button id="import-video" data-t="importVideo">Local video</button><bdi class="file-name" id="video-name"></bdi><button id="remove-video" class="text-button" aria-label="Remove video" data-t-aria="removeVideo" hidden>×</button></div>
+          <div class="media-file"><button id="import-activity" data-t="importActivity">FIT / GPX</button><bdi class="file-name" id="activity-name"></bdi><button id="remove-activity" class="text-button" aria-label="Remove activity" data-t-aria="removeActivity" hidden>×</button></div>
+        </div>
+        <p class="hint" data-t="localPreviewHelp">Files stay in this browser and are not saved in the template.</p>
+        <input id="video-file" type="file" accept="video/*,.mp4,.mov,.m4v,.webm" hidden>
+        <input id="activity-file" type="file" accept=".fit,.gpx" hidden>
+      </section>
       <div id="canvas-wrap" class="canvas-wrap checker">
+        <video id="preview-video" playsinline preload="metadata" aria-label="Local video preview" data-t-aria="videoLabel" hidden></video>
         <svg id="canvas" direction="ltr" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" tabindex="0" role="group" aria-label="Gauge layout canvas" data-t-aria="canvasLabel"></svg>
         <p id="empty-canvas" data-t="empty" hidden>Add a gauge to start your layout.</p>
       </div>
-      <p class="preview-note" data-t="preview">Layout preview · sample values · fonts and rendering can differ from native export.</p>
+      <div class="playback-bar"><button id="play" type="button" disabled>Play</button><input id="seek" type="range" min="0" max="0" step="0.01" value="0" aria-label="Preview time" data-t-aria="seek" dir="ltr" disabled><output id="preview-time" dir="ltr">00:00 / 00:00</output></div>
+      <label class="sync-control" for="sync-offset"><span data-t="syncOffset">Activity time at video 0 s (seconds)</span><input id="sync-offset" type="number" step="any" value="0" dir="ltr" disabled><small data-t="syncHelp">Activity time = video time + offset.</small></label>
+      <p id="media-status" class="status" role="status" aria-live="polite"></p>
+      <p id="range-warning" class="hint" role="status"></p>
+      <p id="preview-note" class="preview-note" data-t="preview">Layout preview · sample values · fonts and rendering can differ from native export.</p>
       <p class="shortcut" data-t="shortcut">Drag to move · corner handle to scale · arrow keys to nudge</p>
       <div class="command-strip"><code id="command"></code><button id="copy" data-t="copy">Copy command</button></div>
-      <p class="file-help" data-t="fileHelp">Import .json or .dlspreset, up to 5 MB.</p>
+      <p class="file-help" data-t="fileHelp">Layout template: .dlspreset, up to 5 MB.</p>
       <p id="status" class="status" role="status" aria-live="polite"></p>
       <noscript>This editor needs JavaScript. No files are uploaded to a server.</noscript>
     </section>

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:unit": "node --test ../scripts/test_web_editor.mjs tests/render-rules.test.mjs",
+    "test:unit": "node --test ../scripts/test_web_editor.mjs tests/render-rules.test.mjs tests/telemetry.test.mjs",
     "test:e2e": "node prepare-site.mjs && playwright test"
   },
   "devDependencies": {

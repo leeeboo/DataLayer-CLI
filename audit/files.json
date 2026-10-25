@@ -142,11 +142,17 @@
   "web/package.json",
   "web/playwright.config.mjs",
   "web/prepare-site.mjs",
+  "web/preview.mjs",
   "web/render-color.mjs",
   "web/render-special.mjs",
   "web/render.mjs",
   "web/style.css",
+  "web/telemetry.mjs",
   "web/tests/editor.spec.mjs",
+  "web/tests/media-fixtures.mjs",
+  "web/tests/media.spec.mjs",
   "web/tests/native-rules.spec.mjs",
-  "web/tests/render-rules.test.mjs"
+  "web/tests/render-rules.test.mjs",
+  "web/tests/telemetry-browser.spec.mjs",
+  "web/tests/telemetry.test.mjs"
 ]

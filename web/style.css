@@ -327,6 +327,7 @@ h3 {
   background-image: none;
 }
 .canvas-wrap svg {
+  position: relative;
   display: block;
   width: 100%;
   height: auto;
@@ -334,6 +335,30 @@ h3 {
   touch-action: none;
   user-select: none;
 }
+.canvas-wrap video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  pointer-events: none;
+}
+.canvas-wrap.has-video { background: #000; }
+.media-panel { margin-bottom: 16px; padding: 12px; border: 1px solid var(--line); border-radius: 7px; }
+.media-panel h2 { font-size: 12px; font-weight: 550; margin-bottom: 8px; color: var(--muted); }
+.media-files { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.media-file { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.media-file button { flex-shrink: 0; padding: 8px; font-size: 12px; }
+.file-name { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.media-panel .hint { margin-top: 8px; font-size: 11px; }
+.playback-bar { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.playback-bar button { min-width: 72px; }
+.playback-bar output { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sync-control { display: grid; grid-template-columns: minmax(0,1fr) 100px; align-items: center; gap: 6px 12px; margin-top: 10px; }
+.sync-control small { grid-column: 1/-1; line-height: 1.5; }
+#media-status:empty, #range-warning:empty { display: none; }
+@media (max-width: 1100px) { .media-files { grid-template-columns: minmax(0,1fr); } }
 .canvas-wrap svg [data-index] {
   cursor: move;
 }
