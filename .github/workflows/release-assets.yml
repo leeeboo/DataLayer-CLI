@@ -1,0 +1,53 @@
+name: Stage verified CLI release assets
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing vX.Y.Z tag and draft release
+        required: true
+      run_id:
+        description: Successful main CLI CI run containing verified native packages
+        required: true
+permissions:
+  contents: read
+jobs:
+  stage:
+    if: github.repository == 'leeeboo/DataLayer-CLI' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: leeeboo/DataLayer-CLI
+      TAG: ${{ inputs.tag }}
+      RUN_ID: ${{ inputs.run_id }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Require successful main CI and an unpublished release at the same commit
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ && "$RUN_ID" =~ ^[0-9]+$ ]]
+          revision=$(git rev-parse "$TAG^{commit}")
+          test "$revision" = "$(git rev-parse origin/main)"
+          gh api "repos/$GH_REPO/actions/runs/$RUN_ID" | jq -e --arg sha "$revision" \
+            '.status == "completed" and .conclusion == "success" and .head_sha == $sha and .head_branch == "main" and .path == ".github/workflows/ci.yml"'
+          gh release view "$TAG" --json isDraft | jq -e '.isDraft == true'
+      - name: Download the verified binaries, dependency sources and checksums
+        run: |
+          gh run download "$RUN_ID" -n release-linux -n release-windows -n sources-linux -n sources-windows --dir assets
+          find assets -type f -exec mv -t . {} +
+          for platform in Linux Windows; do
+            extension=tar.gz
+            if [ "$platform" = Windows ]; then extension=zip; fi
+            archive="DataLayer-CLI-${TAG}-${platform}-x86_64.$extension"
+            sources="DataLayer-CLI-${TAG}-${platform}-x86_64-dependency-sources.tar"
+            test -f "$archive" && test -f "$sources"
+            sha256sum -c "$archive.sha256" "$sources.sha256"
+          done
+      - name: Upload to the draft without overwriting assets or publishing
+        run: |
+          gh release view "$TAG" --json isDraft | jq -e '.isDraft == true'
+          gh release upload "$TAG" DataLayer-CLI-*.tar.gz DataLayer-CLI-*.zip DataLayer-CLI-*-dependency-sources.tar DataLayer-CLI-*.sha256

@@ -2,6 +2,7 @@
   ".githooks/pre-commit",
   ".github/workflows/ci.yml",
   ".github/workflows/pages.yml",
+  ".github/workflows/release-assets.yml",
   ".gitignore",
   "AUDIT.md",
   "CONTRIBUTING.md",

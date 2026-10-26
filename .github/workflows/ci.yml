@@ -292,8 +292,17 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - name: Install media comparison runtime
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-linux
+          path: comparison-runtime
+      - name: Use the verified bundled media comparison runtime
+        run: |
+          (cd comparison-runtime && sha256sum -c *.sha256)
+          tar -xzf comparison-runtime/*.tar.gz -C comparison-runtime
+          runtime="$PWD/comparison-runtime/DataLayer-CLI-${CLI_RELEASE_VERSION}-Linux-x86_64/runtime"
+          echo "$runtime/bin" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=$runtime/lib" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@v8
         with:
           pattern: export-*
