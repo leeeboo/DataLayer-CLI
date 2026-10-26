@@ -116,6 +116,10 @@ class ReleaseChecks(unittest.TestCase):
                         packaging.package("v0.1.2", binary, root / system, collected, sources)
 
     def testMissingDependenciesFailRatherThanUsingIncompleteRelease(self):
+        failure=runtime.subprocess.CalledProcessError(1,['dpkg-query'],stderr='no package owner')
+        with patch.object(runtime.subprocess,'check_output',side_effect=failure):
+            with self.assertRaises(runtime.subprocess.CalledProcessError):
+                runtime.run('dpkg-query','-S','/lib/alias.so')
         with patch.object(runtime, "run", return_value="libswiftCore.so => not found"):
             with self.assertRaisesRegex(ValueError, "Unresolved"):
                 runtime.linux_dependencies("overlay")

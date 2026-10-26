@@ -34,7 +34,8 @@ def run(*args):
     try:
         return subprocess.check_output(args, text=True, stderr=subprocess.PIPE).strip()
     except subprocess.CalledProcessError as error:
-        raise RuntimeError(str(args[0]) + " failed: " + error.stderr) from error
+        error.add_note(error.stderr or "")
+        raise
 
 
 def digest(path):
