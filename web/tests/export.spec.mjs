@@ -7,6 +7,8 @@ import {nals,nalLayer,nalType} from '../export/mp4.mjs';
 async function open(page,lang='en'){
   await page.goto(`./export/?lang=${lang}`);
   await expect.poll(()=>page.evaluate(()=>crossOriginIsolated&&!!navigator.serviceWorker.controller).catch(()=>false),{timeout:20000}).toBe(true);
+  // The isolation reload can expose its document before its stylesheets finish.
+  await page.waitForLoadState('load');
   await expect(page.locator('#language')).toBeEnabled();
 }
 async function activity(page){
