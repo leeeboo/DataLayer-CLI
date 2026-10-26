@@ -107,6 +107,8 @@ def collect(binary, destination, source_directory):
         shutil.copytree("/usr/share/common-licenses", destination / "licenses/common")
 
     def provider(path):
+        if system == "Windows" and path.name.lower().startswith(("msvcp", "vcruntime", "concrt")):
+            return "Microsoft-VC-Runtime"
         if any(path.resolve().is_relative_to(p) for p in swift_dirs):
             return "Swift"
         if system == "Windows":
@@ -130,7 +132,8 @@ def collect(binary, destination, source_directory):
                             dest.parent.mkdir(parents=True, exist_ok=True)
                             shutil.copy2(local, dest)
             return query
-        for candidate in [path, pathlib.Path(str(path).replace("/usr/lib/", "/lib/"))]:
+        for candidate in [path, path.resolve(), pathlib.Path(str(path).replace("/usr/lib/", "/lib/")),
+                          pathlib.Path("/usr" + str(path))]:
             try:
                 query = run("dpkg-query", "-S", str(candidate)).split(": ", 1)[0]
                 break
