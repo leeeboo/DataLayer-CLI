@@ -42,6 +42,8 @@ function health(page){const errors=[],requests=[];page.on('pageerror',e=>errors.
 test('prototype loads, localizes all twelve languages and fits a mobile viewport',async({page})=>{
   const result=health(page);await open(page);
   await expect(page.locator('#layout-name')).toHaveText('703');await expect(page.locator('#export')).toBeDisabled();
+  expect(await page.locator('.export-canvas').evaluate(n=>getComputedStyle(n).backgroundImage)).not.toBe('none');
+  expect((await page.locator('#language').boundingBox()).width).toBeLessThanOrEqual(180);
   for(const locale of Object.keys(languages)){
     await page.locator('#language').selectOption(locale);
     await expect(page.locator('html')).toHaveAttribute('lang',locale);await expect(page.locator('h1')).toHaveText(translations[locale].exportTitle);

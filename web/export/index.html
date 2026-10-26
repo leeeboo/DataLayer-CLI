@@ -5,7 +5,7 @@
 <!-- WebKit native select labels require exactly text-overflow:inherit. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; style-src-attr 'unsafe-hashes' 'sha256-3oFxofzq3N//6J8H86e9ul4WT2OkJrtonB66gn/TLJw='; img-src 'self' blob: data:; media-src blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>HEVC Alpha prototype · DataLayer Studio</title>
-<link rel="icon" href="../mark.svg"><link rel="stylesheet" href="../style.css?v=20261025-weather"><link rel="stylesheet" href="./style.css?v=20261026-alpha1">
+<link rel="icon" href="../mark.svg"><link rel="stylesheet" href="../style.css?v=20261025-weather"><link rel="stylesheet" href="./style.css?v=20261026-alpha2">
 <script type="module" src="./app.mjs?v=20261026-alpha1"></script>
 </head>
 <body>
@@ -24,7 +24,7 @@
 <div class="export-actions"><button id="export" type="submit" class="primary" data-t="exportStartButton" disabled>Encode transparent H.265</button><button id="cancel" type="button" data-t="exportCancel" hidden>Cancel</button><a id="download" class="export-download" data-t="exportDownload" hidden>Download overlay</a></div>
 </form>
 <p id="status" class="status" role="status" aria-live="polite"></p><p id="result" role="status"></p>
-<div class="checker export-canvas"><canvas id="preview" width="1920" height="1080" aria-label="Overlay preview"></canvas></div>
+<div class="canvas-wrap checker export-canvas"><canvas id="preview" width="1920" height="1080" aria-label="Overlay preview"></canvas></div>
 <p class="hint" data-t="exportPlayback">Encoding works independently of browser HEVC playback. Some browsers, including Firefox, show HEVC without transparency; use an editor that supports HEVC Alpha to check the downloaded file.</p>
 <p class="hint" data-t="exportBitrateHelp">Bitrate is an encoding target, not a guaranteed file size. Software encoding can be slower than real time. The prototype keeps only one raw frame and up to 128 MiB of compressed video.</p>
 <p class="hint" data-t="exportWeather">This prototype uses weather in the activity or template; it does not read the editor's Weather Key or cache.</p>
