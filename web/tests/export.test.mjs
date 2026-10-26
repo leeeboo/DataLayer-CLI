@@ -100,21 +100,25 @@ test('isolation rechecks registration and asks an existing worker to claim the n
   }
 });
 
-test('root isolation worker installs the full handler synchronously at first evaluation',async()=>{
-  const {runInNewContext}=await import('node:vm'),events=[];
+test('root isolation worker installs without a second fetch and retains its installation task',async()=>{
+  const {runInNewContext}=await import('node:vm'),events=new Map(),skipped=Promise.resolve();
   const context={URL,Headers,Response,fetch:async()=>new Response('ok'),navigator:{},
-    self:{location:{origin:'https://example.test',href:'https://example.test/isolation-worker.mjs'},
-      addEventListener:(name)=>events.push(name)},
-    importScripts:url=>{assert.equal(new URL(url,'https://example.test/isolation-worker.mjs').pathname,'/export/isolation-worker.mjs');runInNewContext(readFileSync(new URL('../export/isolation-worker.mjs',import.meta.url),'utf8'),context);}};
+    self:{location:{origin:'https://example.test',href:'https://example.test/isolation-worker.mjs'},skipWaiting:()=>skipped,
+      addEventListener:(name,callback)=>events.set(name,callback)},
+    importScripts:()=>assert.fail('Root worker must not load a second script')};
   runInNewContext(readFileSync(new URL('../isolation-worker.mjs',import.meta.url),'utf8'),context);
-  assert.deepEqual(events,['install','activate','message','fetch']);
+  assert.deepEqual([...events.keys()],['install','activate','message','fetch']);
+  let task;events.get('install')({waitUntil:value=>{task=value;}});assert.equal(task,skipped);
+  let imported;runInNewContext(readFileSync(new URL('../export/isolation-worker.mjs',import.meta.url),'utf8'),{
+    importScripts:url=>{imported=new URL(url,'https://example.test/export/isolation-worker.mjs').pathname;}});
+  assert.equal(imported,'/isolation-worker.mjs');
 });
 
 test('isolation worker handles WebKit null-body revalidation statuses and never proxies another origin',async()=>{
   const {runInNewContext}=await import('node:vm');
   const listeners=new Map();let response,handled,claimed=0;
   const context={URL,Headers,Response,fetch:async()=>response,self:{clients:{claim:async()=>{claimed++;}},location:{origin:'https://example.test',href:'https://example.test/export/isolation-worker.mjs'},addEventListener:(name,callback)=>listeners.set(name,callback)}};
-  runInNewContext(readFileSync(new URL('../export/isolation-worker.mjs',import.meta.url),'utf8'),context);
+  runInNewContext(readFileSync(new URL('../isolation-worker.mjs',import.meta.url),'utf8'),context);
   let claim;listeners.get('message')({data:{type:'dls-claim'},waitUntil:task=>{claim=task;}});await claim;assert.equal(claimed,1);
   listeners.get('message')({data:{type:'other'},waitUntil:()=>assert.fail('unknown message must not claim clients')});assert.equal(claimed,1);
   for(const status of [200,204,205,304]){

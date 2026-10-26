@@ -40,7 +40,9 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Install ${{ matrix.browser }}
         working-directory: web
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then sudo sh ../scripts/configure_ubuntu_ci_apt.sh; fi
+          npx playwright install --with-deps ${{ matrix.browser }}
       - name: Check all languages and browser editing workflows
         working-directory: web
         env:

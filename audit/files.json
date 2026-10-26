@@ -127,6 +127,7 @@
   "scripts/check_source_boundary.py",
   "scripts/collect_portable_runtime.py",
   "scripts/compare_export_fixture.py",
+  "scripts/configure_ubuntu_ci_apt.sh",
   "scripts/package_portable_release.py",
   "scripts/package_release.sh",
   "scripts/portable_launcher.c",
