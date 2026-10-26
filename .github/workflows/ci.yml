@@ -157,7 +157,7 @@ jobs:
           msystem: UCRT64
           update: true
           install: >-
-            libarchive
+            bsdtar
             mingw-w64-ucrt-x86_64-pango
             mingw-w64-ucrt-x86_64-cairo
             mingw-w64-ucrt-x86_64-ffmpeg
