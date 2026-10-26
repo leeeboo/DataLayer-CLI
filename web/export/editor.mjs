@@ -1,0 +1,58 @@
+import {clone} from '../model.mjs?v=20261025-weather';
+import {previewAt} from '../telemetry.mjs?v=20261025-weather';
+import {translate} from './i18n.mjs?v=20261026-integrated1';
+import {exportConfig} from './config.mjs?v=20261026-full1';
+import {paint,encodeOverlay,exportFilename} from './encoder-client.mjs?v=20261026-integrated1';
+import {cleanupExports} from './storage.mjs?v=20261026-full1';
+
+export function createEditorExport({language,source,beforeOpen,report,canEncode}) {
+  const $=id=>document.getElementById(`export-${id}`),dialog=$('dialog');
+  const t=(key,details)=>translate(language(),key,details);
+  let controller,downloadFile,generation=0,lastActivity,statusMessage;
+  function status(key,error=false,details){statusMessage={key,error,details};$('status').textContent=t(key,details);$('status').classList.toggle('error',error);}
+  function labels(){
+    document.getElementById('web-export').textContent=t('exportVideo');
+    dialog.querySelectorAll('[data-export-t]').forEach(node=>node.textContent=t(node.dataset.exportT));
+    $('close').setAttribute('aria-label',t('exportClose'));$('preview').setAttribute('aria-label',t('canvasLabel'));
+    if(statusMessage)status(statusMessage.key,statusMessage.error,statusMessage.details);
+  }
+  function discard(){if(downloadFile){downloadFile.remove().catch(()=>{});downloadFile=undefined;}$('download').hidden=true;$('download').removeAttribute('href');$('result').textContent='';}
+  function lock(value){for(const node of dialog.querySelectorAll('input,select,button'))node.disabled=value;$('cancel').disabled=false;$('cancel').hidden=!value;$('encode').disabled=value||!canEncode;}
+  async function preview(){
+    const current=++generation,{preset,activity}=source();if(!activity)return;
+    try{const [w,h]=$('size').value.split('x').map(Number),canvas=document.createElement('canvas');await paint(canvas,preset.layout,w,h,previewAt(activity,Number($('start').value)||0));if(current!==generation||controller)return;const target=$('preview');target.width=w;target.height=h;target.getContext('2d').drawImage(canvas,0,0);}
+    catch{if(current===generation)status('exportError',true);}
+  }
+  document.getElementById('web-export').onclick=async()=>{
+    if(!beforeOpen())return;
+    const {preset,activity,activityLabel,width,height}=source();
+    if(!activity){report(t('exportNeedsActivity'),true);document.getElementById('import-activity').focus();return;}
+    discard();$('layout').textContent=preset.name;$('activity').textContent=activityLabel;
+    if(activity!==lastActivity){lastActivity=activity;$('start').value='0';$('duration').value=String(activity.duration);}
+    const size=`${width}x${height}`;if([...$('size').options].some(o=>o.value===size))$('size').value=size;
+    labels();lock(false);$('encode').disabled=true;status(canEncode?'ready':'exportUnsupported',!canEncode);dialog.showModal();preview();
+    if(canEncode)try{await cleanupExports();if(!controller)$('encode').disabled=false;}catch{status('exportStorageError',true);$('encode').disabled=true;}
+  };
+  $('close').onclick=()=>dialog.close();
+  dialog.addEventListener('close',()=>{++generation;document.getElementById('web-export').focus({preventScroll:true});});
+  dialog.addEventListener('cancel',event=>{if(controller){event.preventDefault();controller.abort();}});
+  $('cancel').onclick=()=>controller?.abort();
+  for(const id of ['size','fps','start','duration','bitrate'])$(id).onchange=()=>{discard();preview();};
+  $('full').onclick=()=>{const {activity}=source();if(!activity)return;$('start').value='0';$('duration').value=String(activity.duration);discard();preview();};
+  $('form').onsubmit=async event=>{
+    event.preventDefault();if(controller)return;
+    const {preset,activity}=source();if(!activity){status('exportNeedsActivity',true);return;}
+    let settings;try{settings=exportConfig(Object.fromEntries(['size','fps','start','duration','bitrate'].map(id=>[id,$(id).value])),activity.duration);}catch{status('exportInvalid',true);return;}
+    discard();controller=new AbortController();const signal=controller.signal;lock(true);++generation;
+    try{
+      const {file,size,seconds}=await encodeOverlay({layout:clone(preset.layout),activity,settings,signal,onProgress:({canvas,...progress})=>{
+        const target=$('preview');if(target.width!==settings.width)target.width=settings.width;if(target.height!==settings.height)target.height=settings.height;const context=target.getContext('2d');context.clearRect(0,0,target.width,target.height);context.drawImage(canvas,0,0);status('exportProgress',false,progress);
+      }});
+      downloadFile=file;$('download').href=new URL(`./download/${file.name}/${encodeURIComponent(exportFilename(preset.name))}`,location.href).href;$('download').hidden=false;
+      $('result').textContent=t('exportDone',{frames:settings.frames,duration:(settings.frames/settings.fps).toFixed(3),seconds:seconds.toFixed(2),speed:(settings.frames/seconds).toFixed(2),size:(size/1048576).toFixed(2)});status('ready');
+    }catch(error){status(signal.aborted?'exportCancelled':error.message==='exportStorageError'||error.name==='QuotaExceededError'?'exportStorageError':'exportError',!signal.aborted);}
+    finally{controller=undefined;lock(false);}
+  };
+  window.addEventListener('pagehide',event=>{controller?.abort();if(!event.persisted)discard();});
+  return {renderLabels:labels,get running(){return !!controller;}};
+}

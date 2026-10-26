@@ -19,6 +19,12 @@ export const translations=Object.fromEntries(Object.entries(values).map(([code,l
   if(list.length!==keys.length)throw Error(`Incomplete export translations: ${code}`);
   return [code,Object.fromEntries(keys.map((key,index)=>[key,list[index]]))];
 }));
+const editorLabels={
+'en':['Export transparent video','Close'], 'zh-CN':['导出透明视频','关闭'], 'zh-TW':['匯出透明影片','關閉'], 'ja':['透過動画を書き出す','閉じる'],
+'ko':['투명 동영상 내보내기','닫기'], 'es':['Exportar vídeo transparente','Cerrar'], 'fr':['Exporter une vidéo transparente','Fermer'], 'de':['Transparentes Video exportieren','Schließen'],
+'pt-BR':['Exportar vídeo transparente','Fechar'], 'ru':['Экспорт прозрачного видео','Закрыть'], 'ar':['تصدير فيديو شفاف','إغلاق'], 'hi':['पारदर्शी वीडियो निर्यात करें','बंद करें']
+};
+for(const [code,[exportVideo,exportClose]]of Object.entries(editorLabels))Object.assign(translations[code],{exportVideo,exportClose});
 export function translate(language,key,details={}) {
   const text=translations[language]?.[key];
   return text ? text.replace(/\{(\w+)\}/g,(_,name)=>String(details[name]??`{${name}}`)) : common(language,key,details);

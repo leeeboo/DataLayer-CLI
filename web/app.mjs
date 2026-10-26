@@ -2,8 +2,11 @@ import { accents, fonts, gauges, clone, createElement, createDocument, presets, 
 import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261026-alpha1';
 import { genericRGBToSRGB, sRGBToGenericRGB } from './render-color.mjs?v=20261025-weather';
 import { escapeXML, renderLayout, svgDefinitions, fontsReady } from './render.mjs?v=20261025-weather';
-import { createPreview } from './preview.mjs?v=20261025-weather';
+import { createPreview } from './preview.mjs?v=20261026-integrated1';
+import {prepareIsolation} from './export/isolation.mjs?v=20261026-integrated1';
+import {createEditorExport} from './export/editor.mjs?v=20261026-integrated1';
 import { defaultPreset } from './default-preset.mjs?v=20261025-default-layout';
+const canEncode=await prepareIsolation(new URL('./isolation-worker.mjs?v=20261026-integrated1',import.meta.url));
 
 const $ = id => document.getElementById(id);
 let language = languageFrom(new URLSearchParams(location.search).get('lang') || navigator.language);
@@ -18,6 +21,7 @@ const localPreview = createPreview({ t, redraw:renderCanvas, videoSize:(w,h) => 
   if (![...choices.options].some(option => option.value === value)) { const option = element('option', '', `${w} × ${h}`); option.value = value; choices.append(option); }
   choices.value = value; width = w; height = h; render();
 } });
+const videoExport=createEditorExport({language:()=>language,source:()=>({preset:preset(),...localPreview.exportSource(),width,height}),canEncode,report:status,beforeOpen:()=>{if(!validateExportEdits())return false;localPreview.pause();return true;}});
 function snapshot() { return { data, activeID, selectedID }; }
 function restore(value) { ({ data, activeID, selectedID } = clone(value)); }
 const preset = () => presets(data).find(p => p.id === activeID) ?? presets(data)[0];
@@ -173,7 +177,6 @@ function renderCanvas() {
 function render() {
   const focus = document.activeElement?.id, selection = document.activeElement?.selectionStart;
   const open = new Set([...document.querySelectorAll('details[open]')].map(node => node.id));
-  $('web-export')?.setAttribute('href', `./export/?lang=${language}`);
   document.documentElement.lang = language; document.title = `${t('title')} · DataLayer Studio`;
   document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
   document.querySelectorAll('[data-t]').forEach(node => { node.textContent = t(node.dataset.t); });
@@ -194,7 +197,7 @@ function render() {
     eye.onclick = () => mutate(() => { e.frame.isVisible = !e.frame.isVisible; }); row.append(eye); layers.append(row);
   });
   renderGlobal(); renderInspector(); renderCanvas();
-  localPreview.renderLabels();
+  localPreview.renderLabels();videoExport.renderLabels();
   $('undo').disabled = history.index === 0; $('redo').disabled = history.index >= history.entries.length - 1;
   $('command').textContent = `overlay --fit "activity.fit" --layout-preset "layout.dlspreset" --width ${width} --height ${height} --codec prores-4444 --output "overlay.mov"`;
   for (const id of open) if ($(id)) $(id).open = true;
@@ -212,10 +215,14 @@ async function importFile(file) {
 }
 $('import').onclick = () => $('file').click();
 $('file').onchange = async () => { await importFile($('file').files[0]); $('file').value = ''; };
-$('download').onclick = () => {
+function validateExportEdits() {
   const invalid = document.querySelector('.sidebar input:invalid, .inspector input:invalid');
-  if (invalid) { invalid.reportValidity(); status(`${t('errorInput')}: ${invalid.getAttribute('aria-label')}`, true); return; }
-  if (drafts.size) { status(t('advancedHelp') + ' — ' + t('apply') + ' / ' + t('undo'), true); return; }
+  if (invalid) { invalid.reportValidity(); status(`${t('errorInput')}: ${invalid.getAttribute('aria-label')}`, true); return false; }
+  if (drafts.size) { status(t('advancedHelp') + ' — ' + t('apply') + ' / ' + t('undo'), true); return false; }
+  return true;
+}
+$('download').onclick = () => {
+  if(!validateExportEdits())return;
   try {
     const json = exportDocument(data, activeID), url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
     const link = element('a'); link.href = url; link.download = 'layout.dlspreset'; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -272,6 +279,7 @@ $('canvas').onkeydown = event => {
   if (target && ['Enter', ' '].includes(event.key)) { event.preventDefault(); selectedID = preset().layout.elements[Number(target.dataset.index)].id; render(); $('canvas').focus(); }
 };
 document.addEventListener('keydown', event => {
+  if ($('export-dialog').open) return;
   if (event.target.matches('input,textarea,select') || event.target.isContentEditable) return;
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); (event.shiftKey ? $('redo') : $('undo')).click(); return; }
   // Safari can deliver media-control arrow keys to the page body instead of the slider.
@@ -286,13 +294,17 @@ document.addEventListener('dragover', event => { if ([...event.dataTransfer.type
 document.addEventListener('dragleave', event => { if (!event.relatedTarget) $('canvas-wrap').classList.remove('drop-active'); });
 document.addEventListener('drop', async event => {
   event.preventDefault(); $('canvas-wrap').classList.remove('drop-active');
+  if ($('export-dialog').open) return;
   for (const file of event.dataTransfer.files) {
     if (/\.(fit|gpx)$/i.test(file.name)) await localPreview.loadActivity(file);
     else if (file.type.startsWith('video/') || /\.(mp4|mov|m4v|webm|mkv|avi)$/i.test(file.name)) await localPreview.loadVideo(file);
     else await importFile(file);
   }
 });
-window.addEventListener('beforeunload', event => { if (dirty()) { event.preventDefault(); event.returnValue = ''; } });
+window.addEventListener('beforeunload', event => { if (dirty() || videoExport.running) { event.preventDefault(); event.returnValue = ''; } });
 new ResizeObserver(renderCanvas).observe($('canvas'));
 render(); status(t('ready'));
 fontsReady.then(renderCanvas);
+
+document.querySelectorAll('[data-editor-loading]').forEach(node=>{node.inert=false;node.removeAttribute('aria-busy');});
+document.documentElement.dataset.editorReady='true';

@@ -1,3 +1,4 @@
+import {openEditor} from './editor-page.mjs';
 import { test, expect } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -16,7 +17,7 @@ test('all synthetic telemetry scenarios match native Swift inside the browser', 
   });
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
-  await page.goto('./?lang=en');
+  await openEditor(page,'./?lang=en');
   const result = await page.evaluate(async cases => {
     const native = await import('./telemetry-series.mjs?v=20261025-native-data');
     const { applyingQuantizedAltitudeDisplaySmoothing } = await import('./telemetry-altitude.mjs?v=20261025-native-data');

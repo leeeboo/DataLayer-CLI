@@ -1,3 +1,4 @@
+import {openEditor} from './editor-page.mjs';
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { createDocument, createElement } from '../model.mjs';
@@ -31,7 +32,7 @@ async function download(page) {
 
 test('template labels and local preview controls are translated in all twelve languages',async({page})=>{
   for(const language of Object.keys(languages)){
-    await page.goto(`./?lang=${language}`);
+    await openEditor(page,`./?lang=${language}`);
     await expect(page.locator('#import')).toHaveText(translations[language].import);
     await expect(page.locator('#download')).toHaveText(translations[language].download);
     await expect(page.locator('#import-video')).toHaveText(translations[language].importVideo);
@@ -43,7 +44,7 @@ test('template labels and local preview controls are translated in all twelve la
 
 test('local H.264 video decodes behind gauges, plays, seeks, offsets and preserves the template',async({page})=>{
   const errors=[],writes=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(!['GET','HEAD'].includes(r.method()))writes.push(r.method());});
-  await page.goto('./?lang=en');const source=await template(page);await uploadActivity(page);await video(page);
+  await openEditor(page,'./?lang=en');const source=await template(page);await uploadActivity(page);await video(page);
   expect(await page.locator('#preview-video').getAttribute('src')).toMatch(/^blob:/);
   const pixel=await page.locator('#preview-video').evaluate(node=>{
     const canvas=document.createElement('canvas');canvas.width=1;canvas.height=1;const c=canvas.getContext('2d');c.drawImage(node,0,0,1,1);return [...c.getImageData(0,0,1,1).data];
@@ -63,7 +64,7 @@ test('local H.264 video decodes behind gauges, plays, seeks, offsets and preserv
 });
 
 test('unplayable replacement preserves the working video, and removal restores activity-only playback',async({page})=>{
-  await page.goto('./?lang=en');await uploadActivity(page);await video(page);
+  await openEditor(page,'./?lang=en');await uploadActivity(page);await video(page);
   const source=await page.locator('#preview-video').getAttribute('src');
   await page.locator('#video-file').setInputFiles({name:'unsupported.mp4',mimeType:'video/mp4',buffer:Buffer.from('invalid container')});
   await expect(page.locator('#media-status')).toHaveText(translations.en.videoUnsupported,{timeout:20000});
@@ -75,14 +76,14 @@ test('unplayable replacement preserves the working video, and removal restores a
 });
 
 test('video without activity shows missing metrics and never borrows demo telemetry',async({page})=>{
-  await page.goto('./?lang=en');await template(page);await video(page);
+  await openEditor(page,'./?lang=en');await template(page);await video(page);
   await expect(page.locator('#preview-note')).toHaveText(translations.en.previewVideoOnly);
   await expect(page.locator('#canvas text').filter({hasText:/^148$/})).toHaveCount(0);
   await expect(page.locator('#canvas text').filter({hasText:/^--$/})).toHaveCount(1);
 });
 
 test('local FIT input drives real gauge values on the same wall-clock seek control',async({page})=>{
-  await page.goto('./?lang=en');const source=await template(page);
+  await openEditor(page,'./?lang=en');const source=await template(page);
   await page.locator('#activity-file').setInputFiles({name:'activity.fit',mimeType:'application/octet-stream',buffer:syntheticFIT});
   await expect(page.locator('#activity-name')).toContainText('5 samples');
   await expect(page.locator('#canvas text').filter({hasText:/^110$/})).toHaveCount(1);
@@ -92,7 +93,7 @@ test('local FIT input drives real gauge values on the same wall-clock seek contr
 });
 
 test('media arrow keys cannot move a gauge; selecting a layer still enables canvas nudge keys',async({page})=>{
-  await page.goto('./?lang=en');const source=await template(page);await uploadActivity(page);await video(page);
+  await openEditor(page,'./?lang=en');const source=await template(page);await uploadActivity(page);await video(page);
   await page.locator('#canvas .hit').click();await page.locator('#seek').click();
   await page.locator('body').dispatchEvent('keydown',{key:'ArrowRight',bubbles:true});
   expect(await download(page)).toEqual(source);

@@ -1,3 +1,4 @@
+import {openEditor} from './editor-page.mjs';
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { createDocument, createElement, parseDocument } from '../model.mjs';
@@ -14,7 +15,7 @@ test.beforeEach(async ({ page, baseURL }) => {
       failures.push(`External request: ${request.url()}`);
   });
   page.on('pageerror', error => failures.push(error.message));
-  await page.goto('./?lang=en');
+  await openEditor(page,'./?lang=en');
 });
 test.afterEach(async ({ page }) => { expect(requests.get(page)).toEqual([]); });
 

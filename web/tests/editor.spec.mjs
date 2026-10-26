@@ -1,3 +1,4 @@
+import {openEditor} from './editor-page.mjs';
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { languages, translations } from '../i18n.mjs';
@@ -27,7 +28,7 @@ test('new page bypasses a stale unversioned locale module', async ({ page }) => 
     contentType: 'text/javascript',
     body: "export const translations = {}; export function languageFrom() { return 'en'; }",
   }));
-  await page.goto('./?lang=fr');
+  await openEditor(page,'./?lang=fr');
   await expect(page.locator('h1')).toHaveText(translations.fr.title);
   await expect(page.locator('#language option')).toHaveCount(12);
 });
@@ -35,7 +36,7 @@ for (const language of Object.keys(languages)) {
   test(`${language}: localized controls, errors and responsive layout`, async ({ page }) => {
     const errors = []; page.on('pageerror', error => errors.push(error.message));
     const words = translations[language];
-    await page.goto(`./?lang=${language}`);
+    await openEditor(page,`./?lang=${language}`);
     await expect(page.locator('h1')).toHaveText(words.title);
     await expect(page.locator('html')).toHaveAttribute('lang', language);
     await expect(page.locator('html')).toHaveAttribute('dir', language === 'ar' ? 'rtl' : 'ltr');
@@ -60,7 +61,7 @@ for (const language of Object.keys(languages)) {
   });
 }
 test('switching all languages preserves the complete imported layout and Alpha', async ({ page }) => {
-  await page.goto('./?lang=en'); const source = library(); await upload(page, source);
+  await openEditor(page,'./?lang=en'); const source = library(); await upload(page, source);
   for (const language of Object.keys(languages)) {
     await page.locator('#language').selectOption(language);
     expect(await download(page)).toEqual(source);
@@ -68,7 +69,7 @@ test('switching all languages preserves the complete imported layout and Alpha',
 });
 test('import, edit, drag, resize, undo and export preserve unrelated data', async ({ page }) => {
   const errors = []; page.on('pageerror', error => errors.push(error.message));
-  await page.goto('./?lang=en'); const source = library(); await upload(page, source);
+  await openEditor(page,'./?lang=en'); const source = library(); await upload(page, source);
   const uploads = []; page.on('request', request => { if (request.method() !== 'GET') uploads.push(request.url()); });
   await page.locator('#field-inspector-x').fill('0.15'); await page.locator('#field-inspector-x').press('Tab');
   await expect(page.locator('#field-inspector-x')).toHaveValue('0.15');
@@ -91,7 +92,7 @@ test('import, edit, drag, resize, undo and export preserve unrelated data', asyn
   expect(uploads).toEqual([]); expect(errors).toEqual([]);
 });
 test('invalid customization and invalid files do not replace edited work', async ({ page }) => {
-  await page.goto('./?lang=fr'); const source = library(); await upload(page, source);
+  await openEditor(page,'./?lang=fr'); const source = library(); await upload(page, source);
   await page.locator('#advanced summary').click();
   const original = await page.locator('#custom-json').inputValue();
   await page.locator('#custom-json').fill('{'); await page.locator('#advanced button').first().click();
@@ -103,7 +104,7 @@ test('invalid customization and invalid files do not replace edited work', async
 });
 
 test('fresh editor starts with the supplied 703 layout, preserves it on export and keeps new templates blank', async ({ page }) => {
-  await page.goto('./?lang=en');
+  await openEditor(page,'./?lang=en');
   await expect(page.locator('#layout-name')).toHaveValue('703');
   await expect(page.locator('#canvas [data-index]')).toHaveCount(8);
   await expect(page.locator('#undo')).toBeDisabled();

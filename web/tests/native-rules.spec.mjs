@@ -1,3 +1,4 @@
+import {openEditor} from './editor-page.mjs';
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { isAbsolute } from 'node:path';
@@ -63,7 +64,7 @@ for (const { kind } of gauges) {
   test(`${kind}: native artwork, dynamic hit bounds, drag, resize, undo and visibility`, async ({ page }) => {
     const errors = []; page.on('pageerror', error => errors.push(error.message));
     const source = documentWith(positioned(kind));
-    await page.goto('./?lang=en'); await upload(page, source);
+    await openEditor(page,'./?lang=en'); await upload(page, source);
     const group = page.locator('#canvas [data-index="0"]'), hit = group.locator('.hit');
     await expect(group).toBeVisible(); await expect(group.locator('text,path,rect,circle,ellipse,line').nth(1)).toBeAttached();
     expect(await textOverflow(page)).toEqual([]);
@@ -94,7 +95,7 @@ for (const { kind } of gauges) {
 
 test('timeDate renders three native rows with a common right edge and real baselines', async ({ page }) => {
   const e = positioned('timeDate'); e.frame.scale = 1;
-  await page.goto('./?lang=en'); await upload(page, documentWith(e));
+  await openEditor(page,'./?lang=en'); await upload(page, documentWith(e));
   const rows = await page.locator('#canvas [data-index="0"] text').evaluateAll(nodes => nodes.map(node => {
     const x = node.x.baseVal[0].value, y = node.y.baseVal[0].value, length = node.getComputedTextLength();
     const anchor = getComputedStyle(node).textAnchor;
@@ -108,7 +109,7 @@ test('timeDate renders three native rows with a common right edge and real basel
 
 test('metric baselines follow CoreText coordinates and lengthScale preserves glyph width', async ({ page }) => {
   const e = positioned('heartRate'); e.frame.scale = 1;
-  await page.goto('./?lang=en'); await upload(page, documentWith(e));
+  await openEditor(page,'./?lang=en'); await upload(page, documentWith(e));
   const value = page.locator('#canvas [data-index="0"] text').filter({ hasText: /^148$/ });
   const label = page.locator('#canvas [data-index="0"] text').filter({ hasText: /^HR$/ });
   expect(await label.evaluate(n => n.y.baseVal[0].value)).toBeCloseTo(216 + 9 + 10 * 0.78, 4);
@@ -123,7 +124,7 @@ test('macOS: all five font faces keep their native measured tile dimensions', as
   test.skip(process.platform !== 'darwin', 'Native reference dimensions require the macOS system fonts');
   const e = positioned('heartRate'); Object.assign(e.frame, { x: 0.2, y: 0.2, scale: 1 });
   Object.assign(e.customization, { labelOverride: 'WIDE METRIC 123', labelScale: 2.4, valueScale: 1.4, unitScale: 2.4 });
-  await page.goto('./?lang=en'); await upload(page, documentWith(e));
+  await openEditor(page,'./?lang=en'); await upload(page, documentWith(e));
   // Fixed OverlayRenderer/CoreText bounds measured on 2026-10-25 at 1920 × 1080.
   const native = [
     ['helveticaNeue', 230.704, 85.2], ['helveticaNeueBold', 238.624, 85.2],
@@ -143,7 +144,7 @@ test('macOS: all five font faces keep their native measured tile dimensions', as
 test('font and accent selectors persist string enums, preserve other fields and support undo/redo', async ({ page }) => {
   const e = positioned('heartRate'); e.customization.labelOverride = 'Keep this label';
   const source = documentWith(e); source.futureMetadata = { keep: 'selector regression' };
-  await page.goto('./?lang=en'); await upload(page, source);
+  await openEditor(page,'./?lang=en'); await upload(page, source);
   const choices = { labelFont: 'helveticaNeue', valueFont: 'futuraCondensedExtraBold', unitFont: 'menloBold', accent: 'amber' };
   for (const [field, value] of Object.entries(choices)) {
     await page.locator(`#field-inspector-${field}`).selectOption(value);
@@ -174,7 +175,7 @@ test('macOS: weather cloud keeps the native glyph ink size rather than a smaller
   test.skip(process.platform !== 'darwin', 'Native weather glyph reference requires macOS system fonts');
   const e = positioned('weather'); e.frame.scale = 1; e.frame.style.textScale = 1;
   e.customization.iconFont = 'helveticaNeueBold'; e.customization.iconScale = 2; e.customization.iconOverride = 'clouds';
-  await page.goto('./?lang=en'); await upload(page, documentWith(e));
+  await openEditor(page,'./?lang=en'); await upload(page, documentWith(e));
   const icon = page.locator('#canvas text').filter({ hasText: /^☁︎$/ });
   await expect(icon).toHaveAttribute('font-family', /^DLS Weather W6,/);
   const ink = await icon.evaluate(async node => {
@@ -195,7 +196,7 @@ test('macOS: weather cloud keeps the native glyph ink size rather than a smaller
 
 test('long visible text expands aligned hit bounds and resizing one tile preserves its sibling', async ({ page }) => {
   const heart = positioned('heartRate'), pace = positioned('pace'); pace.frame.y = 0.5;
-  await page.goto('./?lang=en'); await upload(page, documentWith(heart, pace));
+  await openEditor(page,'./?lang=en'); await upload(page, documentWith(heart, pace));
   const hits = page.locator('#canvas .hit'), initial = await logicalBox(hits.nth(0));
   await edit(page, '#field-inspector-label', 'Long translated label 超长标签 長いラベル');
   await edit(page, '#field-inspector-labelScale', 3);
@@ -214,7 +215,7 @@ test('long visible text expands aligned hit bounds and resizing one tile preserv
 });
 
 test('large special-gauge text stays within the bounds used by selection and resizing', async ({ page }) => {
-  await page.goto('./?lang=en');
+  await openEditor(page,'./?lang=en');
   for (const kind of ['speed', 'route', 'altitudeProfile', 'topProgress', 'timeDate']) {
     const e = positioned(kind);
     Object.assign(e.customization, { labelOverride: 'Custom long title 长标题', unitOverride: 'LONG UNIT / KM', labelScale: 3, valueScale: 3, unitScale: 3, showsPanel: false });
@@ -230,7 +231,7 @@ test('weather icon, humidity, manual data and Alpha survive rendering and export
   const e = positioned('weather');
   Object.assign(e.customization, { manualWeatherTemperatureCelsius: -8, manualWeatherHumidityPercent: 19, iconOverride: 'snow', iconColor: { red: 1, green: 0, blue: 0, alpha: 0.25 }, showsWeatherHumidity: true });
   const source = documentWith(e);
-  await page.goto('./?lang=en'); await upload(page, source);
+  await openEditor(page,'./?lang=en'); await upload(page, source);
   const group = page.locator('#canvas [data-index="0"]');
   await expect(group.locator('text').filter({ hasText: /^-8℃$/ })).toHaveCount(1);
   await expect(group.locator('text').filter({ hasText: /^19%$/ })).toHaveCount(1);
@@ -249,7 +250,7 @@ test('color picker displays sRGB, writes native RGB and preserves alpha and unkn
   const e = positioned('heartRate'); e.customization.valueColor = { red: 0.2, green: 0.4, blue: 0.6, alpha: 0.35 };
   e.customization.futureColorSetting = { keep: 'customization metadata' };
   const source = documentWith(e); source.futureMetadata = { keep: ['document metadata'] };
-  await page.goto('./?lang=en'); await upload(page, source);
+  await openEditor(page,'./?lang=en'); await upload(page, source);
   const input = page.locator('#field-inspector-valueColor'), displayed = genericRGBToSRGB(e.customization.valueColor);
   const hex = '#' + ['red', 'green', 'blue'].map(key => Math.round(displayed[key] * 255).toString(16).padStart(2, '0')).join('');
   await expect(input).toHaveValue(hex);
@@ -275,7 +276,7 @@ test('global text scale updates native per-layer textScale with ratio and clamps
   const elements = ['heartRate', 'pace', 'cadence'].map(positioned);
   elements[0].frame.style.textScale = 0.8; elements[1].frame.style.textScale = 3.8; elements[2].frame.style.textScale = 0.15;
   elements[1].frame.y = 0.5; elements[2].frame.isVisible = false;
-  await page.goto('./?lang=en'); await upload(page, documentWith(...elements));
+  await openEditor(page,'./?lang=en'); await upload(page, documentWith(...elements));
   const value = page.locator('#canvas [data-index="0"] text').filter({ hasText: /^148$/ });
   const before = await value.evaluate(node => Number(node.getAttribute('font-size')));
   await page.locator('#global-details').evaluate(node => { node.open = true; });
@@ -291,7 +292,7 @@ test('global text scale updates native per-layer textScale with ratio and clamps
 test('altitude switches remove each decoration and cursor size is a diameter', async ({ page }) => {
   const e = positioned('altitudeProfile'); e.frame.scale = 1;
   Object.assign(e.customization, { altitudeCursorSize: 20, altitudeCursorColor: { red: 1, green: 0, blue: 1, alpha: 1 } });
-  await page.goto('./?lang=en'); await upload(page, documentWith(e));
+  await openEditor(page,'./?lang=en'); await upload(page, documentWith(e));
   const group = page.locator('#canvas [data-index="0"]');
   expect(await group.locator('circle').evaluateAll(nodes => Math.max(...nodes.map(n => n.r.baseVal.value * 2)))).toBeCloseTo(20, 4);
   const before = await group.locator('text').count();
@@ -308,7 +309,7 @@ test('altitude switches remove each decoration and cursor size is a diameter', a
 test('long timeDate resize pins its measured top-left, follows the pointer and undoes the frame', async ({ page }) => {
   const e = positioned('timeDate'); e.frame.x = 0.45; e.frame.y = 0.15; e.customization.unitScale = 10;
   const source = documentWith(e);
-  await page.goto('./?lang=en'); await upload(page, source);
+  await openEditor(page,'./?lang=en'); await upload(page, source);
   const hit = page.locator('#canvas [data-index="0"] .hit'), handle = page.locator('[data-resize]');
   await handle.scrollIntoViewIfNeeded();
   const before = await logicalBox(hit);
@@ -352,7 +353,7 @@ test('optional private preset: readonly import, all presets render, export is un
   const source = parseDocument(await readFile(path, 'utf8'));
   const failures = []; page.on('pageerror', error => failures.push(error.message));
   const externalWrites = []; page.on('request', request => { if (!['GET', 'HEAD'].includes(request.method())) externalWrites.push(request.method()); });
-  await page.goto('./?lang=en'); await upload(page, source);
+  await openEditor(page,'./?lang=en'); await upload(page, source);
   for (const preset of presets(source)) {
     if (presets(source).length > 1) await page.locator('#preset').selectOption(preset.id);
     await expect(page.locator('#canvas [data-index]')).toHaveCount(preset.layout.elements.filter(e => e.frame.isVisible).length);

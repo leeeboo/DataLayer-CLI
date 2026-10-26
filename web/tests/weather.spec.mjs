@@ -1,10 +1,10 @@
+import {openEditor,mockWeather} from './editor-page.mjs';
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { createDocument, createElement } from '../model.mjs';
 import { languages, translations } from '../i18n.mjs';
 
 const key = 'TEST_KEY_NOT_A_REAL_CREDENTIAL', origin = Date.parse('2026-01-01T00:00:00Z') / 1000;
-const api = 'https://api.openweathermap.org/data/4.0/onecall/timeline/1h**';
 const response = { data: [{ dt: origin, temp: 28.6, humidity: 65, weather: [{ main: 'Rain' }] }] };
 const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
 function gpx(temperature = 12, location = true) {
@@ -15,7 +15,7 @@ async function loadActivity(page, name = 'local.gpx', temperature = 12, location
   await expect(page.locator('#activity-name')).toContainText(name);
 }
 async function setup(page, customization = {}) {
-  await page.goto('./?lang=en');
+  await openEditor(page,'./?lang=en');
   const source = createDocument('Weather regression', true);
   const weather = createElement('weather'); Object.assign(weather.customization, customization);
   source.layout.elements = [weather, createElement('heartRate')]; source.future = { preserved: true };
@@ -36,7 +36,7 @@ async function hasValue(page, value) {
 test('weather controls, help and disabled state work in all twelve languages on desktop and mobile', async ({ page }) => {
   const requests = []; page.on('request', request => { if (request.url().startsWith('https://api.openweathermap.org/')) requests.push(request.url()); });
   for (const language of Object.keys(languages)) {
-    await page.goto(`./?lang=${language}`);
+    await openEditor(page,`./?lang=${language}`);
     const words = translations[language];
     await page.locator('.weather-settings summary').click();
     await expect(page.locator('.weather-settings summary')).toHaveText(words.weatherSettings);
@@ -63,7 +63,7 @@ test('weather controls, help and disabled state work in all twelve languages on 
 
 test('explicit load applies weather, reuses only page cache, preserves the template and clears the Key', async ({ page }) => {
   const requests = [], errors = []; page.on('pageerror', error => errors.push(error.message));
-  await page.route(api, route => {
+  await mockWeather(page, route => {
     const request = route.request(); requests.push(request);
     return route.fulfill({ headers, body: JSON.stringify(response) });
   });
@@ -75,7 +75,7 @@ test('explicit load applies weather, reuses only page cache, preserves the templ
   const url = new URL(requests[0].url());
   expect(url.pathname).toBe('/data/4.0/onecall/timeline/1h');
   expect(Object.fromEntries(url.searchParams)).toEqual({ lat: '0', lon: '0', start: String(Math.floor(origin / 3600) * 3600), units: 'metric', lang: 'en', appid: key });
-  expect(requests[0].headers()['referer']).toBeUndefined(); expect(requests[0].headers()['cookie']).toBeUndefined();
+  expect(requests[0].fetchOptions.credentials).toBe('omit');expect(requests[0].fetchOptions.referrerPolicy).toBe('no-referrer');expect(requests[0].headers()['referer']).toBeUndefined(); expect(requests[0].headers()['cookie']).toBeUndefined();
   await page.locator('#seek').evaluate(node => { node.value = '2'; node.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.locator('#language').selectOption('fr'); await page.locator('#language').selectOption('en');
   expect(requests).toHaveLength(1);
@@ -95,7 +95,7 @@ test('explicit load applies weather, reuses only page cache, preserves the templ
 
 test('authorization, quota, malformed and network errors retain the working weather without exposing raw errors', async ({ page }) => {
   let count = 0;
-  await page.route(api, route => {
+  await mockWeather(page, route => {
     count++;
     if (count === 1) return route.fulfill({ headers, body: JSON.stringify(response) });
     if (count === 5) return route.abort('failed');
@@ -117,7 +117,7 @@ test('clearing or replacing an activity discards in-flight responses and never p
   let started, release;
   const startedPromise = new Promise(resolve => { started = resolve; });
   const releasePromise = new Promise(resolve => { release = resolve; });
-  await page.route(api, async route => {
+  await mockWeather(page, async route => {
     started(); await releasePromise;
     await route.fulfill({ headers, body: JSON.stringify(response) }).catch(() => {});
   });
@@ -135,7 +135,7 @@ test('clearing the Key during a pending request cancels it and prevents a later 
   let started, release;
   const startedPromise = new Promise(resolve => { started = resolve; });
   const releasePromise = new Promise(resolve => { release = resolve; });
-  await page.route(api, async route => { started(); await releasePromise; await route.fulfill({ headers, body: JSON.stringify(response) }).catch(() => {}); });
+  await mockWeather(page, async route => { started(); await releasePromise; await route.fulfill({ headers, body: JSON.stringify(response) }).catch(() => {}); });
   await setup(page); await page.locator('#load-weather').click(); await startedPromise;
   await page.locator('#clear-weather').click(); release();
   await expect(page.locator('#weather-key')).toHaveValue(''); await expect(page.locator('#load-weather')).toBeDisabled();
@@ -143,7 +143,7 @@ test('clearing the Key during a pending request cancels it and prevents a later 
 });
 
 test('manual weather overrides retain native priority over the API and survive export', async ({ page }) => {
-  await page.route(api, route => route.fulfill({ headers, body: JSON.stringify(response) }));
+  await mockWeather(page, route => route.fulfill({ headers, body: JSON.stringify(response) }));
   const source = await setup(page, { manualWeatherTemperatureCelsius: 23, manualWeatherHumidityPercent: 72 });
   await page.locator('#load-weather').click(); await expect(page.locator('#weather-status')).toHaveText(translations.en.weatherLoaded);
   await hasValue(page, '23℃'); await hasValue(page, '72%');
@@ -154,7 +154,7 @@ test('weather connections are restricted to the official API host', async ({ pag
   let disallowedRequest = false;
   await page.route('https://untrusted.invalid/**', route => { disallowedRequest = true; return route.fulfill({ headers, body: '{}' }); });
   await setup(page);
-  await expect(page.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute('content', /connect-src https:\/\/api\.openweathermap\.org;/);
+  await expect(page.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute('content', /connect-src 'self' https:\/\/api\.openweathermap\.org;/);
   const blocked = await page.evaluate(async () => {
     try { await fetch('https://untrusted.invalid/not-a-real-key'); return false; } catch { return true; }
   });

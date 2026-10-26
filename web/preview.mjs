@@ -150,5 +150,5 @@ export function createPreview({ t, redraw, videoSize }) {
   };
   window.addEventListener('pagehide', event => { if (!event.persisted) { cancelWeather(); $('weather-key').value = ''; clearWeatherCache(); ++videoGeneration; pendingVideo?.(); video.pause(); stop(); if (videoURL) URL.revokeObjectURL(videoURL); } });
   refresh();
-  return { frame, renderLabels:refresh, pause, loadActivity, loadVideo };
+  return { frame, renderLabels:refresh, pause, loadActivity, loadVideo, exportSource:()=>({activity,activityLabel:$('activity-name').textContent}) };
 }

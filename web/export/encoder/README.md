@@ -1,4 +1,4 @@
-# HEVC Alpha Web prototype
+# HEVC Alpha Web export
 
 The CLI and existing MIT sources retain their license. This standalone Web Worker encoder links x265;
 **the `x265.wasm` binary is GPL-2.0-or-later**, not MIT. It is not linked into
@@ -38,13 +38,15 @@ Build output is `x265.mjs` and `x265.wasm`. There is no remote encoder or upload
 
 ## Browser hosting
 
-Open `export/` through HTTPS (or localhost). The directory-scoped service worker
-adds COOP/COEP response headers and reloads once, enabling SharedArrayBuffer on
-GitHub Pages without a server. It does not cache files, proxy external hosts or
-control the main editor. A dedicated Worker owns the WASM encoder and its thread
+Open the layout editor through HTTPS (or localhost). The editor registers a
+root-scoped service worker that adds COOP/COEP response
+headers and reloads once before editing starts, enabling SharedArrayBuffer on
+GitHub Pages without a server. The export dialog uses the current edited layout
+and loaded FIT/GPX directly. The legacy `export/` address redirects to this editor.
+The service worker does not cache files or proxy external hosts. A dedicated Worker owns the WASM encoder and its thread
 workers, and is terminated on completion, error, cancellation or page exit.
 
-The prototype accepts a `.dlspreset` and local FIT/GPX, with the 703 default layout.
+The editor accepts a `.dlspreset` and local FIT/GPX, with the 703 default layout.
 The entire activity is selected on import; the Full activity button restores that range. You can also choose a shorter start/duration, resolution, frame rate and target Mbps. Download
 is an MP4 `hvc1` track containing both base and Alpha layers and the `muxa` brand.
 Grid, selection handles, background video and audio are not part of the overlay.
@@ -64,7 +66,7 @@ remote encoder, API key or media upload is involved.
 
 Temporary files live only in the browser's `dls-hevc-exports` directory. Web Locks
 protect active encodes and downloads from deletion. Cancellation and replacement
-remove the corresponding file; the next visit removes interrupted orphan files.
+remove the corresponding file; opening the export dialog again removes interrupted orphan files.
 No other browser storage is cleared. Keep the page open during encoding, and
 ensure sufficient free local storage. Private browsing or denied/full local
 storage can prevent export. Reloading does not resume an unfinished export.
@@ -74,5 +76,6 @@ encoding speed varies by device and can be slower than real time.
 Firefox may play the base layer without Alpha even when the exported file is
 valid. Validate transparency with Safari/AVFoundation or another HEVC Alpha
 capable application. Encoding and playback compatibility are separate checks.
-This page uses activity/template weather only and does not read API keys or the
-main editor's weather cache.
+The integrated dialog uses the activity already loaded in the editor, including
+weather the user has explicitly loaded. Exporting does not make weather requests
+or read or transfer the API key. The dialog uses the existing streaming encoder client and WASM binary.

@@ -4,24 +4,25 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Edit DataLayer Studio layout templates and preview local video with FIT/GPX activity data. All files stay in your browser.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src blob:; connect-src https://api.openweathermap.org; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; style-src-attr 'unsafe-hashes' 'sha256-3oFxofzq3N//6J8H86e9ul4WT2OkJrtonB66gn/TLJw='; img-src 'self' data:; media-src blob:; connect-src 'self' https://api.openweathermap.org; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Gauge Layout Editor · DataLayer Studio</title>
   <link rel="icon" href="./mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=20261025-weather">
-  <script type="module" src="./app.mjs?v=20261026-alpha1"></script>
+  <link rel="stylesheet" href="./style.css?v=20261026-integrated1">
+  <script type="module" src="./app.mjs?v=20261026-integrated1"></script>
 </head>
 <body>
   <header class="app-header">
     <a class="brand" href="https://github.com/leeeboo/DataLayer-CLI" aria-label="DataLayer-CLI on GitHub" data-t-aria="repoLink"><img src="./mark.svg" width="28" height="32" alt=""><strong>DataLayer Studio</strong></a>
     <h1 data-t="title">Gauge Layout Editor</h1>
-    <div class="header-actions">
+    <div class="header-actions" data-editor-loading inert aria-busy="true">
       <select id="language" aria-label="Language" data-t-aria="language"><option value="en">English</option><option value="zh-CN">简体中文</option><option value="zh-TW">繁體中文</option><option value="ja">日本語</option></select>
       <button id="import" data-t="import">Import template</button>
-      <button id="download" class="primary" data-t="download">Download template</button>
+      <button id="download" data-t="download">Download template</button>
+      <button id="web-export" class="primary" type="button">Export transparent video</button>
       <input id="file" type="file" accept=".json,.dlspreset,application/json" hidden>
     </div>
   </header>
-  <main class="editor">
+  <main class="editor" data-editor-loading inert aria-busy="true">
     <aside class="sidebar" aria-label="Layout" data-t-aria="layoutRegion">
       <div class="preset-picker" id="preset-picker" hidden><label for="preset" data-t="preset">Preset to export as default</label><select id="preset"></select></div>
       <label for="layout-name" data-t="name">Layout name</label><input id="layout-name" dir="auto" maxlength="200" value="Weekend ride">
@@ -31,7 +32,7 @@
       <div class="section-heading"><h2 data-t="layers">Layers</h2><button id="new" class="text-button" data-t="new">New layout</button></div>
       <div id="layers" class="layers"></div>
       <details id="global-details"><summary data-t="global">Layout style</summary><div id="global-fields" class="fields"></div></details>
-      <div class="sidebar-footer"><a id="web-export" href="./export/" target="_blank" rel="noopener" data-t="exportPrototype">Transparent H.265 prototype</a><p data-t="privacy">Files stay in your browser.</p><a href="https://github.com/leeeboo/DataLayer-CLI#readme" data-t="source">Source &amp; help</a></div>
+      <div class="sidebar-footer"><p data-t="privacy">Files stay in your browser.</p><a href="https://github.com/leeeboo/DataLayer-CLI#readme" data-t="source">Source &amp; help</a></div>
     </aside>
     <section class="workspace" aria-label="Canvas editor" data-t-aria="canvasRegion">
       <div class="toolbar">
@@ -76,5 +77,25 @@
     </section>
     <aside id="inspector" class="inspector" aria-label="Gauge properties" data-t-aria="propertiesRegion"></aside>
   </main>
+  <dialog id="export-dialog" class="export-dialog" aria-labelledby="export-title">
+    <div class="export-heading"><h2 id="export-title" data-export-t="exportVideo">Export transparent video</h2><button id="export-close" type="button" aria-label="Close">×</button></div>
+    <p class="hint" data-export-t="exportHelp"></p>
+    <div class="export-source"><bdi id="export-layout"></bdi><bdi id="export-activity"></bdi></div>
+    <form id="export-form">
+      <div class="export-fields">
+        <label><span data-export-t="exportSize"></span><select id="export-size"><option value="1920x1080">1920 × 1080</option><option value="1280x720">1280 × 720</option><option value="1080x1920">1080 × 1920</option><option value="1080x1080">1080 × 1080</option></select></label>
+        <label><span data-export-t="exportFPS"></span><select id="export-fps"><option value="30">30</option><option value="15">15</option></select></label>
+        <label><span data-export-t="exportStart"></span><input id="export-start" type="number" min="0" step="any" value="0" required></label>
+        <label><span data-export-t="exportDuration"></span><input id="export-duration" type="number" min="0.1" step="any" value="3" required></label>
+        <label><span data-export-t="exportBitrate"></span><input id="export-bitrate" type="number" min="0.1" max="100" step="any" value="8" required></label>
+      </div>
+      <div class="export-actions"><button id="export-encode" type="submit" class="primary" data-export-t="exportStartButton"></button><button id="export-full" type="button" data-export-t="exportFullActivity"></button><button id="export-cancel" type="button" data-export-t="exportCancel" hidden></button><a id="export-download" data-export-t="exportDownload" hidden></a></div>
+    </form>
+    <p id="export-status" class="status" role="status" aria-live="polite"></p><p id="export-result" role="status"></p>
+    <div class="canvas-wrap checker export-canvas"><canvas id="export-preview" width="1920" height="1080"></canvas></div>
+    <p class="hint" data-export-t="exportPlayback"></p>
+    <p class="hint" data-export-t="exportBitrateHelp"></p>
+    <p class="hint"><span data-export-t="exportLicense"></span> <a href="./export/encoder/README.md">x265 WASM</a> · <a href="./export/encoder/COPYING">GPL</a> · <a href="./export/encoder/x265_4.1.tar.gz" download>Source</a></p>
+  </dialog>
 </body>
 </html>

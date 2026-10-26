@@ -1,4 +1,4 @@
-// Isolation is confined to the prototype's directory; no cache or external proxy.
+// Add isolation within the registering page's scope; no cache or external proxy.
 self.addEventListener('install',()=>self.skipWaiting());
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
 self.addEventListener('fetch',event=>{

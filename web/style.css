@@ -769,3 +769,7 @@ textarea {
 .header-actions button,.toolbar label,.inspector button {
   overflow-wrap: anywhere;
 }
+
+.export-dialog{width:min(900px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;margin:auto;padding:24px;color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.export-dialog::backdrop{background:#000a}.export-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.export-heading h2{margin:0;font-size:20px}.export-heading button{font-size:22px;padding:4px 12px}.export-source{display:flex;gap:16px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.export-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:18px 0}.export-fields label{display:grid;gap:8px}.export-fields input,.export-fields select{width:100%;min-width:0}.export-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.export-canvas{overflow:hidden;border:1px solid var(--line);border-radius:8px}.export-canvas canvas{display:block;width:100%;height:auto}.export-dialog .hint{line-height:1.5}.export-dialog a{overflow-wrap:anywhere}#export-result{font-variant-numeric:tabular-nums}
+@media(max-width:600px){.export-dialog{padding:16px}.export-heading h2{font-size:17px}.export-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.header-actions{flex-wrap:wrap}}
