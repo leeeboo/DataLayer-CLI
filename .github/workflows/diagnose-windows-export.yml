@@ -5,6 +5,10 @@ on:
       run_id:
         description: Successful CLI run with a Windows package and its shared fixture
         required: true
+      build_current:
+        description: Build the current native CLI and run its audio regression
+        type: boolean
+        default: false
 permissions:
   contents: read
   actions: read
@@ -17,6 +21,15 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
+      - name: Install Swift and Windows SDK
+        if: inputs.build_current
+        uses: compnerd/gha-setup-swift@775d3f4111c5be58a0f62f2efdd353bb8fac15c7
+        with:
+          swift-version: swift-6.1.2-release
+          swift-build: 6.1.2-RELEASE
+      - name: Build current CLI
+        if: inputs.build_current
+        run: swift build -c release --product overlay -j 4
       - uses: actions/download-artifact@v8
         with:
           name: release-windows
@@ -31,11 +44,27 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Repeat the actual export with FFmpeg diagnostic reports
         shell: pwsh
+        env:
+          BUILD_CURRENT: ${{ inputs.build_current }}
         run: |
+          if ($env:BUILD_CURRENT -eq 'true') {
+            $binary = Join-Path (swift build -c release --show-bin-path) 'overlay.exe'
+          }
           for ($index = 0; $index -lt 5; $index++) {
             $directory = Join-Path $PWD "probe/$index"
             New-Item -ItemType Directory -Path $directory -Force | Out-Null
             Expand-Archive package/*.zip "$directory/package"
+            $runtime = "$directory/package/DataLayer-CLI-v0.1.1-Windows-x86_64/runtime"
+            if ($env:BUILD_CURRENT -eq 'true') {
+              Copy-Item $binary "$runtime/bin/overlay.exe" -Force
+              python -B -c "import sys,pathlib; sys.path.insert(0,'scripts'); from collect_portable_runtime import windows_utf8_manifest; windows_utf8_manifest(pathlib.Path(sys.argv[1]))" "$runtime/bin/overlay.exe"
+              if ($LASTEXITCODE -ne 0) { throw 'Manifest update failed' }
+            }
+            if ($env:BUILD_CURRENT -eq 'true' -and $index -eq 0) {
+              $env:PATH = "$runtime/bin;$env:PATH"
+              swift test -j 4 --filter PortableMediaTests.testAudioPaddingWithMissingTimestampsHasAnExactFiniteSampleCount
+              if ($LASTEXITCODE -ne 0) { throw 'Audio regression failed' }
+            }
             $report = (Join-Path $directory 'ffmpeg-%p-%t.log').Replace('\','/').Replace(':','\:')
             $env:FFREPORT = "file=${report}:level=56"
             python -B scripts/verify_portable_package.py "$directory/package/DataLayer-CLI-v0.1.1-Windows-x86_64" export-fixture "$directory/export"

@@ -293,6 +293,12 @@ public final class TimelineVideoWriter {
 }
 
 enum PortableVideoExport {
+    static func audioMixFilter(labels: [String], duration: Double) -> String {
+        let samples = Int64((duration * 48_000).rounded(.up))
+        // Missing EOF timestamps must not turn silence padding into an unbounded stream.
+        return labels.map { "[\($0)]" }.joined() + "amix=inputs=\(labels.count):normalize=0,apad=whole_len=\(samples),atrim=end_sample=\(samples),asetpts=N/SR/TB[audio]"
+    }
+
     static func write(outputURL: URL, project: TimelineProject?, config: TimelineVideoWriterConfig,
                       render: (TimeInterval, CVPixelBuffer) throws -> Void) throws {
         let request = TimelineExportRequest(mode: config.codec.exportMode, codec: config.codec, width: config.width, height: config.height,
@@ -358,7 +364,7 @@ enum PortableVideoExport {
             filters.append("[linearVideo][linearOverlay][alphaMask]maskedmerge,format=gbrp16le,\(encoded709),scale=out_color_matrix=bt709:out_range=tv,format=yuv420p[video]")
             videoLabel = "video"
             if !audioLabels.isEmpty {
-                filters.append(audioLabels.map { "[\($0)]" }.joined() + "amix=inputs=\(audioLabels.count):normalize=0,apad,atrim=duration=\(PortableMedia.number(config.duration))[audio]")
+                filters.append(audioMixFilter(labels: audioLabels, duration: config.duration))
             }
         }
         if !filters.isEmpty {
