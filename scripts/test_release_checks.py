@@ -10,6 +10,7 @@ import tarfile
 import tempfile
 import unittest
 import zipfile
+import xml.etree.ElementTree as ET
 from unittest.mock import patch
 
 import compare_export_fixture as comparison
@@ -115,6 +116,27 @@ class ReleaseChecks(unittest.TestCase):
                 runtime.linux_dependencies("overlay")
         with patch.object(runtime, "run", return_value="libc.so.6 => /lib/libc.so.6 (0x1)\nlibcairo.so.2 => /lib/libcairo.so.2 (0x2)"):
             self.assertEqual(runtime.linux_dependencies("overlay"), [pathlib.Path("/lib/libcairo.so.2")])
+
+    def testWindowsUnicodeManifestPreservesExistingExecutionPolicy(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            tool = root / "Windows Kits/10/bin/10.0/x64/mt.exe"
+            tool.parent.mkdir(parents=True)
+            tool.touch()
+            calls = []
+            def manifest_command(command, **kwargs):
+                calls.append(command)
+                if any(a.startswith('-out:') for a in command):
+                    path = pathlib.Path(next(a[5:] for a in command if a.startswith('-out:')))
+                    path.write_text('<assembly xmlns="urn:schemas-microsoft-com:asm.v1"><trustInfo xmlns="urn:schemas-microsoft-com:asm.v3"><security><requestedPrivileges><requestedExecutionLevel level="asInvoker"/></requestedPrivileges></security></trustInfo></assembly>')
+                else:
+                    document = ET.parse(command[command.index('-manifest')+1])
+                    ns={'a':'urn:schemas-microsoft-com:asm.v3','w':'http://schemas.microsoft.com/SMI/2019/WindowsSettings'}
+                    self.assertEqual(document.find('.//a:requestedExecutionLevel',ns).get('level'),'asInvoker')
+                    self.assertEqual(document.find('.//w:activeCodePage',ns).text,'UTF-8')
+            with patch.dict(os.environ, {'ProgramFiles(x86)':str(root)}), patch.object(runtime.subprocess,'run',side_effect=manifest_command):
+                runtime.windows_utf8_manifest(root/'overlay.exe')
+            self.assertEqual(len(calls),2)
 
 
 if __name__ == "__main__":

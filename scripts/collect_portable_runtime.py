@@ -9,7 +9,10 @@ import platform
 import re
 import shutil
 import subprocess
+import tempfile
 import urllib.request
+import xml.etree.ElementTree as ET
+import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SWIFT_TAG = "swift-6.1.2-RELEASE"
@@ -40,6 +43,34 @@ def download(url, path):
     print("Fetching " + path.name, flush=True)
     with urllib.request.urlopen(url, timeout=120) as response, path.open("wb") as output:
         shutil.copyfileobj(response, output)
+
+
+def windows_utf8_manifest(binary):
+    kits = pathlib.Path(os.environ["ProgramFiles(x86)"]) / "Windows Kits/10/bin"
+    tools = sorted(kits.glob("*/x64/mt.exe"), reverse=True)
+    if not tools:
+        raise ValueError("Windows SDK manifest tool is missing")
+    with tempfile.TemporaryDirectory() as temporary:
+        manifest = pathlib.Path(temporary) / "application.manifest"
+        subprocess.run([str(tools[0]), "-nologo", "-inputresource:" + str(binary) + ";#1",
+                        "-out:" + str(manifest)], check=True)
+        document = ET.parse(manifest)
+        root = document.getroot()
+        namespace = "{urn:schemas-microsoft-com:asm.v3}"
+        application = root.find(namespace + "application")
+        if application is None:
+            application = ET.SubElement(root, namespace + "application")
+        settings = application.find(namespace + "windowsSettings")
+        if settings is None:
+            settings = ET.SubElement(application, namespace + "windowsSettings")
+        codepage = "{http://schemas.microsoft.com/SMI/2019/WindowsSettings}activeCodePage"
+        node = settings.find(codepage)
+        if node is None:
+            node = ET.SubElement(settings, codepage)
+        node.text = "UTF-8"
+        document.write(manifest, encoding="utf-8", xml_declaration=True)
+        subprocess.run([str(tools[0]), "-nologo", "-manifest", str(manifest),
+                        "-outputresource:" + str(binary) + ";#1"], check=True)
 
 
 def linux_dependencies(binary):
@@ -86,6 +117,8 @@ def collect(binary, destination, source_directory):
     assert "6.1.2" in target["compilerVersion"], target
     swift_dirs = [pathlib.Path(p).resolve() for p in target["paths"]["runtimeLibraryPaths"]]
     if system == "Windows":
+        # Fontconfig reads narrow environment paths; an UTF-8 process code page preserves Unicode installs.
+        windows_utf8_manifest(binary)
         swift_dirs += [pathlib.Path(shutil.which("swift")).resolve().parent]
         msys = pathlib.Path(os.environ["MSYS2_LOCATION"])
         ucrt = msys / "ucrt64"
@@ -163,6 +196,8 @@ def collect(binary, destination, source_directory):
         if output.exists() and digest(output) != digest(path):
             raise ValueError("Conflicting runtime libraries: " + name)
         shutil.copy2(path, output)
+        if system == "Windows" and path in seeds[:2]:
+            windows_utf8_manifest(output)
         files.append({"path": output.relative_to(destination).as_posix(), "sha256": digest(output),
                       "provider": "DataLayer-CLI" if path == binary else provider(path)})
         if len(files) % 25 == 0:
@@ -182,9 +217,13 @@ def collect(binary, destination, source_directory):
     if system == "Windows":
         # Preserve the redistribution terms of the app-local Microsoft CRT, if used.
         if any(f["provider"] == "Microsoft-VC-Runtime" for f in files):
-            download("https://aka.ms/vs/17/release/1033/VC_Redist.x64.exe", source_directory / "VC_Redist.x64.exe")
-            download("https://visualstudio.microsoft.com/license-terms/vs2022-cruntime/",
-                     destination / "licenses/Microsoft-VC-Runtime.html")
+            license = destination / "licenses/Microsoft-VC-Runtime.docx"
+            download("https://visualstudio.microsoft.com/wp-content/uploads/2021/09/Visual-C-Runtime-2015-2022-License-1.docx", license)
+            with zipfile.ZipFile(license) as archive:
+                text = ET.fromstring(archive.read("word/document.xml"))
+                ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+                paragraphs = ["".join(p.itertext()) for p in text.findall(".//w:p", ns)]
+                license.with_suffix(".txt").write_text("\n".join(paragraphs), encoding="utf-8")
         index = urllib.request.urlopen("https://repo.msys2.org/mingw/sources/", timeout=120).read().decode()
         for package in packages.values():
             name = next((package["source"] + suffix for suffix in [".src.tar.zst", ".src.tar.gz", ".src.tar.xz"]
@@ -202,9 +241,15 @@ def collect(binary, destination, source_directory):
         (destination / "launcher").write_text(LINUX_LAUNCHER, encoding="utf-8")
         (destination / "launcher").chmod(0o755)
     manifest = {"platform": system, "swift": "6.1.2", "files": files, "packages": packages,
+                "windows_manifest_change": "Executable resources set activeCodePage UTF-8; codec and renderer code are unchanged." if system == "Windows" else None,
                 "sources": [{"file": p.name, "sha256": digest(p)} for p in sorted(source_directory.iterdir()) if p.is_file()]}
     (destination / "DEPENDENCIES.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     shutil.copy2(destination / "DEPENDENCIES.json", source_directory / "DEPENDENCIES.json")
+    recipes = source_directory / "repack"
+    recipes.mkdir()
+    for name in ["collect_portable_runtime.py", "portable_launcher.c", "package_portable_release.py"]:
+        shutil.copy2(ROOT / "scripts" / name, recipes / name)
+    shutil.copy2(ROOT / "LICENSE", recipes / "LICENSE")
     print(f"Collected {len(files)} runtime files from {len(packages)} packages.")
 
 

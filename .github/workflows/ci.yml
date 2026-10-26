@@ -200,6 +200,13 @@ jobs:
           if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() -ne $expected) { throw 'Archive checksum mismatch' }
           Expand-Archive $archive .build/package-smoke
           & ".build/package-smoke/DataLayer-CLI-$env:CLI_RELEASE_VERSION-Windows-x86_64/overlay.exe" --help
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged CLI could not start' }
+          # Source/archive and extracted runtime copies are retained; remove duplicate staging before real exports.
+          Remove-Item -LiteralPath .build/dependency-sources,.build/portable-runtime -Recurse -Force
+          $compiled = Split-Path (Split-Path $binary -Parent) -Parent
+          if ((Split-Path $compiled -Parent) -ne (Resolve-Path .build).Path -or (Split-Path $compiled -Leaf) -notmatch '^x86_64-.*windows') { throw 'Unexpected compiler scratch path' }
+          Remove-Item -LiteralPath $compiled -Recurse -Force
+          Get-PSDrive -PSProvider FileSystem | Select-Object Name,Free
       - uses: actions/download-artifact@v8
         with:
           name: shared-export-fixture
