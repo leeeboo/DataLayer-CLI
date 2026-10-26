@@ -26,14 +26,14 @@ bash web/export/encoder/build.sh
 ```
 
 The script verifies the included source hash, enables Alpha, disables native
-assembly, and enables pthreads. It applies CMake compatibility changes:
+assembly, and enables WebAssembly SIMD and pthreads. It applies CMake compatibility changes:
 CMP0025/CMP0054 use NEW behavior, and Emscripten uses a wasm32 target instead of
 an x86 target. It also marks the Alpha SPS as full-range in `entropy.cpp`,
 while preserving limited-range color in the base SPS, as required by the Apple
 HEVC Alpha interoperability profile. Without this fix, native decoding expands
 Alpha as video-range values and changes translucent opacity. `bridge.cpp` contains the RGBA-to-YUVA420 conversion and streaming
 x265 API calls. It uses Main, BT.709 limited-range color, straight full-range
-Alpha, ABR bitrate, no B-frames, one encoder frame thread and no WPP pool.
+Alpha, ABR bitrate, no B-frames, one encoder frame thread per layer, four WPP workers, 64-pixel CTUs and 32-pixel minimum CUs and a short motion search for sparse overlays. The runtime starts with a 64 MiB shared heap, grows only as needed, and caps it at 512 MiB. The Worker refreshes its byte view from the shared memory before every access, including growth triggered by a pthread.
 Build output is `x265.mjs` and `x265.wasm`. There is no remote encoder or upload.
 
 ## Browser hosting
@@ -45,16 +45,31 @@ control the main editor. A dedicated Worker owns the WASM encoder and its thread
 workers, and is terminated on completion, error, cancellation or page exit.
 
 The prototype accepts a `.dlspreset` and local FIT/GPX, with the 703 default layout.
-Choose activity start, duration, resolution, frame rate and target Mbps. Download
+The entire activity is selected on import; the Full activity button restores that range. You can also choose a shorter start/duration, resolution, frame rate and target Mbps. Download
 is an MP4 `hvc1` track containing both base and Alpha layers and the `muxa` brand.
 Grid, selection handles, background video and audio are not part of the overlay.
 
-Prototype limits: 60 seconds, 2,073,600 pixels, 30 fps, 0.1–100 Mbps, and 128 MiB
-of compressed samples. Frames are rendered and encoded one at a time. Duration
-rounds up to the next frame; the page reports the actual frame count and duration.
-Bitrate is an ABR target; simple layouts often produce much smaller files. A raw
-frame and encoder buffers remain in memory; compressed output is retained for
-MP4 download. Software encoding speed varies substantially by device.
+The pixel and rate limits remain 2,073,600 pixels, 30 fps and 0.1–100 Mbps. The
+60-second and 128 MiB output limits have been removed. Duration rounds up to the
+next frame and is reported after encoding. MP4 uses a 64-bit `mdat` length, supports
+files over 4 GiB, and retains one small size/index entry per encoded frame.
+
+Frames are rendered through the existing Web renderer. Rendering the next frame
+overlaps encoding the current frame, with at most two raw frames in flight. The
+encoder Worker writes each compressed sample directly to an OPFS temporary file;
+compressed video is never collected in RAM. After encoding, the service worker
+streams that local file to the browser download, including byte-range requests.
+The MP4 header and index are finalized only after every frame succeeds. No server,
+remote encoder, API key or media upload is involved.
+
+Temporary files live only in the browser's `dls-hevc-exports` directory. Web Locks
+protect active encodes and downloads from deletion. Cancellation and replacement
+remove the corresponding file; the next visit removes interrupted orphan files.
+No other browser storage is cleared. Keep the page open during encoding, and
+ensure sufficient free local storage. Private browsing or denied/full local
+storage can prevent export. Reloading does not resume an unfinished export.
+Bitrate is an ABR target; sparse layouts often produce much smaller files. Software
+encoding speed varies by device and can be slower than real time.
 
 Firefox may play the base layer without Alpha even when the exported file is
 valid. Validate transparency with Safari/AVFoundation or another HEVC Alpha

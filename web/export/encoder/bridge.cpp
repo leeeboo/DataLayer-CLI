@@ -29,8 +29,10 @@ int open_encoder(int width, int height, int fps, int kbps) {
     param->fpsNum = fps; param->fpsDenom = 1;
     param->internalCsp = X265_CSP_I420; param->internalBitDepth = 8;
     param->bEnableAlpha = 1; param->numScalableLayers = 2; param->numLayers = 2;
-    param->frameNumThreads = 1; x265_param_parse(param, "pools", "none");
-    param->bEnableWavefront = 0; param->lookaheadDepth = 0; param->bframes = 0;
+    param->frameNumThreads = 1; x265_param_parse(param, "pools", "4");
+    param->bEnableWavefront = 1; param->lookaheadDepth = 0; param->bframes = 0;
+    // Sparse overlays benefit from larger empty blocks and a short motion search.
+    param->maxCUSize = 64; param->minCUSize = 32; param->searchRange = 16;
     param->bCopyPicToFrame = 1; param->bAnnexB = 0; param->bRepeatHeaders = 0; param->bEmitInfoSEI = 0;
     param->rc.rateControlMode = X265_RC_ABR; param->rc.bitrate = kbps;
     param->keyframeMax = fps * 2; param->bOpenGOP = 0;

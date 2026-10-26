@@ -25,15 +25,15 @@ emcmake cmake -S "$build_dir/x265_4.1/source" -B "$build_dir/build" \
   -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DENABLE_ALPHA=ON -DENABLE_ASSEMBLY=OFF \
   -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -DENABLE_LIBNUMA=OFF -DENABLE_PIC=ON \
   -DCMAKE_BUILD_TYPE=Release \
-  "-DCMAKE_CXX_FLAGS=-pthread -O3 -ffile-prefix-map=$build_dir=." \
-  "-DCMAKE_C_FLAGS=-pthread -O3 -ffile-prefix-map=$build_dir=."
+  "-DCMAKE_CXX_FLAGS=-pthread -msimd128 -O3 -ffile-prefix-map=$build_dir=." \
+  "-DCMAKE_C_FLAGS=-pthread -msimd128 -O3 -ffile-prefix-map=$build_dir=."
 cmake --build "$build_dir/build" -j 4
 em++ "$encoder_dir/bridge.cpp" "$build_dir/build/libx265.a" \
   -I"$build_dir/x265_4.1/source" -I"$build_dir/build" -DENABLE_ALPHA=1 \
-  "-ffile-prefix-map=$encoder_dir=." -O3 -pthread \
+  "-ffile-prefix-map=$encoder_dir=." -O3 -msimd128 -pthread \
   -sMODULARIZE=1 -sEXPORT_ES6=1 -sEXPORT_NAME=createAlphaEncoder \
-  -sENVIRONMENT=web,worker,node -sPTHREAD_POOL_SIZE=4 -sALLOW_MEMORY_GROWTH=1 \
-  -sINITIAL_MEMORY=268435456 -sMAXIMUM_MEMORY=1073741824 -sSTACK_SIZE=2097152 \
+  -sENVIRONMENT=web,worker,node -sPTHREAD_POOL_SIZE=10 -sALLOW_MEMORY_GROWTH=1 \
+  -sINITIAL_MEMORY=67108864 -sMAXIMUM_MEMORY=536870912 -sSTACK_SIZE=2097152 \
   -sEXPORTED_RUNTIME_METHODS='["HEAPU8"]' \
   -sEXPORTED_FUNCTIONS='["_open_encoder","_close_encoder","_input_pointer","_output_pointer","_output_size","_encode_frame"]' \
   -o "$encoder_dir/x265.mjs"

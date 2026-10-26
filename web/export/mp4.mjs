@@ -6,6 +6,7 @@ const bytes = (...items) => {
 };
 const u16 = n => new Uint8Array([n>>>8,n&255]);
 const u32 = n => new Uint8Array([n>>>24,(n>>>16)&255,(n>>>8)&255,n&255]);
+const packed32 = values => {const out=new Uint8Array(values.length*4),view=new DataView(out.buffer);values.forEach((n,i)=>view.setUint32(i*4,n));return out;};
 const zeros = n => new Uint8Array(n);
 const box = (type,...parts) => {const data=bytes(...parts);return bytes(u32(data.length+8),type,data);};
 const full = (type,flags,...parts) => box(type,u32(flags),...parts);
@@ -35,21 +36,39 @@ function config(headers) {
   // MP4 sample timing is authoritative; hvcC's optional rate is in frames/256s.
   return box('hvcC',new Uint8Array([1]),new Uint8Array(rbsp.slice(1,13)),u16(0xf000),new Uint8Array([0xfc,0xfd,0xf8,0xf8]),u16(0),new Uint8Array([15,arrays.length]),...arrays);
 }
-export function alphaMP4({headers,samples,width,height,fps}) {
-  if(!Number.isInteger(width)||!Number.isInteger(height)||width<64||height<64||width%2||height%2||width>1920||height>1920||width*height>2073600||!Number.isInteger(fps)||fps<1||fps>30||!samples.length||samples.length>fps*60)throw Error('invalidExport');
-  const duration=samples.length, sizes=samples.map(s=>s.length), size=sizes.reduce((a,b)=>a+b,0);
-  if(size>128*1024*1024)throw Error('exportTooLarge');
-  const sync=[];
-  samples.forEach((sample,index)=>{
+export function createAlphaMP4({headers,width,height,fps,frames}) {
+  if(!Number.isInteger(width)||!Number.isInteger(height)||width<64||height<64||width%2||height%2||width>1920||height>1920||width*height>2073600||!Number.isInteger(fps)||fps<1||fps>30||!Number.isSafeInteger(frames)||frames<1||frames>0xffffffff)throw Error('invalidExport');
+  const sizes=[],sync=[],duration=frames;
+  let size=0,finished=false;
+  const ftyp=box('ftyp','isom',u32(512),'isom','iso6','mp41','muxa');
+  // A 64-bit mdat size supports long activities beyond 4 GiB.
+  const header=bytes(ftyp,u32(1),'mdat',zeros(8));
+  const hvcc=config(headers);
+  function add(sample) {
+    if(finished||sizes.length>=frames||!sample.length||sample.length>0xffffffff||!Number.isSafeInteger(size+sample.length))throw Error('invalidSample');
     const units=nals(sample);
     for(const layer of [0,1])if(!units.some(n=>nalType(n)<=31&&nalLayer(n)===layer))throw Error('missingAlpha');
-    if(units.some(n=>nalLayer(n)===0&&nalType(n)>=16&&nalType(n)<=23))sync.push(index+1);
-  });
-  const ftyp=box('ftyp','isom',u32(512),'isom','iso6','mp41','muxa');
-  const hvc1=box('hvc1',zeros(6),u16(1),zeros(16),u16(width),u16(height),u32(0x480000),u32(0x480000),u32(0),u16(1),zeros(32),u16(24),u16(65535),config(headers),box('colr','nclx',u16(1),u16(1),u16(1),zeros(1)));
-  const stbl=box('stbl',full('stsd',0,u32(1),hvc1),full('stts',0,u32(1),u32(duration),u32(1)),full('stsc',0,u32(1),u32(1),u32(duration),u32(1)),full('stsz',0,u32(0),u32(duration),...sizes.map(u32)),full('stco',0,u32(1),u32(ftyp.length+8)),full('stss',0,u32(sync.length),...sync.map(u32)));
+    if(units.some(n=>nalLayer(n)===0&&nalType(n)>=16&&nalType(n)<=23))sync.push(sizes.length+1);
+    sizes.push(sample.length);size+=sample.length;
+  }
+  function finish() {
+  if(finished||sizes.length!==frames)throw Error('incompleteExport');finished=true;
+  new DataView(header.buffer).setBigUint64(ftyp.length+8,BigInt(size+16));
+  const hvc1=box('hvc1',zeros(6),u16(1),zeros(16),u16(width),u16(height),u32(0x480000),u32(0x480000),u32(0),u16(1),zeros(32),u16(24),u16(65535),hvcc,box('colr','nclx',u16(1),u16(1),u16(1),zeros(1)));
+  const stbl=box('stbl',full('stsd',0,u32(1),hvc1),full('stts',0,u32(1),u32(duration),u32(1)),full('stsc',0,u32(1),u32(1),u32(duration),u32(1)),full('stsz',0,u32(0),u32(duration),packed32(sizes)),full('stco',0,u32(1),u32(header.length)),full('stss',0,u32(sync.length),packed32(sync)));
   const mdia=box('mdia',full('mdhd',0,zeros(8),u32(fps),u32(duration),u16(0x55c4),u16(0)),full('hdlr',0,u32(0),'vide',zeros(12),'DataLayer Alpha\0'),box('minf',full('vmhd',1,zeros(8)),box('dinf',full('dref',0,u32(1),full('url ',1))),stbl));
   const trak=box('trak',full('tkhd',7,zeros(8),u32(1),u32(0),u32(duration),zeros(16),matrix,u32(width*65536),u32(height*65536)),mdia);
   const moov=box('moov',full('mvhd',0,zeros(8),u32(fps),u32(duration),u32(65536),u16(256),zeros(10),matrix,zeros(24),u32(2)),trak);
-  return new Blob([ftyp,u32(size+8),'mdat',...samples,moov],{type:'video/mp4'});
+  sizes.length=sync.length=0;return moov;
+  }
+  return {header,add,finish};
+}
+export function alphaMP4({samples,...settings}) {
+  const mux=createAlphaMP4({...settings,frames:samples.length});
+  samples.forEach(mux.add);const tail=mux.finish();
+  return new Blob([mux.header,...samples,tail],{type:'video/mp4'});
+}
+export function writeAll(handle,data,at) {
+  let offset=0;
+  while(offset<data.length){const count=handle.write(data.subarray(offset),{at:at+offset});if(!Number.isInteger(count)||count<=0||count>data.length-offset)throw Error('storageWrite');offset+=count;}
 }

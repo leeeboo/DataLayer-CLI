@@ -151,6 +151,7 @@
   "web/export/index.html",
   "web/export/isolation-worker.mjs",
   "web/export/mp4.mjs",
+  "web/export/storage.mjs",
   "web/export/style.css",
   "web/i18n.mjs",
   "web/index.html",

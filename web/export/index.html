@@ -6,27 +6,27 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; style-src-attr 'unsafe-hashes' 'sha256-3oFxofzq3N//6J8H86e9ul4WT2OkJrtonB66gn/TLJw='; img-src 'self' blob: data:; media-src blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>HEVC Alpha prototype · DataLayer Studio</title>
 <link rel="icon" href="../mark.svg"><link rel="stylesheet" href="../style.css?v=20261025-weather"><link rel="stylesheet" href="./style.css?v=20261026-alpha2">
-<script type="module" src="./app.mjs?v=20261026-alpha2"></script>
+<script type="module" src="./app.mjs?v=20261026-full1"></script>
 </head>
 <body>
 <header class="app-header"><a class="brand" id="editor-link" href="../"><img src="../mark.svg" width="28" height="32" alt=""><strong>DataLayer Studio</strong></a><h1 data-t="exportTitle">HEVC Alpha prototype</h1><select id="language" aria-label="Language"></select></header>
 <main class="export-page">
-<p data-t="exportHelp">Browser-only, silent transparent overlay. Prototype: up to 60 seconds and 1080p. Files stay on this device.</p>
+<p data-t="exportHelp">Browser-only, silent transparent overlay for your full activity, up to 1080p. Files stay on this device.</p>
 <section class="media-panel"><div class="media-files"><div class="media-file"><button id="import" data-t="import">Import template</button><bdi id="layout-name">703</bdi><input id="file" type="file" accept=".dlspreset" hidden></div><div class="media-file"><button id="import-activity" data-t="importActivity">FIT / GPX</button><bdi id="activity-name" data-t="activityEmpty">No activity selected</bdi><input id="activity-file" type="file" accept=".fit,.gpx" hidden></div></div></section>
 <form id="export-form">
 <div class="export-fields">
 <label><span data-t="exportSize">Resolution</span><select id="size"><option value="1920x1080">1920 × 1080</option><option value="1280x720">1280 × 720</option><option value="1080x1920">1080 × 1920</option><option value="1080x1080">1080 × 1080</option></select></label>
 <label><span data-t="exportFPS">Frames per second</span><select id="fps"><option value="30">30</option><option value="15">15</option></select></label>
 <label><span data-t="exportStart">Activity start (seconds)</span><input id="start" type="number" min="0" step="any" value="0" required></label>
-<label><span data-t="exportDuration">Duration (seconds)</span><input id="duration" type="number" min="0.1" max="60" step="any" value="3" required></label>
+<label><span data-t="exportDuration">Duration (seconds)</span><input id="duration" type="number" min="0.1" step="any" value="3" required></label>
 <label><span data-t="exportBitrate">Target bitrate (Mbps)</span><input id="bitrate" type="number" min="0.1" max="100" step="any" value="8" required></label>
 </div>
-<div class="export-actions"><button id="export" type="submit" class="primary" data-t="exportStartButton" disabled>Encode transparent H.265</button><button id="cancel" type="button" data-t="exportCancel" hidden>Cancel</button><a id="download" class="export-download" data-t="exportDownload" hidden>Download overlay</a></div>
+<div class="export-actions"><button id="export" type="submit" class="primary" data-t="exportStartButton" disabled>Encode transparent H.265</button><button id="full-activity" type="button" data-t="exportFullActivity">Full activity</button><button id="cancel" type="button" data-t="exportCancel" hidden>Cancel</button><a id="download" class="export-download" data-t="exportDownload" hidden>Download overlay</a></div>
 </form>
 <p id="status" class="status" role="status" aria-live="polite"></p><p id="result" role="status"></p>
 <div class="canvas-wrap checker export-canvas"><canvas id="preview" width="1920" height="1080" aria-label="Overlay preview"></canvas></div>
 <p class="hint" data-t="exportPlayback">Encoding works independently of browser HEVC playback. Some browsers, including Firefox, show HEVC without transparency; use an editor that supports HEVC Alpha to check the downloaded file.</p>
-<p class="hint" data-t="exportBitrateHelp">Bitrate is an encoding target, not a guaranteed file size. Software encoding can be slower than real time. The prototype keeps only one raw frame and up to 128 MiB of compressed video.</p>
+<p class="hint" data-t="exportBitrateHelp">Bitrate is a target, not a guaranteed file size. Keep this page open while encoding. Video is written to browser-local disk storage; memory keeps only two raw frames and MP4 sample metadata. Free disk space is required.</p>
 <p class="hint" data-t="exportWeather">This prototype uses weather in the activity or template; it does not read the editor's Weather Key or cache.</p>
 <p class="hint"><span data-t="exportLicense">Encoder: x265 4.1 with Alpha, GPL-2.0-or-later. Source, license and build instructions:</span> <a href="./encoder/README.md">x265 WASM</a> · <a href="./encoder/COPYING">GPL</a> · <a href="./encoder/x265_4.1.tar.gz" download>Source</a></p>
 </main>
