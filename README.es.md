@@ -4,7 +4,7 @@
 
 Convierte actividades FIT/GPX en superposiciones de telemetría transparentes o vídeos terminados. Exporta proyectos `.dlsproj` de DataLayer Studio desde la terminal. El comando es `overlay`.
 
-**[Abrir el editor de diseños de indicadores](https://leeeboo.github.io/DataLayer-CLI/?lang=en)** — Crea, importa y edita diseños en el navegador; descarga el JSON para usarlo con `--layout-preset`. Los archivos se procesan solo en tu navegador.
+**[Abrir el editor de diseños de indicadores](https://leeeboo.github.io/DataLayer-CLI/?lang=es)** — Crea, importa y edita diseños en el navegador; descarga el plantilla de diseño `.dlspreset` para usarlo con `--layout-preset`. Los archivos se procesan solo en tu navegador.
 
 ## Instalación
 
@@ -12,13 +12,13 @@ Descarga el archivo de tu plataforma y su suma `.sha256` desde [Releases](https:
 
 | Sistema | Final del nombre del archivo |
 | --- | --- |
-| macOS 13+ / Apple Silicon | `macOS-arm64.zip` |
-| Windows / x86_64 | `Windows-x86_64.zip` |
-| Ubuntu 24.04 / x86_64 | `Linux-x86_64.tar.gz` |
+| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
+| Windows / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
+| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
 
 El ejecutable para macOS está firmado y notarizado. No necesita un entorno de ejecución adicional.
 
-Windows/Linux requieren **Swift 6.1.2**, FFmpeg, Cairo/Pango y las fuentes DejaVu, instalados por separado. [Guía de instalación](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.es.md)
+Desde **v0.1.1**, los archivos de Windows/Linux incluyen Swift, FFmpeg, Cairo/Pango y fuentes DejaVu. **No hace falta instalar compiladores ni entornos de ejecución.** [Guía de instalación](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.es.md)
 
 Añade la carpeta del ejecutable a `PATH`. Si no lo haces, sustituye `overlay` por `./overlay` en macOS/Linux o por `.\overlay.exe` en Windows PowerShell.
 
@@ -50,7 +50,7 @@ overlay --timeline-project "project.dlsproj" --output "result.mov"
 
 - `--sync-video 12 --sync-fit 45` (FIT/GPX): alinea el segundo 12 del vídeo con el segundo 45 de la actividad.
 - `--width 1920 --height 1080 --fps 30`: define las dimensiones y la tasa de fotogramas; las dimensiones deben ser pares, entre 2 y 16384.
-- `--layout-preset "layout.json"`: usa un archivo JSON de diseño exportado con una entrada FIT/GPX.
+- `--layout-preset "layout.dlspreset"`: usa una plantilla `.dlspreset` con una entrada FIT/GPX.
 - `--force`: reemplaza archivos de salida existentes; los archivos de entrada siempre están protegidos.
 
 Consulta `overlay --help` para la tasa de bits, unidades, zonas horarias, recortes y `--inspect` (metadatos sin renderizar).

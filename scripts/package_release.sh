@@ -19,6 +19,8 @@ trap 'rm -rf "$stage"' EXIT
 mkdir "$stage/$name"
 cp "$binary_directory/overlay" "$stage/$name/overlay"
 cp LICENSE NOTICE.md README.md AUDIT.md ORIGIN.json "$stage/$name/"
+cp README.*.md "$stage/$name/"
+cp -R docs "$stage/$name/"
 python3 - "$stage/$name/SOURCE.json" <<'PY'
 import json, pathlib, subprocess, sys
 revision = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()

@@ -4,7 +4,7 @@
 
 将 FIT/GPX 运动数据导出为透明数据浮层或合成视频，也可在终端直接导出 DataLayer Studio 的 `.dlsproj` 工程。命令名为 `overlay`。
 
-**[打开 GAUGE 布局编辑器](https://leeeboo.github.io/DataLayer-CLI/?lang=zh-CN)** — 在浏览器中新建、导入和编辑布局，下载 JSON 后通过 `--layout-preset` 使用。文件仅在浏览器本地处理。
+**[打开 GAUGE 布局编辑器](https://leeeboo.github.io/DataLayer-CLI/?lang=zh-CN)** — 在浏览器中新建、导入和编辑布局，下载 布局模板 `.dlspreset` 后通过 `--layout-preset` 使用。文件仅在浏览器本地处理。
 
 ## 安装
 
@@ -12,13 +12,13 @@
 
 | 系统 | 压缩包后缀 |
 | --- | --- |
-| macOS 13+ / Apple Silicon | `macOS-arm64.zip` |
-| Windows / x86_64 | `Windows-x86_64.zip` |
-| Ubuntu 24.04 / x86_64 | `Linux-x86_64.tar.gz` |
+| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
+| Windows / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
+| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
 
 macOS 版本已签名并公证，无需额外安装运行库。
 
-Windows/Linux 需另行安装 **Swift 6.1.2**、FFmpeg、Cairo/Pango 和 DejaVu 字体。 [安装详情](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.zh-CN.md)
+从 **v0.1.1** 起，Windows/Linux 安装包已包含 Swift、FFmpeg、Cairo/Pango 和 DejaVu 字体，**无需安装编译器或运行库**。 [安装详情](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.zh-CN.md)
 
 将可执行文件所在目录加入 `PATH`。未配置时，下方的 `overlay` 在 macOS/Linux 上改为 `./overlay`，Windows PowerShell 上改为 `.\overlay.exe`。
 
@@ -50,7 +50,7 @@ overlay --timeline-project "project.dlsproj" --output "result.mov"
 
 - `--sync-video 12 --sync-fit 45` (FIT/GPX): 将视频第 12 秒对齐到运动第 45 秒。
 - `--width 1920 --height 1080 --fps 30`: 设置输出尺寸和帧率；宽高须为 2～16384 范围内的偶数。
-- `--layout-preset "layout.json"`: 为 FIT/GPX 输入使用导出的布局 JSON。
+- `--layout-preset "layout.dlspreset"`: 为 FIT/GPX 输入使用 `.dlspreset` 布局模板。
 - `--force`: 覆盖已有输出文件；始终保护输入文件。
 
 运行 `overlay --help` 查看码率、单位、时区、裁剪和 `--inspect`（仅检查元数据，不渲染）等选项。

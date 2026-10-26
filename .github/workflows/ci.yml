@@ -1,4 +1,4 @@
-name: CLI CI
+name: CLI · macOS / Windows / Linux
 on:
   push:
     branches: [main, 'codex/**']
@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 env:
-  CLI_RELEASE_VERSION: v0.1.0
+  CLI_RELEASE_VERSION: v0.1.1
 concurrency:
   group: cli-ci-${{ github.ref }}
   cancel-in-progress: false
@@ -63,13 +63,16 @@ jobs:
     needs: fixture
     runs-on: ubuntu-24.04
     container: swift:6.1.2-noble
-    timeout-minutes: 25
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v7
       - name: Install portable media and graphics runtimes
         run: |
           apt-get update
           apt-get install -y --no-install-recommends python3 git ffmpeg libcairo2 libpangocairo-1.0-0 fonts-liberation fonts-dejavu-core
+          sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
+          apt-get update
+          apt-get upgrade -y
           env -u GIT_CONFIG_GLOBAL -u GIT_CONFIG_SYSTEM git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Check audited source boundary
         run: |
@@ -83,22 +86,48 @@ jobs:
         run: .build/release/overlay --help
       - name: Package and unpack the native Linux release
         run: |
-          python3 -B scripts/package_portable_release.py "$CLI_RELEASE_VERSION" .build/release/overlay .build/releases
+          python3 -B scripts/collect_portable_runtime.py .build/release/overlay .build/portable-runtime .build/dependency-sources
+          python3 -B scripts/package_portable_release.py "$CLI_RELEASE_VERSION" .build/release/overlay .build/releases .build/portable-runtime .build/dependency-sources
           (cd .build/releases && sha256sum -c *.sha256)
           mkdir -p .build/package-smoke
           tar -xzf ".build/releases/DataLayer-CLI-${CLI_RELEASE_VERSION}-Linux-x86_64.tar.gz" -C .build/package-smoke
           ".build/package-smoke/DataLayer-CLI-${CLI_RELEASE_VERSION}-Linux-x86_64/overlay" --help
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-linux
+          path: |
+            .build/releases/*.tar.gz
+            .build/releases/*.tar.gz.sha256
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sources-linux
+          path: |
+            .build/releases/*-dependency-sources.tar
+            .build/releases/*-dependency-sources.tar.sha256
+          retention-days: 7
+  linux-clean:
+    needs: [fixture, linux]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-linux
+          path: package
       - uses: actions/download-artifact@v8
         with:
           name: shared-export-fixture
           path: export-fixture
-      - name: Export saved project and inspect picture, timing, audio and Alpha
-        run: python3 -B scripts/verify_export_fixture.py ".build/package-smoke/DataLayer-CLI-${CLI_RELEASE_VERSION}-Linux-x86_64/overlay" export-fixture export-linux
-      - uses: actions/upload-artifact@v7
-        with:
-          name: release-linux
-          path: .build/releases/
-          retention-days: 7
+      - name: Export in Ubuntu without Swift, FFmpeg, Cairo or Pango installed
+        run: |
+          (cd package && sha256sum -c *.sha256)
+          tar -xzf package/*.tar.gz -C package
+          docker run --rm -e CLI_RELEASE_VERSION -v "$GITHUB_WORKSPACE:/work" -w /work ubuntu:24.04 sh -ec '
+            apt-get update && apt-get install -y --no-install-recommends python3
+            python3 -B scripts/verify_portable_package.py "package/DataLayer-CLI-${CLI_RELEASE_VERSION}-Linux-x86_64" export-fixture export-linux
+          '
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -108,7 +137,7 @@ jobs:
   windows:
     needs: fixture
     runs-on: windows-2022
-    timeout-minutes: 35
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
@@ -130,6 +159,8 @@ jobs:
             mingw-w64-ucrt-x86_64-cairo
             mingw-w64-ucrt-x86_64-ffmpeg
             mingw-w64-ucrt-x86_64-ttf-dejavu
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-binutils
       - name: Make runtime DLLs available to the native Swift executable
         shell: pwsh
         env:
@@ -151,9 +182,14 @@ jobs:
           & $binary --help
       - name: Package and unpack the native Windows release
         shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
         run: |
           $binary = Join-Path (swift build -c release --show-bin-path) 'overlay.exe'
-          python -B scripts/package_portable_release.py $env:CLI_RELEASE_VERSION $binary .build/releases
+          python -B scripts/collect_portable_runtime.py $binary .build/portable-runtime .build/dependency-sources
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime collection failed' }
+          python -B scripts/package_portable_release.py $env:CLI_RELEASE_VERSION $binary .build/releases .build/portable-runtime .build/dependency-sources
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime packaging failed' }
           $archive = ".build/releases/DataLayer-CLI-$env:CLI_RELEASE_VERSION-Windows-x86_64.zip"
           $expected = (Get-Content "$archive.sha256").Split(' ')[0]
           if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() -ne $expected) { throw 'Archive checksum mismatch' }
@@ -166,12 +202,20 @@ jobs:
       - name: Export saved project and inspect picture, timing, audio and Alpha
         shell: pwsh
         run: |
-          $binary = ".build/package-smoke/DataLayer-CLI-$env:CLI_RELEASE_VERSION-Windows-x86_64/overlay.exe"
-          python -B scripts/verify_export_fixture.py $binary export-fixture export-windows
+          python -B scripts/verify_portable_package.py ".build/package-smoke/DataLayer-CLI-$env:CLI_RELEASE_VERSION-Windows-x86_64" export-fixture export-windows
       - uses: actions/upload-artifact@v7
         with:
           name: release-windows
-          path: .build/releases/
+          path: |
+            .build/releases/*.zip
+            .build/releases/*.zip.sha256
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sources-windows
+          path: |
+            .build/releases/*-dependency-sources.tar
+            .build/releases/*-dependency-sources.tar.sha256
           retention-days: 7
       - uses: actions/upload-artifact@v7
         if: always()
@@ -180,7 +224,7 @@ jobs:
           path: export-windows/
           retention-days: 7
   compare:
-    needs: [test, linux, windows]
+    needs: [test, linux-clean, windows]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

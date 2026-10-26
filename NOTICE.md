@@ -11,12 +11,16 @@ This distribution has no third-party Swift package dependencies. It uses
 Apple system frameworks on macOS/iOS, including AVFoundation, CoreGraphics, CoreText,
 CoreImage, Metal, and VideoToolbox, supplied by the Apple operating system and not redistributed.
 
-The Windows/Linux backend dynamically loads separately installed Cairo/Pango
-shared libraries and invokes FFmpeg/ffprobe as external processes. Those projects
-retain their own licenses; they are not relicensed under MIT and their binaries
-are not included in this source tree. Refer to https://www.cairographics.org/
-https://www.pango.org/ and https://ffmpeg.org/legal.html for their terms.
-Portable text uses separately installed DejaVu fonts (https://dejavu-fonts.github.io/).
+The Windows/Linux backend dynamically loads Cairo/Pango shared libraries and
+invokes FFmpeg/ffprobe as separate processes. Starting with v0.1.1, portable release
+archives include their runtime dependencies, Swift runtime and DejaVu fonts.
+These components retain their own licenses, including Apache, BSD, MIT, LGPL and GPL
+terms; they are not relicensed under MIT. Each archive includes runtime/licenses,
+runtime/DEPENDENCIES.json and THIRD_PARTY.md. Matching package sources and build
+recipes are distributed as dependency-sources assets beside the binary downloads.
+Libraries remain separate and replaceable. No vendor binaries are committed to this
+source tree. See https://www.cairographics.org/ https://www.pango.org/
+https://ffmpeg.org/legal.html and https://dejavu-fonts.github.io/ for upstream terms.
 The FIT/GPX parsers implement file formats; no Garmin SDK or application
 source code, activity files, fonts, LUT assets, or vendor binaries are bundled.
 

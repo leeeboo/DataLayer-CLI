@@ -4,7 +4,7 @@
 
 Создавайте прозрачные слои телеметрии или готовые видео из тренировок FIT/GPX. Экспортируйте проекты DataLayer Studio `.dlsproj` из терминала. Команда называется `overlay`.
 
-**[Открыть редактор расположения индикаторов](https://leeeboo.github.io/DataLayer-CLI/?lang=en)** — Создавайте, импортируйте и редактируйте макеты в браузере, затем скачайте JSON для `--layout-preset`. Файлы обрабатываются только в браузере.
+**[Открыть редактор расположения индикаторов](https://leeeboo.github.io/DataLayer-CLI/?lang=ru)** — Создавайте, импортируйте и редактируйте макеты в браузере, затем скачайте шаблон макета `.dlspreset` для `--layout-preset`. Файлы обрабатываются только в браузере.
 
 ## Установка
 
@@ -12,13 +12,13 @@
 
 | Система | Окончание имени архива |
 | --- | --- |
-| macOS 13+ / Apple Silicon | `macOS-arm64.zip` |
-| Windows / x86_64 | `Windows-x86_64.zip` |
-| Ubuntu 24.04 / x86_64 | `Linux-x86_64.tar.gz` |
+| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
+| Windows / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
+| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
 
 Файл для macOS подписан и нотариально заверен Apple. Дополнительная среда выполнения не нужна.
 
-Для Windows/Linux отдельно установите **Swift 6.1.2**, FFmpeg, Cairo/Pango и шрифты DejaVu. [Инструкция по установке](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.ru.md)
+Начиная с **v0.1.1**, архивы Windows/Linux включают Swift, FFmpeg, Cairo/Pango и шрифты DejaVu. **Устанавливать компилятор или среду выполнения не нужно.** [Инструкция по установке](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.ru.md)
 
 Добавьте папку с исполняемым файлом в `PATH`. Иначе заменяйте `overlay` в примерах на `./overlay` в macOS/Linux или `.\overlay.exe` в Windows PowerShell.
 
@@ -50,7 +50,7 @@ overlay --timeline-project "project.dlsproj" --output "result.mov"
 
 - `--sync-video 12 --sync-fit 45` (FIT/GPX): совместить 12-ю секунду видео с 45-й секундой тренировки.
 - `--width 1920 --height 1080 --fps 30`: задать размер и частоту кадров; ширина и высота должны быть чётными числами от 2 до 16384.
-- `--layout-preset "layout.json"`: применить экспортированный JSON макета к входным данным FIT/GPX.
+- `--layout-preset "layout.dlspreset"`: применить шаблон `.dlspreset` к данным FIT/GPX.
 - `--force`: заменить существующие выходные файлы; входные файлы всегда защищены.
 
 Параметры битрейта, единиц, часового пояса, обрезки и `--inspect` (метаданные без рендеринга) описаны в `overlay --help`.

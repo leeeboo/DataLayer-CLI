@@ -4,7 +4,7 @@
 
 FIT/GPX 활동 데이터를 투명한 텔레메트리 오버레이 또는 합성 동영상으로 내보냅니다. 터미널에서 DataLayer Studio `.dlsproj` 프로젝트도 내보낼 수 있습니다. 명령어 이름은 `overlay`입니다.
 
-**[게이지 레이아웃 편집기 열기](https://leeeboo.github.io/DataLayer-CLI/?lang=en)** — 브라우저에서 레이아웃을 만들고 가져와 편집한 뒤, JSON을 다운로드하여 `--layout-preset`으로 사용하세요. 파일은 브라우저 안에서만 처리됩니다.
+**[게이지 레이아웃 편집기 열기](https://leeeboo.github.io/DataLayer-CLI/?lang=ko)** — 브라우저에서 레이아웃을 만들고 가져와 편집한 뒤, 레이아웃 프리셋 `.dlspreset`을 다운로드하여 `--layout-preset`으로 사용하세요. 파일은 브라우저 안에서만 처리됩니다.
 
 ## 설치
 
@@ -12,13 +12,13 @@ FIT/GPX 활동 데이터를 투명한 텔레메트리 오버레이 또는 합성
 
 | 시스템 | 압축 파일 이름 끝부분 |
 | --- | --- |
-| macOS 13+ / Apple Silicon | `macOS-arm64.zip` |
-| Windows / x86_64 | `Windows-x86_64.zip` |
-| Ubuntu 24.04 / x86_64 | `Linux-x86_64.tar.gz` |
+| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
+| Windows / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
+| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
 
 macOS 실행 파일은 서명 및 공증되었습니다. 별도 런타임 설치가 필요하지 않습니다.
 
-Windows/Linux는 **Swift 6.1.2**, FFmpeg, Cairo/Pango 및 DejaVu 글꼴을 별도로 설치해야 합니다. [설치 안내](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.ko.md)
+**v0.1.1**부터 Windows/Linux 압축 파일에 Swift, FFmpeg, Cairo/Pango와 DejaVu 글꼴이 포함됩니다. **컴파일러나 런타임을 별도로 설치할 필요가 없습니다.** [설치 안내](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.ko.md)
 
 실행 파일이 있는 폴더를 `PATH`에 추가하세요. 설정하지 않았다면 아래의 `overlay`를 macOS/Linux에서는 `./overlay`, Windows PowerShell에서는 `.\overlay.exe`로 바꾸세요.
 
@@ -50,7 +50,7 @@ overlay --timeline-project "project.dlsproj" --output "result.mov"
 
 - `--sync-video 12 --sync-fit 45` (FIT/GPX): 동영상의 12초 지점을 활동의 45초 지점과 맞춥니다.
 - `--width 1920 --height 1080 --fps 30`: 출력 크기와 프레임 속도를 설정합니다. 너비와 높이는 2~16384 사이의 짝수여야 합니다.
-- `--layout-preset "layout.json"`: FIT/GPX 입력에 내보낸 레이아웃 JSON을 적용합니다.
+- `--layout-preset "layout.dlspreset"`: FIT/GPX 입력에 `.dlspreset` 레이아웃 프리셋을 적용합니다.
 - `--force`: 기존 출력 파일을 덮어씁니다. 입력 파일은 항상 보호됩니다.
 
 비트레이트, 단위, 시간대, 자르기 및 `--inspect`(렌더링 없이 메타데이터만 확인)는 `overlay --help`를 참고하세요.

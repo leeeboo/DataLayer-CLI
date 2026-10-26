@@ -79,9 +79,13 @@ DEVELOPER_ID_APPLICATION="your existing identity" scripts/package_release.sh vX.
 The script verifies the signature, requires Apple's `Accepted` notarization result,
 checks the online ticket and writes a SHA-256 checksum. A raw command executable
 cannot carry an app bundle's stapled ticket. Windows/Linux CI uses
-`scripts/package_portable_release.py` to create native archives with the source
-revision, binary hash, MIT license and notices.
+`scripts/collect_portable_runtime.py` and `scripts/package_portable_release.py`
+to collect the dependency closure, licenses and matching source packages, then
+produce standalone archives and separate dependency-source archives. CI runs the
+Linux package in a clean Ubuntu container and the Windows package with Swift/MSYS2
+removed from PATH; both export the shared project with real Alpha, audio and timing checks.
+The portable launcher leaves Core and its platform backends unchanged.
 
-Archives contain the English README and licensing/provenance records. README
+Archives contain all 12 READMEs, installation guides and licensing/provenance records. README
 language and setup links use GitHub URLs so they also work outside a source checkout.
 README translations and the detailed guides are maintained in the repository.

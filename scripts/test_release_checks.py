@@ -14,6 +14,7 @@ from unittest.mock import patch
 
 import compare_export_fixture as comparison
 import package_portable_release as packaging
+import collect_portable_runtime as runtime
 
 
 class ReleaseChecks(unittest.TestCase):
@@ -53,42 +54,67 @@ class ReleaseChecks(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "different input"):
             self.compare(fixture_mismatch=True)
 
-    def testPortableArchivesContainOnlyExecutableAndAuditedNotices(self):
+    def testPortableArchivesContainRuntimeNoticesSourcesAndOriginalExecutable(self):
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             binary = root / "overlay"
             binary.write_bytes(b"test executable")
             binary.chmod(0o755)
             for system in ["Linux", "Windows"]:
+                collected = root / (system + "-runtime")
+                (collected / "bin").mkdir(parents=True)
+                (collected / "licenses").mkdir()
+                (collected / "licenses/FFmpeg").write_text("GPL source remains available")
+                shutil_binary = collected / "bin" / ("overlay.exe" if system == "Windows" else "overlay")
+                shutil_binary.write_bytes(binary.read_bytes())
+                (collected / ("launcher.exe" if system == "Windows" else "launcher")).write_bytes(b"launcher")
+                sources = root / (system + "-sources")
+                sources.mkdir()
+                (sources / "ffmpeg.src.tar").write_bytes(b"matching source")
+                (collected / "DEPENDENCIES.json").write_text(json.dumps({"platform": system,
+                    "sources": [{"file": "ffmpeg.src.tar", "sha256": runtime.digest(sources / "ffmpeg.src.tar")}]}))
                 with patch.object(packaging.platform, "system", return_value=system), patch.object(
                     packaging.platform, "machine", return_value="AMD64"), patch.object(
                     packaging.subprocess, "check_output", side_effect=[b"", "a" * 40]), contextlib.redirect_stdout(io.StringIO()):
-                    archive = packaging.package("v0.1.0", binary, root / system)
+                    archive = packaging.package("v0.1.1", binary, root / system, collected, sources)
                 digest, name = archive.with_suffix(archive.suffix + ".sha256").read_text().split()
                 self.assertEqual(name, archive.name)
                 self.assertEqual(digest, hashlib.sha256(archive.read_bytes()).hexdigest())
                 if system == "Linux":
                     with tarfile.open(archive) as bundle:
                         members = [m for m in bundle.getmembers() if m.isfile()]
-                        self.assertEqual(len(members), 7)
-                        executable = next(m for m in members if m.name.endswith("/overlay"))
-                        # Windows cannot represent POSIX execute bits; Linux CI checks the real mode.
-                        if os.name != "nt":
-                            self.assertTrue(executable.mode & 0o111)
+                        self.assertTrue(any(m.name.endswith("runtime/licenses/FFmpeg") for m in members))
+                        self.assertTrue(any(m.name.endswith("/docs/INSTALL.zh-CN.md") for m in members))
+                        executable = next(m for m in members if m.name.endswith("/runtime/bin/overlay"))
+                        self.assertEqual(bundle.extractfile(executable).read(), binary.read_bytes())
                         source = json.loads(bundle.extractfile(next(m for m in members if m.name.endswith("/SOURCE.json"))).read())
                 else:
                     with zipfile.ZipFile(archive) as bundle:
-                        self.assertEqual(len(bundle.namelist()), 7)
-                        self.assertTrue(any(n.endswith("/overlay.exe") for n in bundle.namelist()))
+                        self.assertTrue(any(n.endswith("/runtime/bin/overlay.exe") for n in bundle.namelist()))
+                        self.assertEqual(bundle.read(next(n for n in bundle.namelist() if n.endswith("/runtime/bin/overlay.exe"))), binary.read_bytes())
                         source = json.loads(bundle.read(next(n for n in bundle.namelist() if n.endswith("/SOURCE.json"))))
                 self.assertEqual(source["revision"], "a" * 40)
                 self.assertEqual(source["binary_sha256"], hashlib.sha256(binary.read_bytes()).hexdigest())
+                with tarfile.open(archive.parent / source["dependency_sources"]) as bundle:
+                    self.assertEqual(bundle.extractfile("dependency-sources/ffmpeg.src.tar").read(), b"matching source")
                 with patch.object(packaging.platform, "system", return_value=system), patch.object(
                     packaging.platform, "machine", return_value="AMD64"), patch.object(
                     packaging.subprocess, "check_output", side_effect=[b"", "a" * 40]):
                     with self.assertRaises(FileExistsError):
-                        packaging.package("v0.1.0", binary, root / system)
+                        packaging.package("v0.1.1", binary, root / system, collected, sources)
                 self.assertEqual(digest, hashlib.sha256(archive.read_bytes()).hexdigest())
+                (sources / "ffmpeg.src.tar").write_bytes(b"wrong source")
+                with patch.object(packaging.platform, "system", return_value=system), patch.object(
+                    packaging.platform, "machine", return_value="AMD64"):
+                    with self.assertRaisesRegex(ValueError, "checksum"):
+                        packaging.package("v0.1.2", binary, root / system, collected, sources)
+
+    def testMissingDependenciesFailRatherThanUsingIncompleteRelease(self):
+        with patch.object(runtime, "run", return_value="libswiftCore.so => not found"):
+            with self.assertRaisesRegex(ValueError, "Unresolved"):
+                runtime.linux_dependencies("overlay")
+        with patch.object(runtime, "run", return_value="libc.so.6 => /lib/libc.so.6 (0x1)\nlibcairo.so.2 => /lib/libcairo.so.2 (0x2)"):
+            self.assertEqual(runtime.linux_dependencies("overlay"), [pathlib.Path("/lib/libcairo.so.2")])
 
 
 if __name__ == "__main__":

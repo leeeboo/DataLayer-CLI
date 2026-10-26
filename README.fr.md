@@ -4,7 +4,7 @@
 
 Transformez des activités FIT/GPX en incrustations de télémétrie transparentes ou en vidéos finales. Exportez des projets DataLayer Studio `.dlsproj` depuis le terminal. La commande est `overlay`.
 
-**[Ouvrir l’éditeur de disposition des jauges](https://leeeboo.github.io/DataLayer-CLI/?lang=en)** — Créez, importez et modifiez des dispositions dans le navigateur, puis téléchargez le JSON pour `--layout-preset`. Les fichiers restent dans votre navigateur.
+**[Ouvrir l’éditeur de disposition des jauges](https://leeeboo.github.io/DataLayer-CLI/?lang=fr)** — Créez, importez et modifiez des dispositions dans le navigateur, puis téléchargez le modèle de disposition `.dlspreset` pour `--layout-preset`. Les fichiers restent dans votre navigateur.
 
 ## Installation
 
@@ -12,13 +12,13 @@ Téléchargez l’archive de votre plateforme et son fichier `.sha256` depuis [R
 
 | Système | Fin du nom de l’archive |
 | --- | --- |
-| macOS 13+ / Apple Silicon | `macOS-arm64.zip` |
-| Windows / x86_64 | `Windows-x86_64.zip` |
-| Ubuntu 24.04 / x86_64 | `Linux-x86_64.tar.gz` |
+| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
+| Windows / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
+| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
 
 Le binaire macOS est signé et notarié. Aucun environnement d’exécution supplémentaire n’est nécessaire.
 
-Windows/Linux nécessitent **Swift 6.1.2**, FFmpeg, Cairo/Pango et les polices DejaVu, installés séparément. [Guide d’installation](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.fr.md)
+À partir de **v0.1.1**, les archives Windows/Linux incluent Swift, FFmpeg, Cairo/Pango et les polices DejaVu. **Aucun compilateur ni environnement d’exécution à installer.** [Guide d’installation](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.fr.md)
 
 Ajoutez le dossier de l’exécutable au `PATH`. Sinon, remplacez `overlay` ci-dessous par `./overlay` sur macOS/Linux ou `.\overlay.exe` dans Windows PowerShell.
 
@@ -50,7 +50,7 @@ overlay --timeline-project "project.dlsproj" --output "result.mov"
 
 - `--sync-video 12 --sync-fit 45` (FIT/GPX): aligne la seconde 12 de la vidéo sur la seconde 45 de l’activité.
 - `--width 1920 --height 1080 --fps 30`: définit les dimensions et la fréquence d’images ; les dimensions doivent être paires, de 2 à 16384.
-- `--layout-preset "layout.json"`: utilise un fichier JSON de mise en page exporté avec une entrée FIT/GPX.
+- `--layout-preset "layout.dlspreset"`: applique un modèle `.dlspreset` aux données FIT/GPX.
 - `--force`: remplace les sorties existantes ; les fichiers d’entrée sont toujours protégés.
 
 Consultez `overlay --help` pour le débit, les unités, les fuseaux horaires, le découpage et `--inspect` (métadonnées sans rendu).

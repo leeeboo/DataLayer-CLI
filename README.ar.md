@@ -4,7 +4,7 @@
 
 حوّل بيانات الأنشطة بصيغة FIT/GPX إلى طبقات بيانات شفافة أو فيديوهات جاهزة. يمكنك أيضًا تصدير مشاريع DataLayer Studio بصيغة `.dlsproj` من الطرفية. اسم الأمر هو `overlay`.
 
-**[فتح محرر تخطيط المؤشرات](https://leeeboo.github.io/DataLayer-CLI/?lang=en)** — أنشئ التخطيطات واستوردها وعدّلها في المتصفح، ثم نزّل JSON لاستخدامه مع `--layout-preset`. تبقى الملفات داخل المتصفح.
+**[فتح محرر تخطيط المؤشرات](https://leeeboo.github.io/DataLayer-CLI/?lang=ar)** — أنشئ التخطيطات واستوردها وعدّلها في المتصفح، ثم نزّل قالب التخطيط `.dlspreset` لاستخدامه مع `--layout-preset`. تبقى الملفات داخل المتصفح.
 
 ## التثبيت
 
@@ -12,13 +12,13 @@
 
 | النظام | نهاية اسم الأرشيف |
 | --- | --- |
-| macOS 13+ / Apple Silicon | `macOS-arm64.zip` |
-| Windows / x86_64 | `Windows-x86_64.zip` |
-| Ubuntu 24.04 / x86_64 | `Linux-x86_64.tar.gz` |
+| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
+| Windows / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
+| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
 
 الملف التنفيذي لنظام macOS موقّع وموثّق لدى Apple، ولا يحتاج إلى تثبيت بيئة تشغيل إضافية.
 
-يتطلب Windows/Linux تثبيت **Swift 6.1.2** وFFmpeg وCairo/Pango وخطوط DejaVu بشكل منفصل. [دليل التثبيت](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.ar.md)
+بدءًا من **v0.1.1**، تتضمن حزم Windows/Linux مكتبات Swift وFFmpeg وCairo/Pango وخطوط DejaVu. **لا تحتاج إلى تثبيت مترجم أو بيئة تشغيل.** [دليل التثبيت](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.ar.md)
 
 أضف مجلد الملف التنفيذي إلى `PATH`. إن لم تفعل، استبدل `overlay` في الأمثلة بـ `./overlay` على macOS/Linux أو بـ `.\overlay.exe` في Windows PowerShell.
 
@@ -50,7 +50,7 @@ overlay --timeline-project "project.dlsproj" --output "result.mov"
 
 - `--sync-video 12 --sync-fit 45` (FIT/GPX): محاذاة الثانية 12 من الفيديو مع الثانية 45 من النشاط.
 - `--width 1920 --height 1080 --fps 30`: تحديد الأبعاد ومعدل الإطارات؛ يجب أن يكون العرض والارتفاع عددين زوجيين بين 2 و16384.
-- `--layout-preset "layout.json"`: استخدام ملف JSON لتخطيط مُصدّر مع مدخل FIT/GPX.
+- `--layout-preset "layout.dlspreset"`: استخدم قالب `.dlspreset` مع مدخل FIT/GPX.
 - `--force`: استبدال ملفات الإخراج الموجودة؛ تظل ملفات الإدخال محمية دائمًا.
 
 استخدم `overlay --help` لمعرفة خيارات معدل البت والوحدات والمناطق الزمنية والقص و`--inspect` (عرض البيانات الوصفية دون تصيير).

@@ -4,7 +4,7 @@
 
 Turn FIT/GPX activity data into transparent telemetry overlays or finished videos. Export DataLayer Studio `.dlsproj` projects from your terminal. The command is `overlay`.
 
-**[Open the gauge layout editor](https://leeeboo.github.io/DataLayer-CLI/?lang=en)** — Create, import and edit layouts in your browser, then download JSON for `--layout-preset`. Files stay in your browser.
+**[Open the gauge layout editor](https://leeeboo.github.io/DataLayer-CLI/?lang=en)** — Create, import and edit layouts in your browser, then download layout preset `.dlspreset` for `--layout-preset`. Files stay in your browser.
 
 ## Install
 
@@ -12,13 +12,13 @@ Download the matching archive and its `.sha256` checksum from [Releases](https:/
 
 | System | Archive ending |
 | --- | --- |
-| macOS 13+ / Apple Silicon | `macOS-arm64.zip` |
-| Windows / x86_64 | `Windows-x86_64.zip` |
-| Ubuntu 24.04 / x86_64 | `Linux-x86_64.tar.gz` |
+| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
+| Windows / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
+| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
 
 The macOS binary is signed and notarized. No extra runtime installation is needed.
 
-Windows/Linux require **Swift 6.1.2**, FFmpeg, Cairo/Pango and DejaVu fonts, installed separately. [Setup guide](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md)
+From **v0.1.1**, Windows/Linux archives include Swift, FFmpeg, Cairo/Pango and DejaVu fonts. **No compiler or runtime installation is required.** [Setup guide](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md)
 
 Add the executable’s folder to `PATH`. Without that, replace `overlay` below with `./overlay` on macOS/Linux or `.\overlay.exe` in Windows PowerShell.
 
@@ -50,7 +50,7 @@ overlay --timeline-project "project.dlsproj" --output "result.mov"
 
 - `--sync-video 12 --sync-fit 45` (FIT/GPX): align video 12s with activity 45s.
 - `--width 1920 --height 1080 --fps 30`: set output dimensions and frame rate; dimensions must be even, from 2 to 16384.
-- `--layout-preset "layout.json"`: use an exported layout JSON with FIT/GPX input.
+- `--layout-preset "layout.dlspreset"`: use a `.dlspreset` layout preset with FIT/GPX input.
 - `--force`: replace existing outputs; input files are always protected.
 
 Run `overlay --help` for bitrate, units, time zones, trimming and `--inspect` (metadata without rendering).

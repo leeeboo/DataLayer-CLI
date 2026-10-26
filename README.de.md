@@ -4,7 +4,7 @@
 
 Erstelle aus FIT/GPX-Aktivitäten transparente Telemetrie-Overlays oder fertige Videos. Exportiere DataLayer-Studio-Projekte im Format `.dlsproj` direkt im Terminal. Der Befehl heißt `overlay`.
 
-**[Gauge-Layout-Editor öffnen](https://leeeboo.github.io/DataLayer-CLI/?lang=en)** — Layouts im Browser erstellen, importieren und bearbeiten; anschließend JSON für `--layout-preset` herunterladen. Die Dateien bleiben in deinem Browser.
+**[Gauge-Layout-Editor öffnen](https://leeeboo.github.io/DataLayer-CLI/?lang=de)** — Layouts im Browser erstellen, importieren und bearbeiten; anschließend Layoutvorlage `.dlspreset` für `--layout-preset` herunterladen. Die Dateien bleiben in deinem Browser.
 
 ## Installation
 
@@ -12,13 +12,13 @@ Lade das passende Archiv und die zugehörige `.sha256`-Datei von [Releases](http
 
 | System | Ende des Archivnamens |
 | --- | --- |
-| macOS 13+ / Apple Silicon | `macOS-arm64.zip` |
-| Windows / x86_64 | `Windows-x86_64.zip` |
-| Ubuntu 24.04 / x86_64 | `Linux-x86_64.tar.gz` |
+| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
+| Windows / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
+| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
 
 Die macOS-Datei ist signiert und notarisiert. Es ist keine zusätzliche Laufzeitinstallation nötig.
 
-Windows/Linux benötigen **Swift 6.1.2**, FFmpeg, Cairo/Pango und DejaVu-Schriften als separate Installation. [Installationsanleitung](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.de.md)
+Ab **v0.1.1** enthalten die Windows/Linux-Archive Swift, FFmpeg, Cairo/Pango und DejaVu-Schriften. **Compiler und Laufzeitumgebungen müssen nicht installiert werden.** [Installationsanleitung](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.de.md)
 
 Füge den Ordner der ausführbaren Datei zu `PATH` hinzu. Ersetze andernfalls `overlay` unten durch `./overlay` unter macOS/Linux oder `.\overlay.exe` in Windows PowerShell.
 
@@ -50,7 +50,7 @@ overlay --timeline-project "project.dlsproj" --output "result.mov"
 
 - `--sync-video 12 --sync-fit 45` (FIT/GPX): richtet Sekunde 12 des Videos an Sekunde 45 der Aktivität aus.
 - `--width 1920 --height 1080 --fps 30`: legt Auflösung und Bildrate fest; Breite und Höhe müssen gerade Zahlen von 2 bis 16384 sein.
-- `--layout-preset "layout.json"`: verwendet eine exportierte Layout-JSON-Datei mit FIT/GPX-Eingaben.
+- `--layout-preset "layout.dlspreset"`: verwendet eine `.dlspreset`-Layoutvorlage für FIT/GPX-Daten.
 - `--force`: überschreibt vorhandene Ausgabedateien; Eingabedateien bleiben geschützt.
 
 `overlay --help` beschreibt Bitrate, Einheiten, Zeitzonen, Zuschnitt und `--inspect` (Metadaten ohne Rendering).

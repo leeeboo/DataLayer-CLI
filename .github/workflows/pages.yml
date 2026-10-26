@@ -1,4 +1,4 @@
-name: Gauge editor Pages
+name: Web editor · Safari / Firefox / Pages
 on:
   push:
     branches: [main]
