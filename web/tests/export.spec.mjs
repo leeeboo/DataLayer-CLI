@@ -12,9 +12,15 @@ const test=base.extend({context:async({playwright,browserName,baseURL,viewport},
   const profile=await mkdtemp(join(tmpdir(),'dls-export-browser-'));
   const context=await playwright[browserName].launchPersistentContext(profile,{headless:true,baseURL,viewport});
   try{await use(context);}finally{await context.close();await rm(profile,{recursive:true,force:true});}
+},page:async({context},use)=>{
+  // Persistent contexts already have a startup page; avoid leaving it behind a second WebKit page.
+  await use(context.pages()[0]??await context.newPage());
 }});
 test.describe.configure({mode:'default'});
-async function open(page,lang='en'){await openEditor(page,`./?lang=${lang}`);}
+async function open(page,lang='en'){
+  await openEditor(page,`./?lang=${lang}`);
+  expect(await page.evaluate(()=>({isolated:crossOriginIsolated,controlled:!!navigator.serviceWorker?.controller}))).toEqual({isolated:true,controlled:true});
+}
 async function activity(page){
   await page.locator('#activity-file').setInputFiles({name:'activity.fit',mimeType:'application/octet-stream',buffer:syntheticFIT});
   await expect(page.locator('#activity-name')).toContainText('activity.fit');await page.locator('#web-export').click();

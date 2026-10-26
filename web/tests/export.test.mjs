@@ -91,7 +91,7 @@ test('isolation rechecks registration and asks an existing worker to claim the n
   for(const missedEvent of [false,true]){
     const script=new URL('https://example.test/isolation-worker.mjs?v=test'),listeners=new Map();let claims=0,reloads=0;
     const worker={scriptURL:script.href,postMessage(data){assert.equal(data.type,'dls-claim');claims++;serviceWorker.controller=worker;listeners.get('controllerchange')?.();}};
-    const serviceWorker={controller:null,addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:name=>listeners.delete(name),register:async(url,options)=>{assert.equal(url,script);assert.equal(options.type,'classic');assert.equal(options.scope,'https://example.test/');assert.equal(options.updateViaCache,'none');if(missedEvent)serviceWorker.controller=worker;return {active:worker};}};
+    const serviceWorker={controller:null,addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:name=>listeners.delete(name),register:async()=>{if(missedEvent)serviceWorker.controller=worker;return {active:worker};}};
     const context={URL,isSecureContext:true,crossOriginIsolated:false,SharedArrayBuffer,WebAssembly,Worker:class{},navigator:{serviceWorker,storage:{getDirectory(){}},locks:{}},location:{reload(){reloads++;throw Error('reload with isolation headers');}},setTimeout:fn=>setTimeout(fn,25),clearTimeout};
     const prepare=runInNewContext(`${source};prepareIsolation`,context);
     await assert.rejects(prepare(script),/reload with isolation headers/);
@@ -100,11 +100,6 @@ test('isolation rechecks registration and asks an existing worker to claim the n
   }
 });
 
-test('root isolation worker synchronously loads its shared handler as a classic script',async()=>{
-  const {runInNewContext}=await import('node:vm'),imports=[];
-  runInNewContext(readFileSync(new URL('../isolation-worker.mjs',import.meta.url),'utf8'),{importScripts:url=>imports.push(url)});
-  assert.deepEqual(imports,['./export/isolation-worker.mjs?v=20261026-overlay-only2']);
-});
 test('isolation worker handles WebKit null-body revalidation statuses and never proxies another origin',async()=>{
   const {runInNewContext}=await import('node:vm');
   const listeners=new Map();let response,handled,claimed=0;

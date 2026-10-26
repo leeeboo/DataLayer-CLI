@@ -8,7 +8,7 @@ export async function prepareIsolation(script) {
       timer=setTimeout(()=>reject(Error('isolationTimeout')),10000);
       navigator.serviceWorker.addEventListener('controllerchange',changed);
     });
-    try {await Promise.all([navigator.serviceWorker.register(script,{scope:new URL('./',script).href,type:'classic',updateViaCache:'none'}).then(registration=>{
+    try {await Promise.all([navigator.serviceWorker.register(script,{scope:new URL('./',script).href,type:'module',updateViaCache:'none'}).then(registration=>{
       changed();
       // An existing registration can be active before this page is controlled.
       if(navigator.serviceWorker.controller?.scriptURL!==script.href&&registration.active?.scriptURL===script.href)registration.active.postMessage({type:'dls-claim'});
