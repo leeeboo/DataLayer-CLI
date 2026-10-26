@@ -1,6 +1,7 @@
 // Add isolation within the registering page's scope; no cache or external proxy.
 self.addEventListener('install',()=>self.skipWaiting());
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
+self.addEventListener('message',event=>{if(event.data?.type==='dls-claim')event.waitUntil(self.clients.claim());});
 self.addEventListener('fetch',event=>{
   const url=new URL(event.request.url);
   if(url.origin!==self.location.origin)return;

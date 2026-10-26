@@ -77,11 +77,28 @@ test('disk writes handle partial writes and reject short or failed output',()=>{
   assert.throws(()=>writeAll({write(){throw new DOMException('full','QuotaExceededError');}},source,0),{name:'QuotaExceededError'});
 });
 
+test('isolation rechecks registration and asks an existing worker to claim the new page',async()=>{
+  const {runInNewContext}=await import('node:vm');
+  const source=readFileSync(new URL('../export/isolation.mjs',import.meta.url),'utf8').replace('export async function','async function');
+  for(const missedEvent of [false,true]){
+    const script=new URL('https://example.test/isolation-worker.mjs?v=test'),listeners=new Map();let claims=0,reloads=0;
+    const worker={scriptURL:script.href,postMessage(data){assert.equal(data.type,'dls-claim');claims++;serviceWorker.controller=worker;listeners.get('controllerchange')?.();}};
+    const serviceWorker={controller:null,addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:name=>listeners.delete(name),register:async()=>{if(missedEvent)serviceWorker.controller=worker;return {active:worker};}};
+    const context={URL,isSecureContext:true,crossOriginIsolated:false,SharedArrayBuffer,WebAssembly,Worker:class{},navigator:{serviceWorker,storage:{getDirectory(){}},locks:{}},location:{reload(){reloads++;throw Error('reload with isolation headers');}},setTimeout:fn=>setTimeout(fn,25),clearTimeout};
+    const prepare=runInNewContext(`${source};prepareIsolation`,context);
+    await assert.rejects(prepare(script),/reload with isolation headers/);
+    assert.equal(claims,missedEvent?0:1);assert.equal(reloads,1);assert.equal(listeners.size,0);
+    context.crossOriginIsolated=true;assert.equal(await prepare(script),true);assert.equal(reloads,1);
+  }
+});
+
 test('isolation worker handles WebKit null-body revalidation statuses and never proxies another origin',async()=>{
   const {runInNewContext}=await import('node:vm');
-  const listeners=new Map();let response,handled;
-  const context={URL,Headers,Response,fetch:async()=>response,self:{location:{origin:'https://example.test',href:'https://example.test/export/isolation-worker.mjs'},addEventListener:(name,callback)=>listeners.set(name,callback)}};
+  const listeners=new Map();let response,handled,claimed=0;
+  const context={URL,Headers,Response,fetch:async()=>response,self:{clients:{claim:async()=>{claimed++;}},location:{origin:'https://example.test',href:'https://example.test/export/isolation-worker.mjs'},addEventListener:(name,callback)=>listeners.set(name,callback)}};
   runInNewContext(readFileSync(new URL('../export/isolation-worker.mjs',import.meta.url),'utf8'),context);
+  let claim;listeners.get('message')({data:{type:'dls-claim'},waitUntil:task=>{claim=task;}});await claim;assert.equal(claimed,1);
+  listeners.get('message')({data:{type:'other'},waitUntil:()=>assert.fail('unknown message must not claim clients')});assert.equal(claimed,1);
   for(const status of [200,204,205,304]){
     response={type:'basic',status,statusText:'',headers:new Headers(),body:new Response('module bytes').body};
     listeners.get('fetch')({request:{url:'https://example.test/export/encoder/x265.mjs'},respondWith:value=>{handled=value;}});

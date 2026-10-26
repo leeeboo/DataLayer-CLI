@@ -18,6 +18,7 @@ async function open(page,lang='en'){await openEditor(page,`./?lang=${lang}`);}
 async function activity(page){
   await page.locator('#activity-file').setInputFiles({name:'activity.fit',mimeType:'application/octet-stream',buffer:syntheticFIT});
   await expect(page.locator('#activity-name')).toContainText('activity.fit');await page.locator('#web-export').click();
+  await expect(page.locator('#export-encode')).toBeEnabled();
 }
 async function configure(page,{duration='.2',bitrate='8',size='1280x720',start='0'}={}){
   await page.locator('#export-size').selectOption(size);await page.locator('#export-duration').fill(duration);await page.locator('#export-start').fill(start);await page.locator('#export-bitrate').fill(bitrate);await page.locator('#export-bitrate').press('Tab');
