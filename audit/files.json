@@ -1,7 +1,6 @@
 [
   ".githooks/pre-commit",
   ".github/workflows/ci.yml",
-  ".github/workflows/diagnose-windows-export.yml",
   ".github/workflows/pages.yml",
   ".github/workflows/release-assets.yml",
   ".gitignore",
