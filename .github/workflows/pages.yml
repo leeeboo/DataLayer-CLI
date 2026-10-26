@@ -46,6 +46,9 @@ jobs:
         env:
           DEBUG: pw:webserver
         run: npm run test:e2e -- --project ${{ matrix.browser }}
+      - name: Check export initialization across five fresh browser profiles
+        working-directory: web
+        run: npm run test:e2e -- --project ${{ matrix.browser }} --grep 'editor exports the current edited layout' --repeat-each 5
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

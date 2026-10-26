@@ -37,6 +37,7 @@ def digest(path):
 
 
 def download(url, path):
+    print("Fetching " + path.name, flush=True)
     with urllib.request.urlopen(url, timeout=120) as response, path.open("wb") as output:
         shutil.copyfileobj(response, output)
 
@@ -164,6 +165,8 @@ def collect(binary, destination, source_directory):
         shutil.copy2(path, output)
         files.append({"path": output.relative_to(destination).as_posix(), "sha256": digest(output),
                       "provider": "DataLayer-CLI" if path == binary else provider(path)})
+        if len(files) % 25 == 0:
+            print(f"Collected {len(files)} runtime files", flush=True)
     font_files = sorted(fonts.glob("DejaVu*.ttf"))
     if not font_files:
         raise ValueError("Missing DejaVu fonts")

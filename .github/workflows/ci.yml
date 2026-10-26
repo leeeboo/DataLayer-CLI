@@ -84,9 +84,10 @@ jobs:
         run: swift test -j 4
       - name: Check command entry point
         run: .build/release/overlay --help
+      - name: Collect Linux runtime, notices and matching package sources
+        run: python3 -B scripts/collect_portable_runtime.py .build/release/overlay .build/portable-runtime .build/dependency-sources
       - name: Package and unpack the native Linux release
         run: |
-          python3 -B scripts/collect_portable_runtime.py .build/release/overlay .build/portable-runtime .build/dependency-sources
           python3 -B scripts/package_portable_release.py "$CLI_RELEASE_VERSION" .build/release/overlay .build/releases .build/portable-runtime .build/dependency-sources
           (cd .build/releases && sha256sum -c *.sha256)
           mkdir -p .build/package-smoke
@@ -180,7 +181,7 @@ jobs:
         run: |
           $binary = Join-Path (swift build -c release --show-bin-path) 'overlay.exe'
           & $binary --help
-      - name: Package and unpack the native Windows release
+      - name: Collect Windows runtime, notices and matching package sources
         shell: pwsh
         env:
           MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
@@ -188,6 +189,10 @@ jobs:
           $binary = Join-Path (swift build -c release --show-bin-path) 'overlay.exe'
           python -B scripts/collect_portable_runtime.py $binary .build/portable-runtime .build/dependency-sources
           if ($LASTEXITCODE -ne 0) { throw 'Runtime collection failed' }
+      - name: Package and unpack the native Windows release
+        shell: pwsh
+        run: |
+          $binary = Join-Path (swift build -c release --show-bin-path) 'overlay.exe'
           python -B scripts/package_portable_release.py $env:CLI_RELEASE_VERSION $binary .build/releases .build/portable-runtime .build/dependency-sources
           if ($LASTEXITCODE -ne 0) { throw 'Runtime packaging failed' }
           $archive = ".build/releases/DataLayer-CLI-$env:CLI_RELEASE_VERSION-Windows-x86_64.zip"

@@ -91,13 +91,23 @@ test('isolation rechecks registration and asks an existing worker to claim the n
   for(const missedEvent of [false,true]){
     const script=new URL('https://example.test/isolation-worker.mjs?v=test'),listeners=new Map();let claims=0,reloads=0;
     const worker={scriptURL:script.href,postMessage(data){assert.equal(data.type,'dls-claim');claims++;serviceWorker.controller=worker;listeners.get('controllerchange')?.();}};
-    const serviceWorker={controller:null,addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:name=>listeners.delete(name),register:async()=>{if(missedEvent)serviceWorker.controller=worker;return {active:worker};}};
+    const serviceWorker={controller:null,addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:name=>listeners.delete(name),register:async(url,options)=>{assert.equal(options.type,'classic');if(missedEvent)serviceWorker.controller=worker;return {active:worker};}};
     const context={URL,isSecureContext:true,crossOriginIsolated:false,SharedArrayBuffer,WebAssembly,Worker:class{},navigator:{serviceWorker,storage:{getDirectory(){}},locks:{}},location:{reload(){reloads++;throw Error('reload with isolation headers');}},setTimeout:fn=>setTimeout(fn,25),clearTimeout};
     const prepare=runInNewContext(`${source};prepareIsolation`,context);
     await assert.rejects(prepare(script),/reload with isolation headers/);
     assert.equal(claims,missedEvent?0:1);assert.equal(reloads,1);assert.equal(listeners.size,0);
     context.crossOriginIsolated=true;assert.equal(await prepare(script),true);assert.equal(reloads,1);
   }
+});
+
+test('root isolation worker installs the full handler synchronously at first evaluation',async()=>{
+  const {runInNewContext}=await import('node:vm'),events=[];
+  const context={URL,Headers,Response,fetch:async()=>new Response('ok'),navigator:{},
+    self:{location:{origin:'https://example.test',href:'https://example.test/isolation-worker.mjs'},
+      addEventListener:(name)=>events.push(name)},
+    importScripts:url=>{assert.equal(new URL(url,'https://example.test/isolation-worker.mjs').pathname,'/export/isolation-worker.mjs');runInNewContext(readFileSync(new URL('../export/isolation-worker.mjs',import.meta.url),'utf8'),context);}};
+  runInNewContext(readFileSync(new URL('../isolation-worker.mjs',import.meta.url),'utf8'),context);
+  assert.deepEqual(events,['install','activate','message','fetch']);
 });
 
 test('isolation worker handles WebKit null-body revalidation statuses and never proxies another origin',async()=>{

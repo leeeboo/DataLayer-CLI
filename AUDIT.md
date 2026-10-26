@@ -97,8 +97,14 @@ picture/Alpha parity between Windows and Linux. Apple/portable visual difference
 remain visible in the comparison report and release notes, rather than being called
 pixel-identical. No GUI font replacement, migration mode or schema change is included.
 
-Portable binary archives contain only the project's native executable, existing
-notices and source-identity metadata. Swift runtimes, Cairo/Pango, FFmpeg and fonts
-must be installed separately under their respective licenses. CI verifies archive
-checksums, unpacks each archive, and performs the real exports with the packaged
-executable. macOS archives retain the existing signing/notarization requirements.
+Starting with v0.1.1, portable binary archives include the native executable and a
+separate runtime directory containing Swift, Cairo/Pango, FFmpeg, DejaVu fonts and
+their dependency closure. Each dependency keeps its upstream license. The archive
+retains package notices, dependency versions and hashes; matching distribution
+source packages and build recipes are published beside the executable archives.
+The original MIT Core is not linked against GPL FFmpeg libraries: FFmpeg remains
+a separate executable, and Cairo/Pango libraries remain dynamic and replaceable.
+CI verifies checksums, removes compiler/runtime installation paths, relocates the
+package into a Unicode path and exports the shared fixture. Linux additionally
+runs in a fresh Ubuntu container without the media/graphics or Swift runtimes
+installed. macOS retains its existing signing/notarization requirements.

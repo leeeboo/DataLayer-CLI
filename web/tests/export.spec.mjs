@@ -191,7 +191,7 @@ test('WASM Alpha keeps full-range 0, 64, 128, 192 and 255 levels rather than vid
 });
 
 test('editor exports the current edited layout and loaded FIT in place without navigation',async({page,context,browserName})=>{
-  const result=health(page);await openEditor(page);await page.locator('#activity-file').setInputFiles({name:'activity.fit',mimeType:'application/octet-stream',buffer:syntheticFIT});await expect(page.locator('#activity-name')).toContainText('activity.fit');
+  const result=health(page);await open(page);await page.locator('#activity-file').setInputFiles({name:'activity.fit',mimeType:'application/octet-stream',buffer:syntheticFIT});await expect(page.locator('#activity-name')).toContainText('activity.fit');
   const source=createDocument('Edited in the editor',true);
   await page.locator('#file').setInputFiles({name:'layout.dlspreset',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(source))});
   await expect(page.locator('#canvas [data-index]')).toHaveCount(0);
@@ -214,7 +214,7 @@ test('editor exports the current edited layout and loaded FIT in place without n
 });
 
 test('editor export follows all twelve languages and fits mobile without a second import',async({page})=>{
-  const result=health(page);await openEditor(page);await page.locator('#activity-file').setInputFiles({name:'activity.fit',mimeType:'application/octet-stream',buffer:syntheticFIT});await expect(page.locator('#activity-name')).toContainText('activity.fit');
+  const result=health(page);await open(page);await page.locator('#activity-file').setInputFiles({name:'activity.fit',mimeType:'application/octet-stream',buffer:syntheticFIT});await expect(page.locator('#activity-name')).toContainText('activity.fit');
   for(const locale of Object.keys(languages)){
     await page.locator('#language').selectOption(locale);await page.locator('#web-export').click();
     await expect(page.locator('#export-title')).toHaveText(translations[locale].exportVideo);await expect(page.locator('#export-bitrate')).toHaveValue('8');
@@ -227,7 +227,7 @@ test('editor export follows all twelve languages and fits mobile without a secon
 });
 
 test('editor export requires real activity and preserves draft validation and keyboard cancellation',async({page})=>{
-  await openEditor(page);await page.locator('#web-export').click();await expect(page.locator('#export-dialog')).not.toBeVisible();await expect(page.locator('#status')).toHaveText(translations.en.exportNeedsActivity);
+  await open(page);await page.locator('#web-export').click();await expect(page.locator('#export-dialog')).not.toBeVisible();await expect(page.locator('#status')).toHaveText(translations.en.exportNeedsActivity);
   await activity(page);
   await page.evaluate(()=>{const Base=Worker;window.Worker=class extends Base{postMessage(data,...args){if(data.type==='frame'&&!window.editorFrameHeld){window.editorFrameHeld=true;return;}return super.postMessage(data,...args);}};});
   await page.locator('#export-duration').fill('1');await page.locator('#export-bitrate').press('Tab');await page.locator('#export-encode').click();await page.waitForFunction(()=>window.editorFrameHeld);
@@ -239,7 +239,7 @@ test('editor export requires real activity and preserves draft validation and ke
 });
 
 test('editor exports weather already loaded in its preview without another API request',async({page})=>{
-  await openEditor(page);const source=createDocument('Weather in current layout',true),weather=(await import('../model.mjs')).createElement('weather');source.layout.elements=[weather];
+  await open(page);const source=createDocument('Weather in current layout',true),weather=(await import('../model.mjs')).createElement('weather');source.layout.elements=[weather];
   await page.locator('#file').setInputFiles({name:'layout.dlspreset',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(source))});
   const gpx=`<gpx><trk><trkseg>${[0,2,4].map(n=>`<trkpt lat="0" lon="0"><time>2026-01-01T00:00:0${n}Z</time><extensions><atemp>12</atemp></extensions></trkpt>`).join('')}</trkseg></trk></gpx>`;
   await page.locator('#activity-file').setInputFiles({name:'local.gpx',mimeType:'application/gpx+xml',buffer:Buffer.from(gpx)});await expect(page.locator('#activity-name')).toContainText('local.gpx');
