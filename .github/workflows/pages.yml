@@ -13,7 +13,16 @@ concurrency:
   cancel-in-progress: false
 jobs:
   test:
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            browser: firefox
+          # Exercise Safari's native download and HEVC Alpha paths on macOS.
+          - os: macos-15
+            browser: webkit
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -29,16 +38,16 @@ jobs:
       - name: Install browser test tools
         working-directory: web
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Install Firefox and WebKit
+      - name: Install ${{ matrix.browser }}
         working-directory: web
-        run: npx playwright install --with-deps firefox webkit
+        run: npx playwright install --with-deps ${{ matrix.browser }}
       - name: Check all languages and browser editing workflows
         working-directory: web
-        run: npm run test:e2e
+        run: npm run test:e2e -- --project ${{ matrix.browser }}
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: gauge-editor-browser-failures
+          name: gauge-editor-browser-failures-${{ matrix.browser }}
           path: web/test-results/
           retention-days: 7
   deploy:
