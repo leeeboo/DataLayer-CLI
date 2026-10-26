@@ -49,7 +49,7 @@ workers, and is terminated on completion, error, cancellation or page exit.
 The editor accepts a `.dlspreset` and local FIT/GPX, with the 703 default layout.
 The entire activity is selected on import; the Full activity button restores that range. You can also choose a shorter start/duration, resolution, frame rate and target Mbps. Download
 is an MP4 `hvc1` track containing both base and Alpha layers and the `muxa` brand.
-Grid, selection handles, background video and audio are not part of the overlay.
+The output contains only gauge graphics and transparency.
 
 The pixel and rate limits remain 2,073,600 pixels, 30 fps and 0.1–100 Mbps. The
 60-second and 128 MiB output limits have been removed. Duration rounds up to the

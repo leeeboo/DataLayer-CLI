@@ -1,4 +1,4 @@
-import {languages,languageFrom,translate as common} from '../i18n.mjs?v=20261026-alpha1';
+import {languages,languageFrom,translate as common} from '../i18n.mjs?v=20261026-overlay-only1';
 export {languages,languageFrom};
 const keys=["exportTitle","exportHelp","exportSize","exportFPS","exportStart","exportDuration","exportBitrate","exportStartButton","exportCancel","exportDownload","exportPlayback","exportBitrateHelp","exportWeather","exportLicense","exportReady","exportIsolation","exportNeedsActivity","exportInvalid","exportError","exportCancelled","exportProgress","exportDone","exportUnsupported","exportFullActivity","exportStorageError"];
 const values={

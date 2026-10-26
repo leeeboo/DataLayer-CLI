@@ -1,8 +1,8 @@
 import { accents, fonts, gauges, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, History } from './model.mjs?v=20261025-weather';
-import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261026-alpha1';
+import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261026-overlay-only1';
 import { genericRGBToSRGB, sRGBToGenericRGB } from './render-color.mjs?v=20261025-weather';
 import { escapeXML, renderLayout, svgDefinitions, fontsReady } from './render.mjs?v=20261025-weather';
-import { createPreview } from './preview.mjs?v=20261026-integrated1';
+import { createPreview } from './preview.mjs?v=20261026-overlay-only1';
 import {prepareIsolation} from './export/isolation.mjs?v=20261026-integrated1';
 import {createEditorExport} from './export/editor.mjs?v=20261026-integrated1';
 import { defaultPreset } from './default-preset.mjs?v=20261025-default-layout';
@@ -16,11 +16,7 @@ let activeID = data.id, selectedID = data.layout.elements[0]?.id ?? null;
 let history = new History(snapshot()), saved = exportDocument(data, activeID), drag = null;
 const drafts = new Map();
 let width = 1920, height = 1080, canvasScene = [];
-const localPreview = createPreview({ t, redraw:renderCanvas, videoSize:(w,h) => {
-  const value = `${w}x${h}`, choices = $('canvas-size');
-  if (![...choices.options].some(option => option.value === value)) { const option = element('option', '', `${w} × ${h}`); option.value = value; choices.append(option); }
-  choices.value = value; width = w; height = h; render();
-} });
+const localPreview = createPreview({ t, redraw:renderCanvas });
 const videoExport=createEditorExport({language:()=>language,source:()=>({preset:preset(),...localPreview.exportSource(),width,height}),canEncode,report:status,beforeOpen:()=>{if(!validateExportEdits())return false;localPreview.pause();return true;}});
 function snapshot() { return { data, activeID, selectedID }; }
 function restore(value) { ({ data, activeID, selectedID } = clone(value)); }
@@ -282,7 +278,7 @@ document.addEventListener('keydown', event => {
   if ($('export-dialog').open) return;
   if (event.target.matches('input,textarea,select') || event.target.isContentEditable) return;
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); (event.shiftKey ? $('redo') : $('undo')).click(); return; }
-  // Safari can deliver media-control arrow keys to the page body instead of the slider.
+  // Safari can deliver activity-control arrow keys to the page body instead of the slider.
   if (!event.target.closest('#canvas, #layers')) return;
   const e = selected(); if (!e || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Delete', 'Backspace'].includes(event.key)) return;
   event.preventDefault();
@@ -297,7 +293,6 @@ document.addEventListener('drop', async event => {
   if ($('export-dialog').open) return;
   for (const file of event.dataTransfer.files) {
     if (/\.(fit|gpx)$/i.test(file.name)) await localPreview.loadActivity(file);
-    else if (file.type.startsWith('video/') || /\.(mp4|mov|m4v|webm|mkv|avi)$/i.test(file.name)) await localPreview.loadVideo(file);
     else await importFile(file);
   }
 });
