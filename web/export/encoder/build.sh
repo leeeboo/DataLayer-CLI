@@ -37,3 +37,4 @@ em++ "$encoder_dir/bridge.cpp" "$build_dir/build/libx265.a" \
   -sEXPORTED_RUNTIME_METHODS='["HEAPU8"]' \
   -sEXPORTED_FUNCTIONS='["_open_encoder","_close_encoder","_input_pointer","_output_pointer","_output_size","_encode_frame"]' \
   -o "$encoder_dir/x265.mjs"
+chmod 644 "$encoder_dir/x265.wasm"
