@@ -7,6 +7,7 @@ import json
 import os
 import pathlib
 import shutil
+import subprocess
 import tarfile
 import tempfile
 import unittest
@@ -20,6 +21,37 @@ import collect_portable_runtime as runtime
 
 
 class ReleaseChecks(unittest.TestCase):
+    def testGitMirrorNoticesUseThePinnedCommitOrTagInsteadOfHead(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            repository = root / "mirror"
+            env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+            env.update(GIT_AUTHOR_NAME="Test", GIT_AUTHOR_EMAIL="test@example.invalid",
+                       GIT_COMMITTER_NAME="Test", GIT_COMMITTER_EMAIL="test@example.invalid")
+            def git(*args, data=None):
+                return subprocess.check_output(["git", "--git-dir=" + str(repository), *args], input=data, env=env, stderr=subprocess.PIPE).decode().strip()
+            subprocess.run(["git", "init", "--bare", "--template=", str(repository)], env=env,
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+            blob = git("hash-object", "-w", "--stdin", data=b"Original pinned terms")
+            tree = git("mktree", data=f"100644 blob {blob}\tCOPYING\n".encode())
+            pinned = git("commit-tree", tree, data=b"Original version\n")
+            blob = git("hash-object", "-w", "--stdin", data=b"Different HEAD terms")
+            tree = git("mktree", data=f"100644 blob {blob}\tCOPYING\n".encode())
+            current = git("commit-tree", tree, "-p", pinned, data=b"Newer version\n")
+            git("update-ref", "refs/heads/master", current)
+            git("update-ref", "refs/tags/v1", pinned)
+            git("gc", "--prune=now")
+            for revision in ["commit=" + pinned, "tag=v1"]:
+                info = root / ".SRCINFO"
+                info.write_text("source = mirror::git+https://example.invalid/source#" + revision + "\n")
+                archive = root / "mirror.tar.gz"
+                with tarfile.open(archive, "w:gz") as source:
+                    source.add(info, arcname="package/.SRCINFO")
+                    source.add(repository, arcname="package/mirror")
+                destination = root / revision.replace("=", "-")
+                self.assertEqual(runtime.copy_source_notices(archive, destination, shutil.which("bsdtar") or shutil.which("tar")), 1)
+                self.assertEqual([p.read_text() for p in destination.rglob("*") if p.is_file()], ["Original pinned terms"])
+
     def testSourceNoticesIncludeNestedArchivesWithoutWritingTheirPaths(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)

@@ -49,6 +49,58 @@ def download(url, path):
         shutil.copyfileobj(response, output)
 
 
+def copy_git_source_notices(archive, destination, tar_tool, names, notice):
+    info = next((p for p in names if p.endswith("/.SRCINFO")), None)
+    if not info:
+        return 0
+    source_info = run(str(tar_tool), "-xOf", pathlib.Path(archive).as_posix(), "--", info)
+    count = 0
+    git_env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    for source in re.findall(r"^\s*source(?:_\w+)? = (\S*git\+\S+)$", source_info, re.M):
+        alias, separator, url = source.partition("::")
+        if not separator:
+            url, alias = source, source.split("#", 1)[0].rsplit("/", 1)[-1].removesuffix(".git")
+        prefix = info.rsplit("/", 1)[0] + "/" + alias + "/"
+        refs = {}
+        if prefix + "packed-refs" in names:
+            packed = run(str(tar_tool), "-xOf", pathlib.Path(archive).as_posix(), "--", prefix + "packed-refs")
+            refs.update((ref, sha) for sha, ref in re.findall(r"^([0-9a-f]{40}) (refs/\S+)$", packed, re.M))
+        kind, _, revision = url.partition("#")[2].partition("=")
+        if kind != "commit":
+            reference = {"tag": "refs/tags/", "branch": "refs/heads/"}.get(kind, "") + revision
+            if not reference:
+                head = run(str(tar_tool), "-xOf", pathlib.Path(archive).as_posix(), "--", prefix + "HEAD")
+                reference = head.removeprefix("ref: ")
+            if prefix + reference in names:
+                revision = run(str(tar_tool), "-xOf", pathlib.Path(archive).as_posix(), "--", prefix + reference)
+            else:
+                revision = refs.get(reference, reference)
+        if not re.fullmatch(r"[0-9a-f]{7,40}", revision):
+            raise ValueError("Unresolved source revision: " + source)
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = pathlib.Path(temporary)
+            subprocess.run(["git", "init", "--bare", "--template=", str(repository)], env=git_env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+            # Read only Git objects; never restore the archive's config, hooks, worktree or alternates.
+            for member in names:
+                relative = member.removeprefix(prefix)
+                if not member.startswith(prefix) or not re.fullmatch(r"objects/(?:[0-9a-f]{2}/[0-9a-f]{38}|pack/pack-[0-9a-f]{40}\.(?:pack|idx))", relative):
+                    continue
+                output = repository / relative
+                output.parent.mkdir(parents=True, exist_ok=True)
+                with output.open("wb") as stream:
+                    subprocess.run([str(tar_tool), "-xOf", pathlib.Path(archive).as_posix(), "--", member], stdout=stream, check=True)
+            command = ["git", "--git-dir=" + str(repository)]
+            paths = subprocess.check_output([*command, "ls-tree", "-r", "--name-only", revision], env=git_env, text=True).splitlines()
+            for index, path in enumerate(paths):
+                name = pathlib.PurePosixPath(path).name
+                if notice.fullmatch(name):
+                    output = pathlib.Path(destination) / (f"git-{count}-{index}-" + re.sub(r"[^A-Za-z0-9._-]", "_", name))
+                    output.parent.mkdir(parents=True, exist_ok=True)
+                    output.write_bytes(subprocess.check_output([*command, "show", revision + ":" + path], env=git_env))
+                    count += 1
+    return count
+
+
 def copy_source_notices(archive, destination, tar_tool, nested=True):
     """Read notice contents without extracting archive paths or executing build recipes."""
     names = run(str(tar_tool), "-tf", pathlib.Path(archive).as_posix()).splitlines()
@@ -79,6 +131,8 @@ def copy_source_notices(archive, destination, tar_tool, nested=True):
             else:
                 # shortcut: MSYS2 source packages nest upstream archives once; extend if a package changes format.
                 count += copy_source_notices(output, pathlib.Path(destination) / f"{index}-upstream", tar_tool, nested=False)
+    if nested:
+        count += copy_git_source_notices(archive, destination, tar_tool, names, notice)
     return count
 
 
