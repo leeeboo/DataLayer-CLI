@@ -1,0 +1,51 @@
+name: Diagnose Windows package export
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful CLI run with a Windows package and its shared fixture
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  export:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-windows
+          path: package
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: shared-export-fixture
+          path: export-fixture
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Repeat the actual export with FFmpeg diagnostic reports
+        shell: pwsh
+        run: |
+          for ($index = 0; $index -lt 5; $index++) {
+            $directory = Join-Path $PWD "probe/$index"
+            New-Item -ItemType Directory -Path $directory -Force | Out-Null
+            Expand-Archive package/*.zip "$directory/package"
+            $report = (Join-Path $directory 'ffmpeg-%p-%t.log').Replace('\','/').Replace(':','\:')
+            $env:FFREPORT = "file=${report}:level=56"
+            python -B scripts/verify_portable_package.py "$directory/package/DataLayer-CLI-v0.1.1-Windows-x86_64" export-fixture "$directory/export"
+            if ($LASTEXITCODE -ne 0) { throw "Export failed at repetition $index" }
+          }
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: windows-export-diagnostics
+          path: |
+            probe/**/*.log
+            probe/**/report.json
+          retention-days: 7
