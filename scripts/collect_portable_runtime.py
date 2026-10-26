@@ -49,6 +49,39 @@ def download(url, path):
         shutil.copyfileobj(response, output)
 
 
+def copy_source_notices(archive, destination, tar_tool, nested=True):
+    """Read notice contents without extracting archive paths or executing build recipes."""
+    names = run(str(tar_tool), "-tf", pathlib.Path(archive).as_posix()).splitlines()
+    notice = re.compile(r"^(?:copying|copyright|licen[cs]e|notice|authors|patents)(?:[._-].*)?$", re.I)
+    count = 0
+    with tempfile.TemporaryDirectory() as temporary:
+        for index, member in enumerate(names):
+            if member.endswith("/"):
+                continue
+            name = pathlib.PurePosixPath(member).name
+            is_notice = notice.fullmatch(name)
+            is_archive = nested and re.search(r"(?:\.tar(?:\.(?:gz|bz2|xz|zst))?|\.tgz|\.zip)$", name, re.I)
+            if not (is_notice or is_archive):
+                continue
+            path = pathlib.PurePosixPath(member)
+            if path.is_absolute() or ".." in path.parts or "\\" in member or ":" in member:
+                raise ValueError("Unsafe source archive member: " + member)
+            safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", name)
+            output = pathlib.Path(destination if is_notice else temporary) / f"{index}-{safe_name}"
+            output.parent.mkdir(parents=True, exist_ok=True)
+            with output.open("wb") as stream:
+                subprocess.run([str(tar_tool), "-xOf", pathlib.Path(archive).as_posix(), "--", member], stdout=stream, check=True)
+            if is_notice:
+                if output.stat().st_size:
+                    count += 1
+                else:
+                    output.unlink()
+            else:
+                # shortcut: MSYS2 source packages nest upstream archives once; extend if a package changes format.
+                count += copy_source_notices(output, pathlib.Path(destination) / f"{index}-upstream", tar_tool, nested=False)
+    return count
+
+
 def windows_utf8_manifest(binary):
     kits = pathlib.Path(os.environ["ProgramFiles(x86)"]) / "Windows Kits/10/bin"
     tools = sorted(kits.glob("*/x64/mt.exe"), reverse=True)
@@ -242,6 +275,16 @@ def collect(binary, destination, source_directory):
             if not (source_directory / name).exists():
                 download("https://repo.msys2.org/mingw/sources/" + name, source_directory / name)
             package["source_archive"] = name
+        for name, package in packages.items():
+            notices = destination / "licenses" / name
+            if not any(p.is_file() for p in notices.rglob("*")):
+                copied = copy_source_notices(source_directory / package["source_archive"], notices,
+                                             msys / "usr/bin/bsdtar.exe")
+                if not copied:
+                    raise ValueError("Missing upstream license documents: " + name)
+                print(f"Recovered {copied} source license documents for {name}", flush=True)
+            package["license_documents"] = [p.relative_to(destination).as_posix()
+                                             for p in sorted(notices.rglob("*")) if p.is_file()]
         subprocess.run([str(ucrt / "bin/gcc.exe"), "-municode", "-static-libgcc", "-Os",
                         str(ROOT / "scripts/portable_launcher.c"), "-o", str(destination / "launcher.exe")], check=True)
     else:

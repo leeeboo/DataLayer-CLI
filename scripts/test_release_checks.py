@@ -6,6 +6,7 @@ import io
 import json
 import os
 import pathlib
+import shutil
 import tarfile
 import tempfile
 import unittest
@@ -19,6 +20,32 @@ import collect_portable_runtime as runtime
 
 
 class ReleaseChecks(unittest.TestCase):
+    def testSourceNoticesIncludeNestedArchivesWithoutWritingTheirPaths(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            upstream = root / "upstream.tar.gz"
+            with tarfile.open(upstream, "w:gz") as source:
+                for name, content in [("project/COPYING.GPLv3", b"Complete GPL text"),
+                                      ("project/LICENSE", b"Original copyright and terms"),
+                                      ("project/program.c", b"Not a notice")]:
+                    info = tarfile.TarInfo(name)
+                    info.size = len(content)
+                    source.addfile(info, io.BytesIO(content))
+            archive = root / "package.tar.gz"
+            with tarfile.open(archive, "w:gz") as source:
+                source.add(upstream, arcname="package/source.tar.gz")
+            destination = root / "notices"
+            self.assertEqual(runtime.copy_source_notices(archive, destination, shutil.which("bsdtar") or shutil.which("tar")), 2)
+            contents = sorted(p.read_text() for p in destination.rglob("*") if p.is_file())
+            self.assertEqual(contents, ["Complete GPL text", "Original copyright and terms"])
+            with tarfile.open(archive, "w:gz") as source:
+                info = tarfile.TarInfo("../../LICENSE")
+                info.size = 6
+                source.addfile(info, io.BytesIO(b"escape"))
+            with self.assertRaisesRegex(ValueError, "Unsafe"):
+                runtime.copy_source_notices(archive, destination, shutil.which("bsdtar") or shutil.which("tar"))
+            self.assertFalse((root / "LICENSE").exists())
+
     def compare(self, portable_visual_failure=False, audio_failure=False, fixture_mismatch=False):
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
