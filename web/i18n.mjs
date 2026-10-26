@@ -193,7 +193,8 @@ export const translations = {
     "weatherRequestError": "OpenWeather request failed. Your current preview is unchanged.",
     "weatherInvalid": "The weather response is invalid. Your current preview is unchanged.",
     "weatherNoData": "No weather data close enough to this activity’s start time.",
-    "weatherNetworkError": "Weather request failed or timed out. Check your network and browser access to OpenWeather."
+    "weatherNetworkError": "Weather request failed or timed out. Check your network and browser access to OpenWeather.",
+    "exportPrototype": "Transparent H.265 prototype"
   },
   "zh-CN": {
     "title": "GAUGE 布局编辑器",
@@ -374,7 +375,8 @@ export const translations = {
     "weatherRequestError": "OpenWeather 请求失败，当前预览保持原样。",
     "weatherInvalid": "天气响应无效，当前预览保持原样。",
     "weatherNoData": "没有足够接近活动开始时间的天气数据。",
-    "weatherNetworkError": "天气请求失败或超时，请检查网络及浏览器对 OpenWeather 的访问。"
+    "weatherNetworkError": "天气请求失败或超时，请检查网络及浏览器对 OpenWeather 的访问。",
+    "exportPrototype": "透明 H.265 导出原型"
   },
   "zh-TW": {
     "title": "GAUGE 布局編輯器",
@@ -555,7 +557,8 @@ export const translations = {
     "weatherRequestError": "OpenWeather 請求失敗，目前預覽保持原樣。",
     "weatherInvalid": "天氣回應無效，目前預覽保持原樣。",
     "weatherNoData": "沒有足夠接近活動開始時間的天氣資料。",
-    "weatherNetworkError": "天氣請求失敗或逾時，請檢查網路及瀏覽器對 OpenWeather 的存取。"
+    "weatherNetworkError": "天氣請求失敗或逾時，請檢查網路及瀏覽器對 OpenWeather 的存取。",
+    "exportPrototype": "透明 H.265 匯出原型"
   },
   "ja": {
     "title": "ゲージ配置エディター",
@@ -736,7 +739,8 @@ export const translations = {
     "weatherRequestError": "OpenWeather のリクエストに失敗しました。現在のプレビューは維持されます。",
     "weatherInvalid": "天気の応答が無効です。現在のプレビューは維持されます。",
     "weatherNoData": "アクティビティ開始時刻に十分近い天気データがありません。",
-    "weatherNetworkError": "天気のリクエストが失敗またはタイムアウトしました。ネットワークとブラウザから OpenWeather への接続を確認してください。"
+    "weatherNetworkError": "天気のリクエストが失敗またはタイムアウトしました。ネットワークとブラウザから OpenWeather への接続を確認してください。",
+    "exportPrototype": "透過 H.265 書き出しプロトタイプ"
   },
   "ko": {
     "title": "게이지 레이아웃 편집기",
@@ -917,7 +921,8 @@ export const translations = {
     "weatherRequestError": "OpenWeather 요청에 실패했습니다. 현재 미리보기는 유지됩니다.",
     "weatherInvalid": "날씨 응답이 올바르지 않습니다. 현재 미리보기는 유지됩니다.",
     "weatherNoData": "활동 시작 시간에 충분히 가까운 날씨 데이터가 없습니다.",
-    "weatherNetworkError": "날씨 요청이 실패하거나 시간이 초과되었습니다. 네트워크와 브라우저의 OpenWeather 접근을 확인하세요."
+    "weatherNetworkError": "날씨 요청이 실패하거나 시간이 초과되었습니다. 네트워크와 브라우저의 OpenWeather 접근을 확인하세요.",
+    "exportPrototype": "투명 H.265 내보내기 프로토타입"
   },
   "es": {
     "title": "Editor de diseño de indicadores",
@@ -1098,7 +1103,8 @@ export const translations = {
     "weatherRequestError": "Error en la solicitud a OpenWeather. La vista previa actual se conserva.",
     "weatherInvalid": "La respuesta del tiempo no es válida. La vista previa actual se conserva.",
     "weatherNoData": "No hay datos del tiempo suficientemente cercanos al inicio de la actividad.",
-    "weatherNetworkError": "La solicitud falló o agotó el tiempo. Comprueba la red y el acceso del navegador a OpenWeather."
+    "weatherNetworkError": "La solicitud falló o agotó el tiempo. Comprueba la red y el acceso del navegador a OpenWeather.",
+    "exportPrototype": "Prototipo de H.265 transparente"
   },
   "fr": {
     "title": "Éditeur de disposition des jauges",
@@ -1279,7 +1285,8 @@ export const translations = {
     "weatherRequestError": "Échec de la requête OpenWeather. L’aperçu actuel est conservé.",
     "weatherInvalid": "Réponse météo non valide. L’aperçu actuel est conservé.",
     "weatherNoData": "Aucune donnée météo assez proche de l’heure de départ de l’activité.",
-    "weatherNetworkError": "Échec ou expiration de la requête météo. Vérifiez le réseau et l’accès du navigateur à OpenWeather."
+    "weatherNetworkError": "Échec ou expiration de la requête météo. Vérifiez le réseau et l’accès du navigateur à OpenWeather.",
+    "exportPrototype": "Prototype H.265 transparent"
   },
   "de": {
     "title": "Gauge-Layout-Editor",
@@ -1460,7 +1467,8 @@ export const translations = {
     "weatherRequestError": "OpenWeather-Anfrage fehlgeschlagen. Die aktuelle Vorschau bleibt erhalten.",
     "weatherInvalid": "Ungültige Wetterantwort. Die aktuelle Vorschau bleibt erhalten.",
     "weatherNoData": "Keine Wetterdaten nahe genug am Startzeitpunkt der Aktivität.",
-    "weatherNetworkError": "Wetteranfrage fehlgeschlagen oder Zeitlimit erreicht. Prüfe Netzwerk und Browserzugriff auf OpenWeather."
+    "weatherNetworkError": "Wetteranfrage fehlgeschlagen oder Zeitlimit erreicht. Prüfe Netzwerk und Browserzugriff auf OpenWeather.",
+    "exportPrototype": "Transparenter H.265-Prototyp"
   },
   "pt-BR": {
     "title": "Editor de layout de indicadores",
@@ -1641,7 +1649,8 @@ export const translations = {
     "weatherRequestError": "Falha na solicitação ao OpenWeather. A prévia atual foi mantida.",
     "weatherInvalid": "Resposta do clima inválida. A prévia atual foi mantida.",
     "weatherNoData": "Não há dados do clima próximos o suficiente do início da atividade.",
-    "weatherNetworkError": "Falha ou tempo esgotado na solicitação. Verifique a rede e o acesso do navegador ao OpenWeather."
+    "weatherNetworkError": "Falha ou tempo esgotado na solicitação. Verifique a rede e o acesso do navegador ao OpenWeather.",
+    "exportPrototype": "Protótipo de H.265 transparente"
   },
   "ru": {
     "title": "Редактор макета индикаторов",
@@ -1822,7 +1831,8 @@ export const translations = {
     "weatherRequestError": "Ошибка запроса OpenWeather. Текущий просмотр сохранён.",
     "weatherInvalid": "Некорректный ответ погоды. Текущий просмотр сохранён.",
     "weatherNoData": "Нет данных погоды достаточно близко ко времени начала активности.",
-    "weatherNetworkError": "Ошибка или тайм-аут запроса погоды. Проверьте сеть и доступ браузера к OpenWeather."
+    "weatherNetworkError": "Ошибка или тайм-аут запроса погоды. Проверьте сеть и доступ браузера к OpenWeather.",
+    "exportPrototype": "Прототип прозрачного H.265"
   },
   "ar": {
     "title": "محرر تخطيط المؤشرات",
@@ -2003,7 +2013,8 @@ export const translations = {
     "weatherRequestError": "فشل طلب OpenWeather. بقيت المعاينة الحالية دون تغيير.",
     "weatherInvalid": "استجابة الطقس غير صالحة. بقيت المعاينة الحالية دون تغيير.",
     "weatherNoData": "لا توجد بيانات طقس قريبة بما يكفي من وقت بداية النشاط.",
-    "weatherNetworkError": "فشل طلب الطقس أو انتهت مهلته. تحقق من الشبكة وإمكانية وصول المتصفح إلى OpenWeather."
+    "weatherNetworkError": "فشل طلب الطقس أو انتهت مهلته. تحقق من الشبكة وإمكانية وصول المتصفح إلى OpenWeather.",
+    "exportPrototype": "نموذج تصدير H.265 شفاف"
   },
   "hi": {
     "title": "गेज लेआउट एडिटर",
@@ -2184,7 +2195,8 @@ export const translations = {
     "weatherRequestError": "OpenWeather का अनुरोध विफल रहा। मौजूदा प्रीव्यू बना रहेगा।",
     "weatherInvalid": "मौसम का जवाब अमान्य है। मौजूदा प्रीव्यू बना रहेगा।",
     "weatherNoData": "गतिविधि शुरू होने के समय के पर्याप्त करीब का मौसम डेटा नहीं मिला।",
-    "weatherNetworkError": "मौसम का अनुरोध विफल हुआ या समय समाप्त हो गया। नेटवर्क और ब्राउज़र की OpenWeather तक पहुंच जांचें।"
+    "weatherNetworkError": "मौसम का अनुरोध विफल हुआ या समय समाप्त हो गया। नेटवर्क और ब्राउज़र की OpenWeather तक पहुंच जांचें।",
+    "exportPrototype": "पारदर्शी H.265 निर्यात प्रोटोटाइप"
   }
 };
 

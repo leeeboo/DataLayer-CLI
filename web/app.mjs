@@ -1,5 +1,5 @@
 import { accents, fonts, gauges, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, History } from './model.mjs?v=20261025-weather';
-import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261025-weather';
+import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261026-alpha1';
 import { genericRGBToSRGB, sRGBToGenericRGB } from './render-color.mjs?v=20261025-weather';
 import { escapeXML, renderLayout, svgDefinitions, fontsReady } from './render.mjs?v=20261025-weather';
 import { createPreview } from './preview.mjs?v=20261025-weather';
@@ -173,6 +173,7 @@ function renderCanvas() {
 function render() {
   const focus = document.activeElement?.id, selection = document.activeElement?.selectionStart;
   const open = new Set([...document.querySelectorAll('details[open]')].map(node => node.id));
+  $('web-export')?.setAttribute('href', `./export/?lang=${language}`);
   document.documentElement.lang = language; document.title = `${t('title')} · DataLayer Studio`;
   document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
   document.querySelectorAll('[data-t]').forEach(node => { node.textContent = t(node.dataset.t); });
