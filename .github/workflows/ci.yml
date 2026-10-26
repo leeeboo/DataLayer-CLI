@@ -230,6 +230,36 @@ jobs:
             .build/releases/*-dependency-sources.tar
             .build/releases/*-dependency-sources.tar.sha256
           retention-days: 7
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: windows-development-export
+          path: export-development-windows/
+          retention-days: 7
+  windows-clean:
+    needs: [fixture, windows]
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-windows
+          path: package
+      - uses: actions/download-artifact@v8
+        with:
+          name: shared-export-fixture
+          path: export-fixture
+      - name: Check and extract the downloaded Windows package
+        shell: pwsh
+        run: |
+          $archive = "package/DataLayer-CLI-$env:CLI_RELEASE_VERSION-Windows-x86_64.zip"
+          $expected = (Get-Content "$archive.sha256").Split(' ')[0]
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() -ne $expected) { throw 'Archive checksum mismatch' }
+          Expand-Archive $archive .build/package-smoke
       - name: Export saved project and inspect picture, timing, audio and Alpha
         id: portable-export
         shell: pwsh
@@ -254,12 +284,10 @@ jobs:
         if: always()
         with:
           name: windows-runtime-controls
-          path: |
-            export-development-windows/
-            export-direct-windows/
+          path: export-direct-windows/
           retention-days: 7
   compare:
-    needs: [test, linux-clean, windows]
+    needs: [test, linux-clean, windows-clean]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
