@@ -95,7 +95,10 @@ test('703 FIT export preserves both layers, exact frame duration and bitrate sel
 
 test('cancel, retry and invalid replacements preserve the working layout and activity',async({page})=>{
   const result=health(page);await open(page);await activity(page);await configure(page,{duration:'2'});
-  await page.locator('#export').click();await expect(page.locator('#cancel')).toBeVisible();await expect(page.locator('#size')).toBeDisabled();
+  // Hold the first frame so a fast runner cannot finish before the cancel click.
+  await page.evaluate(()=>{const Base=Worker;window.Worker=class extends Base{postMessage(data,...args){if(data.type==='frame'&&!window.cancelFrameHeld){window.cancelFrameHeld=true;return;}return super.postMessage(data,...args);}};});
+  await page.locator('#export').click();await page.waitForFunction(()=>window.cancelFrameHeld===true);
+  await expect(page.locator('#cancel')).toBeVisible();await expect(page.locator('#size')).toBeDisabled();
   await page.locator('#cancel').click();await expect(page.locator('#cancel')).toBeHidden();await expect(page.locator('#status')).toHaveText(translations.en.exportCancelled);
   await expect(page.locator('#download')).toBeHidden();await expect(page.locator('#export')).toBeEnabled();
   await page.locator('#activity-file').setInputFiles({name:'broken.fit',mimeType:'application/octet-stream',buffer:Buffer.from('broken')});

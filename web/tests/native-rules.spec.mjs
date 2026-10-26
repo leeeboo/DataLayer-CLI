@@ -33,6 +33,7 @@ async function applyCustomization(page, customization) {
 }
 async function textOverflow(page, selector = '#canvas [data-index="0"]') {
   return page.locator(selector).evaluate(async group => {
+    await document.fonts.ready;
     const hit = group.querySelector('.hit').getBBox(), tolerance = 2, overflow = [];
     // SVG getBBox includes font cell whitespace; native bounds enclose painted glyphs.
     for (const node of group.querySelectorAll('text')) {
@@ -41,6 +42,7 @@ async function textOverflow(page, selector = '#canvas [data-index="0"]') {
       canvas.width = Math.ceil(b.x + b.width) - x + 2; canvas.height = Math.ceil(b.y + b.height) - y + 2;
       const image = new Image(), xml = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}" viewBox="${x} ${y} ${canvas.width} ${canvas.height}">${node.outerHTML}</svg>`;
       await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; image.src = `data:image/svg+xml,${encodeURIComponent(xml)}`; });
+      await image.decode();
       const context = canvas.getContext('2d'); context.drawImage(image, 0, 0);
       const rgba = context.getImageData(0, 0, canvas.width, canvas.height).data;
       let outside = false, painted = false;
@@ -50,7 +52,7 @@ async function textOverflow(page, selector = '#canvas [data-index="0"]') {
         const px = x + column + 0.5, py = y + row + 0.5;
         if (px < hit.x - tolerance || py < hit.y - tolerance || px > hit.x + hit.width + tolerance || py > hit.y + hit.height + tolerance) { outside = true; break; }
       }
-      if (node.textContent.trim() && !painted) throw new Error('Text rasterization produced no visible pixels');
+      if (node.textContent.trim() && !painted) throw new Error(`Text rasterization produced no visible pixels: ${node.textContent}`);
       if (outside) overflow.push(node.textContent);
     }
     return overflow;
