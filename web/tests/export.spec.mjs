@@ -36,6 +36,9 @@ function inspect(data,frames,fps){
     position+=length;
   }
   expect(position).toBe(mdat.end);
+  const stsd=child(data,stbl,'stsd'),hvc1=boxes(data,stsd.start+8,stsd.end)[0];
+  const hvcc=boxes(data,hvc1.start+78,hvc1.end).find(b=>b.type==='hvcC');
+  expect(data.readUInt16BE(hvcc.start+19)).toBe(0);
 }
 function health(page){const errors=[],requests=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});page.on('request',r=>{if(!['GET','HEAD'].includes(r.method()))requests.push(r.url());});return {errors,requests};}
 

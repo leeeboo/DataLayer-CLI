@@ -48,7 +48,7 @@ test('shipped WASM encodes both layers for every frame; MP4 retains headers, Alp
   const stbl=child(data,child(data,mdia,'minf'),'stbl'),stsz=child(data,stbl,'stsz');
   assert.equal(data.readUInt32BE(stsz.start+8),3);assert.deepEqual(samples.map((_,i)=>data.readUInt32BE(stsz.start+12+i*4)),samples.map(b=>b.length));
   const stsd=child(data,stbl,'stsd'),hvc1=boxes(data,stsd.start+8,stsd.end)[0];assert.equal(hvc1.type,'hvc1');
-  const hvcc=boxes(data,hvc1.start+78,hvc1.end).find(b=>b.type==='hvcC');assert(hvcc);assert.equal(data[hvcc.start],1);assert.equal(data[hvcc.start+22],4);
+  const hvcc=boxes(data,hvc1.start+78,hvc1.end).find(b=>b.type==='hvcC');assert(hvcc);assert.equal(data[hvcc.start],1);assert.equal(data[hvcc.start+22],4);assert.equal(data.readUInt16BE(hvcc.start+19),0);
   assert.throws(()=>alphaMP4({headers,samples:[],width:64,height:64,fps:30}));
   assert.throws(()=>alphaMP4({headers:new Uint8Array(),samples,width:64,height:64,fps:30}));
   const baseOnly=Buffer.from([0,0,0,3,2,1,128]);

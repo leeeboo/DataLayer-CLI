@@ -4,7 +4,7 @@ import {defaultPreset} from '../default-preset.mjs?v=20261025-default-layout';
 import {fontsReady,renderLayout,svgDefinitions} from '../render.mjs?v=20261025-weather';
 import {parseTelemetryFile,previewAt} from '../telemetry.mjs?v=20261025-weather';
 import {exportConfig} from './config.mjs?v=20261026-alpha1';
-import {alphaMP4} from './mp4.mjs?v=20261026-alpha1';
+import {alphaMP4} from './mp4.mjs?v=20261026-alpha2';
 const $=id=>document.getElementById(id);
 let language=languageFrom(new URLSearchParams(location.search).get('lang')||navigator.language);
 const t=(key,details)=>translate(language,key,details);

@@ -21,7 +21,7 @@ export function nals(sample) {
 }
 export const nalType = nal => (nal[0]>>>1)&63;
 export const nalLayer = nal => ((nal[0]&1)<<5)|(nal[1]>>>3);
-function config(headers,fps) {
+function config(headers) {
   const units=nals(headers), sps=units.find(n=>nalType(n)===33&&nalLayer(n)===0);
   for(const [type,layers] of [[32,[0]],[33,[0,1]],[34,[0,1]],[39,[0]]])for(const layer of layers)
     if(!units.some(n=>nalType(n)===type&&nalLayer(n)===layer))throw Error('missingAlpha');
@@ -32,7 +32,8 @@ function config(headers,fps) {
     const set=units.filter(n=>nalType(n)===type);
     return bytes(new Uint8Array([128|type]),u16(set.length),...set.map(n=>bytes(u16(n.length),n)));
   });
-  return box('hvcC',new Uint8Array([1]),new Uint8Array(rbsp.slice(1,13)),u16(0xf000),new Uint8Array([0xfc,0xfd,0xf8,0xf8]),u16(fps),new Uint8Array([15,arrays.length]),...arrays);
+  // MP4 sample timing is authoritative; hvcC's optional rate is in frames/256s.
+  return box('hvcC',new Uint8Array([1]),new Uint8Array(rbsp.slice(1,13)),u16(0xf000),new Uint8Array([0xfc,0xfd,0xf8,0xf8]),u16(0),new Uint8Array([15,arrays.length]),...arrays);
 }
 export function alphaMP4({headers,samples,width,height,fps}) {
   if(!Number.isInteger(width)||!Number.isInteger(height)||width<64||height<64||width%2||height%2||width>1920||height>1920||width*height>2073600||!Number.isInteger(fps)||fps<1||fps>30||!samples.length||samples.length>fps*60)throw Error('invalidExport');
@@ -45,7 +46,7 @@ export function alphaMP4({headers,samples,width,height,fps}) {
     if(units.some(n=>nalLayer(n)===0&&nalType(n)>=16&&nalType(n)<=23))sync.push(index+1);
   });
   const ftyp=box('ftyp','isom',u32(512),'isom','iso6','mp41','muxa');
-  const hvc1=box('hvc1',zeros(6),u16(1),zeros(16),u16(width),u16(height),u32(0x480000),u32(0x480000),u32(0),u16(1),zeros(32),u16(24),u16(65535),config(headers,fps),box('colr','nclx',u16(1),u16(1),u16(1),zeros(1)));
+  const hvc1=box('hvc1',zeros(6),u16(1),zeros(16),u16(width),u16(height),u32(0x480000),u32(0x480000),u32(0),u16(1),zeros(32),u16(24),u16(65535),config(headers),box('colr','nclx',u16(1),u16(1),u16(1),zeros(1)));
   const stbl=box('stbl',full('stsd',0,u32(1),hvc1),full('stts',0,u32(1),u32(duration),u32(1)),full('stsc',0,u32(1),u32(1),u32(duration),u32(1)),full('stsz',0,u32(0),u32(duration),...sizes.map(u32)),full('stco',0,u32(1),u32(ftyp.length+8)),full('stss',0,u32(sync.length),...sync.map(u32)));
   const mdia=box('mdia',full('mdhd',0,zeros(8),u32(fps),u32(duration),u16(0x55c4),u16(0)),full('hdlr',0,u32(0),'vide',zeros(12),'DataLayer Alpha\0'),box('minf',full('vmhd',1,zeros(8)),box('dinf',full('dref',0,u32(1),full('url ',1))),stbl));
   const trak=box('trak',full('tkhd',7,zeros(8),u32(1),u32(0),u32(duration),zeros(16),matrix,u32(width*65536),u32(height*65536)),mdia);
