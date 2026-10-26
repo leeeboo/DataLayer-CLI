@@ -5,7 +5,8 @@ export default defineConfig({
   testDir: './tests',
   testMatch: '**/*.spec.mjs',
   timeout: 30000,
-  workers: 2,
+  // Keep macOS service-worker and OPFS browser fixtures from overlapping.
+  workers: process.platform === 'darwin' ? 1 : 2,
   fullyParallel: true,
   retries: 0,
   reporter: 'list',
