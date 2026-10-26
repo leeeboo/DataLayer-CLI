@@ -13,7 +13,7 @@
 | 系統 | 壓縮檔後綴 |
 | --- | --- |
 | macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
-| Windows / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
+| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
 | Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
 
 macOS 版本已簽署並通過公證，不需額外安裝執行階段。
@@ -72,7 +72,7 @@ overlay --timeline-project "project.dlsproj" --output "result.mov"
 
 ## 編譯與貢獻
 
-[從原始碼編譯](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.zh-TW.md) · [開發指南（英文）](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
+[開發指南（英文）](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
 
 採用 MIT 授權，詳見 [LICENSE](LICENSE)；第三方聲明見 [NOTICE.md](NOTICE.md)。
 

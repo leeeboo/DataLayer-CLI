@@ -13,7 +13,7 @@
 | Система | Окончание имени архива |
 | --- | --- |
 | macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
-| Windows / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
+| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
 | Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
 
 Файл для macOS подписан и нотариально заверен Apple. Дополнительная среда выполнения не нужна.
@@ -72,7 +72,7 @@ overlay --timeline-project "project.dlsproj" --output "result.mov"
 
 ## Сборка и участие в разработке
 
-[Сборка из исходников](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.ru.md) · [Руководство разработчика (английский)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
+[Руководство разработчика (английский)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
 
 Лицензия MIT: см. [LICENSE](LICENSE) и уведомления о сторонних компонентах в [NOTICE.md](NOTICE.md).
 

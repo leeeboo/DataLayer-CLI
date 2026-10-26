@@ -13,7 +13,7 @@ Download the matching archive and its `.sha256` checksum from [Releases](https:/
 | System | Archive ending |
 | --- | --- |
 | macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
-| Windows / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
+| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
 | Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
 
 The macOS binary is signed and notarized. No extra runtime installation is needed.
@@ -72,7 +72,7 @@ Transparent overlays have no audio track.
 
 ## Build and contribute
 
-[Build from source](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.md) · [Development guide (English)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
+[Development guide (English)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
 
 MIT — see [LICENSE](LICENSE) and third-party notices in [NOTICE.md](NOTICE.md).
 

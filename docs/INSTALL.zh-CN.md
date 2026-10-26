@@ -9,7 +9,7 @@
 | 系统 | 压缩包 |
 | --- | --- |
 | macOS 13+ / Apple Silicon | `DataLayer-CLI-v0.1.1-macOS-arm64.zip` |
-| Windows / x86_64 | `DataLayer-CLI-v0.1.1-Windows-x86_64.zip` |
+| Windows 10 1903+ / Windows 11 / x86_64 | `DataLayer-CLI-v0.1.1-Windows-x86_64.zip` |
 | Ubuntu 24.04 / x86_64 | `DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz` |
 
 从 **v0.1.1** 起，Windows/Linux 安装包已包含 Swift、FFmpeg、Cairo/Pango 和 DejaVu 字体，**无需安装编译器或运行库**。

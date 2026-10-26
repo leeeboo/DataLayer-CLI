@@ -9,7 +9,7 @@ Téléchargez l’archive de votre système et son fichier `.sha256` dans [Relea
 | Système | Archive |
 | --- | --- |
 | macOS 13+ / Apple Silicon | `DataLayer-CLI-v0.1.1-macOS-arm64.zip` |
-| Windows / x86_64 | `DataLayer-CLI-v0.1.1-Windows-x86_64.zip` |
+| Windows 10 1903+ / Windows 11 / x86_64 | `DataLayer-CLI-v0.1.1-Windows-x86_64.zip` |
 | Ubuntu 24.04 / x86_64 | `DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz` |
 
 À partir de **v0.1.1**, les archives Windows/Linux incluent Swift, FFmpeg, Cairo/Pango et les polices DejaVu. **Aucun compilateur ni environnement d’exécution à installer.**

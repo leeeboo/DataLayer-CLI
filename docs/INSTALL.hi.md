@@ -9,7 +9,7 @@
 | सिस्टम | पैकेज |
 | --- | --- |
 | macOS 13+ / Apple Silicon | `DataLayer-CLI-v0.1.1-macOS-arm64.zip` |
-| Windows / x86_64 | `DataLayer-CLI-v0.1.1-Windows-x86_64.zip` |
+| Windows 10 1903+ / Windows 11 / x86_64 | `DataLayer-CLI-v0.1.1-Windows-x86_64.zip` |
 | Ubuntu 24.04 / x86_64 | `DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz` |
 
 **v0.1.1** से Windows/Linux पैकेज में Swift, FFmpeg, Cairo/Pango और DejaVu फ़ॉन्ट शामिल हैं। **कंपाइलर या रनटाइम अलग से इंस्टॉल करने की ज़रूरत नहीं है।**

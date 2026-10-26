@@ -9,7 +9,7 @@
 | النظام | الحزمة |
 | --- | --- |
 | macOS 13+ / Apple Silicon | `DataLayer-CLI-v0.1.1-macOS-arm64.zip` |
-| Windows / x86_64 | `DataLayer-CLI-v0.1.1-Windows-x86_64.zip` |
+| Windows 10 1903+ / Windows 11 / x86_64 | `DataLayer-CLI-v0.1.1-Windows-x86_64.zip` |
 | Ubuntu 24.04 / x86_64 | `DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz` |
 
 بدءًا من **v0.1.1**، تتضمن حزم Windows/Linux مكتبات Swift وFFmpeg وCairo/Pango وخطوط DejaVu. **لا تحتاج إلى تثبيت مترجم أو بيئة تشغيل.**

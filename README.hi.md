@@ -13,7 +13,7 @@ FIT/GPX गतिविधि डेटा से पारदर्शी ट�
 | सिस्टम | आर्काइव नाम का अंतिम भाग |
 | --- | --- |
 | macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
-| Windows / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
+| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
 | Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
 
 macOS बाइनरी हस्ताक्षरित है और Apple से नोटराइज़ की गई है। अलग रनटाइम इंस्टॉल करने की आवश्यकता नहीं है।
@@ -72,7 +72,7 @@ overlay --timeline-project "project.dlsproj" --output "result.mov"
 
 ## बिल्ड और योगदान
 
-[सोर्स से बिल्ड करें](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.hi.md) · [डेवलपमेंट गाइड (अंग्रेज़ी)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
+[डेवलपमेंट गाइड (अंग्रेज़ी)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
 
 MIT लाइसेंस: [LICENSE](LICENSE) और तृतीय-पक्ष सूचनाओं के लिए [NOTICE.md](NOTICE.md) देखें।
 

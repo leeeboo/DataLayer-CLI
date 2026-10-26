@@ -13,7 +13,7 @@ FIT/GPX のアクティビティデータから、透明なテレメトリーオ
 | システム | アーカイブ名の末尾 |
 | --- | --- |
 | macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
-| Windows / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
+| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
 | Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
 
 macOS 版は署名・公証済みです。追加のランタイムは不要です。
@@ -72,7 +72,7 @@ overlay --timeline-project "project.dlsproj" --output "result.mov"
 
 ## ビルドと開発への参加
 
-[ソースからビルド](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.ja.md) · [開発ガイド（英語）](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
+[開発ガイド（英語）](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
 
 MIT ライセンス：[LICENSE](LICENSE)。第三者に関する表記は [NOTICE.md](NOTICE.md) を参照してください。
 

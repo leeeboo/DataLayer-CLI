@@ -13,7 +13,7 @@ Baixe o arquivo da sua plataforma e a soma `.sha256` em [Releases](https://githu
 | Sistema | Final do nome do arquivo |
 | --- | --- |
 | macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
-| Windows / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
+| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
 | Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
 
 O executável para macOS é assinado e notarizado. Não exige instalação adicional de runtime.
@@ -72,7 +72,7 @@ Sobreposições transparentes não incluem faixa de áudio.
 
 ## Compilar e contribuir
 
-[Compilar a partir do código-fonte](https://github.com/leeeboo/DataLayer-CLI/blob/main/docs/INSTALL.pt-BR.md) · [Guia de desenvolvimento (inglês)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
+[Guia de desenvolvimento (inglês)](https://github.com/leeeboo/DataLayer-CLI/blob/main/CONTRIBUTING.md)
 
 Licença MIT: consulte [LICENSE](LICENSE) e os avisos de terceiros em [NOTICE.md](NOTICE.md).
 
