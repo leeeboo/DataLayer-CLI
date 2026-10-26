@@ -78,6 +78,18 @@ test('703 FIT export preserves both layers, exact frame duration and bitrate sel
   expect(result.errors).toEqual([]);expect(result.requests).toEqual([]);
 });
 
+test('trimmed 703 FIT export matches the same original interval, including Alpha and fractional frames',async({page})=>{
+  const result=health(page);await open(page);await activity(page);await configure(page,{start:'1.25',duration:'.23334',size:'1920x1080'});
+  const reference=await encode(page);inspect(reference,8,30);await page.locator('#export-close').click();
+  await page.locator('#trim-start').fill('1.25');await page.locator('#trim-start').press('Tab');await page.locator('#trim-end').fill('1.48334');await page.locator('#trim-end').press('Tab');
+  await page.locator('#web-export').click();await expect(page.locator('#export-start')).toHaveValue('1.25');await expect(page.locator('#export-duration')).toHaveValue('0.23334');await expect(page.locator('#export-full')).toHaveText('Selected range');
+  // Exercise the JavaScript boundary as well as the browser's numeric constraints.
+  await page.locator('#export-start').fill('0');await page.locator('#export-form').dispatchEvent('submit');await expect(page.locator('#export-status')).toHaveText(translations.en.exportInvalid);await expect(page.locator('#export-download')).toBeHidden();
+  await page.locator('#export-full').click();const trimmed=await encode(page);inspect(trimmed,8,30);expect(trimmed.equals(reference)).toBe(true);
+  await page.locator('#export-close').click();await page.locator('#trim-reset').click();await page.locator('#web-export').click();await expect(page.locator('#export-start')).toHaveValue('0');await expect(page.locator('#export-duration')).toHaveValue('4');await expect(page.locator('#export-full')).toHaveText(translations.en.exportFullActivity);
+  expect(result.errors).toEqual([]);expect(result.requests).toEqual([]);
+});
+
 test('legacy export URLs open the integrated editor without loading WASM eagerly',async({page})=>{
   const wasm=[];page.on('request',r=>{if(r.url().includes('.wasm'))wasm.push(r.url());});
   await openEditor(page,'./export/?lang=zh-CN');await expect(page.locator('#web-export')).toHaveText('导出透明视频');
@@ -225,12 +237,14 @@ test('editor exports weather already loaded in its preview without another API r
   await page.locator('#file').setInputFiles({name:'layout.dlspreset',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(source))});
   const gpx=`<gpx><trk><trkseg>${[0,2,4].map(n=>`<trkpt lat="0" lon="0"><time>2026-01-01T00:00:0${n}Z</time><extensions><atemp>12</atemp></extensions></trkpt>`).join('')}</trkseg></trk></gpx>`;
   await page.locator('#activity-file').setInputFiles({name:'local.gpx',mimeType:'application/gpx+xml',buffer:Buffer.from(gpx)});await expect(page.locator('#activity-name')).toContainText('local.gpx');
+  await page.locator('#trim-start').fill('1');await page.locator('#trim-start').press('Tab');await page.locator('#trim-end').fill('3');await page.locator('#trim-end').press('Tab');
   const alpha=()=>page.locator('#export-preview').evaluate(async canvas=>{const rgba=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data,a=new Uint8Array(rgba.length/4);for(let i=0;i<a.length;i++)a[i]=rgba[i*4+3];return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',a))).join(',');});
   await page.locator('#web-export').click();await expect.poll(()=>page.locator('#export-preview').evaluate(c=>c.getContext('2d').getImageData(0,0,c.width,c.height).data.some((v,i)=>i%4===3&&v>0))).toBe(true);
   const before=await alpha();await page.locator('#export-close').click();let requests=0;
   await mockWeather(page,async route=>{requests++;await route.fulfill({headers:{'access-control-allow-origin':'*','content-type':'application/json'},body:JSON.stringify({data:[{dt:Date.parse('2026-01-01T00:00:00Z')/1000,temp:28.6,humidity:65,weather:[{main:'Rain'}]}]})});});
   await page.locator('.weather-settings summary').click();await page.locator('#weather-key').fill('TEST_KEY_NOT_A_REAL_CREDENTIAL');await page.locator('#load-weather').click();await expect(page.locator('#weather-status')).toHaveText((await import('../i18n.mjs')).translations.en.weatherLoaded);
   await page.locator('#web-export').click();await expect.poll(alpha).not.toBe(before);const expected=await alpha();
+  await expect(page.locator('#export-start')).toHaveValue('1');await expect(page.locator('#export-duration')).toHaveValue('2');await expect(page.locator('#trim-end')).toHaveValue('3');
   await page.evaluate(()=>{const Base=Worker;window.Worker=class extends Base{postMessage(data,...args){if(data.type==='frame'&&data.index===0){const p=new Uint8Array(data.pixels),a=new Uint8Array(p.length/4);for(let i=0;i<a.length;i++)a[i]=p[i*4+3];window.exportedAlpha=crypto.subtle.digest('SHA-256',a).then(hash=>Array.from(new Uint8Array(hash)).join(','));}return super.postMessage(data,...args);}};});
   await page.locator('#export-duration').fill('.1');await page.locator('#export-bitrate').press('Tab');await page.locator('#export-encode').click();await expect(page.locator('#export-download')).toBeVisible({timeout:30000});
   expect(await page.evaluate(()=>window.exportedAlpha)).toBe(expected);expect(requests).toBe(1);await expect(page.locator('#weather-key')).toHaveValue('TEST_KEY_NOT_A_REAL_CREDENTIAL');

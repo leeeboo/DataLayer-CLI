@@ -21,6 +21,50 @@ test('activity-only controls are translated in all twelve languages with no loca
   }
 });
 
+test('trim controls in twelve languages fit desktop and mobile without changing the range',async({page})=>{
+  await openEditor(page);await uploadActivity(page);
+  await page.locator('#trim-start').fill('1');await page.locator('#trim-start').press('Tab');
+  for(const language of Object.keys(languages)){
+    await page.locator('#language').selectOption(language);
+    await expect(page.locator('#trim-title')).toHaveText(translations[language].trimActivity);
+    await expect(page.locator('#trim-set-start')).toHaveText(translations[language].trimSetStart);
+    await expect(page.locator('#trim-set-end')).toHaveText(translations[language].trimSetEnd);
+    await expect(page.locator('#trim-reset')).toHaveText(translations[language].trimReset);
+    await expect(page.locator('#trim-help')).toHaveText(translations[language].trimHelp);
+    for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
+      await page.setViewportSize(viewport);
+      expect(await page.locator('#activity-trim').evaluate(node=>{const r=node.getBoundingClientRect();return document.documentElement.scrollWidth<=innerWidth+1&&[...node.querySelectorAll('input,button')].every(n=>{const b=n.getBoundingClientRect();return b.left>=r.left&&b.right<=r.right;});})).toBe(true);
+    }
+    await expect(page.locator('#trim-start')).toHaveValue('1');
+  }
+});
+
+test('trim limits seeking and playback, keeps original values and restores the full activity',async({page})=>{
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));await openEditor(page);const source=await template(page);await uploadActivity(page);
+  await seek(page,2);await page.locator('#trim-set-start').click();await expect(page.locator('#trim-start')).toHaveValue('2');
+  await seek(page,3);await page.locator('#trim-set-end').click();await expect(page.locator('#trim-end')).toHaveValue('3');
+  await expect(page.locator('#seek')).toHaveAttribute('min','2');await expect(page.locator('#seek')).toHaveAttribute('max','3');
+  await seek(page,0);await expect(page.locator('#seek')).toHaveValue('2');await expect(page.locator('#canvas text').filter({hasText:/^120$/})).toHaveCount(1);
+  await seek(page,4);await expect(page.locator('#seek')).toHaveValue('3');await page.locator('#play').click();
+  await expect.poll(async()=>Number(await page.locator('#seek').inputValue())).toBeLessThan(3);
+  await expect(page.locator('#play')).toHaveText(translations.en.play);await expect(page.locator('#seek')).toHaveValue('3');
+  await expect(page.locator('#trim-summary')).toHaveText('Selected: 2–3 s · 1 s');expect(await download(page)).toEqual(source);
+  await page.locator('#trim-reset').click();await expect(page.locator('#trim-start')).toHaveValue('0');await expect(page.locator('#trim-end')).toHaveValue('4');await expect(page.locator('#seek')).toHaveValue('0');
+  await expect(page.locator('#canvas text').filter({hasText:/^110$/})).toHaveCount(1);expect(errors).toEqual([]);
+});
+
+test('invalid trim and failed replacement preserve selection; a new activity and removal reset it',async({page})=>{
+  await openEditor(page);await uploadActivity(page);
+  await page.locator('#trim-start').fill('1.25');await page.locator('#trim-start').press('Tab');await page.locator('#trim-end').fill('3.75');await page.locator('#trim-end').press('Tab');
+  for(const [id,value]of [['trim-start',''],['trim-start','-1'],['trim-start','3.75'],['trim-end','1'],['trim-end','1.3'],['trim-end','5']]){
+    await page.locator(`#${id}`).fill(value);await page.locator(`#${id}`).press('Tab');await expect(page.locator('#media-status')).toHaveText(translations.en.trimInvalid);
+    await expect(page.locator('#trim-start')).toHaveValue('1.25');await expect(page.locator('#trim-end')).toHaveValue('3.75');
+  }
+  await page.locator('#activity-file').setInputFiles({name:'broken.fit',mimeType:'application/octet-stream',buffer:Buffer.from('invalid FIT')});await expect(page.locator('#media-status')).toHaveText(translations.en.activityMalformed);await expect(page.locator('#trim-start')).toHaveValue('1.25');await expect(page.locator('#trim-end')).toHaveValue('3.75');
+  await page.locator('#activity-file').setInputFiles({name:'next.fit',mimeType:'application/octet-stream',buffer:syntheticFIT});await expect(page.locator('#activity-name')).toContainText('next.fit');await expect(page.locator('#trim-start')).toHaveValue('0');await expect(page.locator('#trim-end')).toHaveValue('4');
+  await page.locator('#remove-activity').click();await expect(page.locator('#activity-trim')).toBeHidden();await expect(page.locator('#play')).toBeDisabled();
+});
+
 test('GPX activity plays, pauses and seeks real gauges without modifying the layout',async({page})=>{
   const errors=[],writes=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(!['GET','HEAD'].includes(r.method()))writes.push(r.method());});
   await openEditor(page);const source=await template(page);await uploadActivity(page);await expect(page.locator('#canvas')).toHaveAttribute('viewBox','0 0 1920 1080');

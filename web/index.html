@@ -7,8 +7,8 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; style-src-attr 'unsafe-hashes' 'sha256-3oFxofzq3N//6J8H86e9ul4WT2OkJrtonB66gn/TLJw='; img-src 'self' data:; media-src blob:; connect-src 'self' https://api.openweathermap.org; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Gauge Layout Editor · DataLayer Studio</title>
   <link rel="icon" href="./mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=20261026-overlay-only1">
-  <script type="module" src="./app.mjs?v=20261026-overlay-only2"></script>
+  <link rel="stylesheet" href="./style.css?v=20261026-trim1">
+  <script type="module" src="./app.mjs?v=20261026-trim1"></script>
 </head>
 <body>
   <header class="app-header">
@@ -62,6 +62,18 @@
         <p id="empty-canvas" data-t="empty" hidden>Add a gauge to start your layout.</p>
       </div>
       <div class="playback-bar"><button id="play" type="button" disabled>Play</button><input id="seek" type="range" min="0" max="0" step="0.01" value="0" aria-label="Preview time" data-t-aria="seek" dir="ltr" disabled><output id="preview-time" dir="ltr">00:00 / 00:00</output></div>
+      <section id="activity-trim" class="activity-trim" aria-labelledby="trim-title" hidden>
+        <h2 id="trim-title" data-t="trimActivity">Trim activity</h2>
+        <div class="trim-fields">
+          <label for="trim-start"><span data-t="trimStart">Start (seconds)</span><input id="trim-start" type="number" min="0" step="any" value="0" dir="ltr" aria-describedby="trim-help"></label>
+          <button id="trim-set-start" type="button" data-t="trimSetStart">Start here</button>
+          <label for="trim-end"><span data-t="trimEnd">End (seconds)</span><input id="trim-end" type="number" min="0" step="any" value="0" dir="ltr" aria-describedby="trim-help"></label>
+          <button id="trim-set-end" type="button" data-t="trimSetEnd">End here</button>
+          <button id="trim-reset" type="button" data-t="trimReset">Restore full activity</button>
+        </div>
+        <p id="trim-summary" class="hint" role="status"></p>
+        <p id="trim-help" class="hint" data-t="trimHelp">Use original activity times. Preview and export use this range; original data and gauge totals stay unchanged. The selection is not saved in the template.</p>
+      </section>
       <p id="media-status" class="status" role="status" aria-live="polite"></p>
       <p id="preview-note" class="preview-note" data-t="preview">Layout preview · sample values · fonts and rendering can differ from native export.</p>
       <p class="shortcut" data-t="shortcut">Drag to move · corner handle to scale · arrow keys to nudge</p>
@@ -76,6 +88,7 @@
     <div class="export-heading"><h2 id="export-title" data-export-t="exportVideo">Export transparent video</h2><button id="export-close" type="button" aria-label="Close">×</button></div>
     <p class="hint" data-export-t="exportHelp"></p>
     <div class="export-source"><bdi id="export-layout"></bdi><bdi id="export-activity"></bdi></div>
+    <p id="export-range" class="hint"></p>
     <form id="export-form">
       <div class="export-fields">
         <label><span data-export-t="exportSize"></span><select id="export-size"><option value="1920x1080">1920 × 1080</option><option value="1280x720">1280 × 720</option><option value="1080x1920">1080 × 1920</option><option value="1080x1080">1080 × 1080</option></select></label>

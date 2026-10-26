@@ -1,10 +1,10 @@
 import { accents, fonts, gauges, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, History } from './model.mjs?v=20261025-weather';
-import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261026-overlay-only1';
+import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261026-trim1';
 import { genericRGBToSRGB, sRGBToGenericRGB } from './render-color.mjs?v=20261025-weather';
 import { escapeXML, renderLayout, svgDefinitions, fontsReady } from './render.mjs?v=20261025-weather';
-import { createPreview } from './preview.mjs?v=20261026-overlay-only1';
+import { createPreview } from './preview.mjs?v=20261026-trim1';
 import {prepareIsolation} from './export/isolation.mjs?v=20261026-overlay-only2';
-import {createEditorExport} from './export/editor.mjs?v=20261026-integrated1';
+import {createEditorExport} from './export/editor.mjs?v=20261026-trim1';
 import { defaultPreset } from './default-preset.mjs?v=20261025-default-layout';
 const canEncode=await prepareIsolation(new URL('./isolation-worker.mjs?v=20261026-overlay-only2',import.meta.url));
 

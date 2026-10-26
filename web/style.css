@@ -353,6 +353,13 @@ h3 {
 .playback-bar { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
 .playback-bar button { min-width: 72px; }
 .playback-bar output { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.activity-trim { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 7px; }
+.activity-trim h2 { margin-bottom: 8px; font-size: 12px; }
+.trim-fields { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+.trim-fields label { flex: 1 1 110px; min-width: 0; font-size: 12px; }
+.trim-fields input { width: 100%; margin-top: 4px; }
+.trim-fields button { font-size: 12px; white-space: normal; }
+.activity-trim .hint { margin-top: 8px; font-size: 11px; }
 #media-status:empty { display: none; }
 .canvas-wrap svg [data-index] {
   cursor: move;

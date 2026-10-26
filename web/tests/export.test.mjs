@@ -16,6 +16,14 @@ test('export validates source range, dimensions, bitrate and frame-accurate dura
   for(const change of [{size:'3840x2160'},{size:'1919x1080'},{size:'1920x1920'},{size:'1x1'},{size:'bad'},{fps:29.97},{fps:0},{fps:31},{start:-1},{start:99},{duration:0},{duration:101},{bitrate:0},{bitrate:101},{bitrate:Infinity},{start:NaN}])assert.throws(()=>exportConfig({...valid,...change},100));
   assert.throws(()=>exportConfig({...valid,start:0,duration:2**32},2**32));
 });
+test('trimmed exports keep original timestamps and reject content outside the selected range',()=>{
+  const range={start:60.25,end:63.253},config=exportConfig({...valid,start:range.start,duration:3.003},100,range);
+  assert.equal(config.start,60.25);assert.equal(config.frames,91);
+  assert(config.start+(config.frames-1)/config.fps<range.end);
+  assert.equal(exportConfig({...valid,start:63.153,duration:.1},100,range).frames,3);
+  for(const change of [{start:60},{start:63,duration:1},{start:0,duration:3}])assert.throws(()=>exportConfig({...valid,...change},100,range));
+  for(const invalid of [{start:-1,end:90},{start:60,end:101},{start:61,end:60},{start:60,end:60},{start:NaN,end:90},{start:0,end:Infinity}])assert.throws(()=>exportConfig(valid,100,invalid));
+});
 test('all twelve export locales provide every key and preserve progress placeholders',()=>{
   assert.deepEqual(Object.keys(translations).sort(),Object.keys(languages).sort());
   for(const locale of Object.values(translations)){
