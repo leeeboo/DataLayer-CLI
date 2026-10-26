@@ -52,9 +52,15 @@ def windows_utf8_manifest(binary):
         raise ValueError("Windows SDK manifest tool is missing")
     with tempfile.TemporaryDirectory() as temporary:
         manifest = pathlib.Path(temporary) / "application.manifest"
-        subprocess.run([str(tools[0]), "-nologo", "-inputresource:" + str(binary) + ";#1",
-                        "-out:" + str(manifest)], check=True)
-        document = ET.parse(manifest)
+        command = [str(tools[0]), "-nologo", "-inputresource:" + str(binary) + ";#1", "-out:" + str(manifest)]
+        extracted = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        if extracted.returncode == 0:
+            document = ET.parse(manifest)
+        elif extracted.returncode == 31 and "did not contain a resource section" in extracted.stdout:
+            # Swift's raw CLI has no manifest; create only the code-page declaration.
+            document = ET.ElementTree(ET.Element("{urn:schemas-microsoft-com:asm.v1}assembly", manifestVersion="1.0"))
+        else:
+            raise subprocess.CalledProcessError(extracted.returncode, command, output=extracted.stdout)
         root = document.getroot()
         namespace = "{urn:schemas-microsoft-com:asm.v3}"
         application = root.find(namespace + "application")

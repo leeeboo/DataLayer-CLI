@@ -134,9 +134,24 @@ class ReleaseChecks(unittest.TestCase):
                     ns={'a':'urn:schemas-microsoft-com:asm.v3','w':'http://schemas.microsoft.com/SMI/2019/WindowsSettings'}
                     self.assertEqual(document.find('.//a:requestedExecutionLevel',ns).get('level'),'asInvoker')
                     self.assertEqual(document.find('.//w:activeCodePage',ns).text,'UTF-8')
+                return runtime.subprocess.CompletedProcess(command,0,stdout='')
             with patch.dict(os.environ, {'ProgramFiles(x86)':str(root)}), patch.object(runtime.subprocess,'run',side_effect=manifest_command):
                 runtime.windows_utf8_manifest(root/'overlay.exe')
             self.assertEqual(len(calls),2)
+
+    def testWindowsRawExecutableGetsAManifestWithoutNewPrivileges(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=pathlib.Path(directory)
+            tool=root/'Windows Kits/10/bin/10.0/x64/mt.exe';tool.parent.mkdir(parents=True);tool.touch()
+            def manifest_command(command,**kwargs):
+                if any(a.startswith('-inputresource:') for a in command):
+                    return runtime.subprocess.CompletedProcess(command,31,stdout='The specified image file did not contain a resource section.')
+                document=ET.parse(command[command.index('-manifest')+1])
+                self.assertIsNone(document.find('.//{urn:schemas-microsoft-com:asm.v3}requestedExecutionLevel'))
+                self.assertEqual(document.find('.//{http://schemas.microsoft.com/SMI/2019/WindowsSettings}activeCodePage').text,'UTF-8')
+                return runtime.subprocess.CompletedProcess(command,0,stdout='')
+            with patch.dict(os.environ,{'ProgramFiles(x86)':str(root)}),patch.object(runtime.subprocess,'run',side_effect=manifest_command):
+                runtime.windows_utf8_manifest(root/'overlay.exe')
 
 
 if __name__ == "__main__":
