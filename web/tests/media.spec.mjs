@@ -12,8 +12,9 @@ async function seek(page,value){await page.locator('#seek').evaluate((node,value
 async function download(page){const pending=page.waitForEvent('download');await page.locator('#download').click();const result=await pending;expect(result.suggestedFilename()).toBe('layout.dlspreset');return JSON.parse(await readFile(await result.path(),'utf8'));}
 
 test('activity-only controls are translated in all twelve languages with no local video input',async({page})=>{
+  await openEditor(page);
   for(const language of Object.keys(languages)){
-    await openEditor(page,`./?lang=${language}`);
+    await page.locator('#language').selectOption(language);
     await expect(page.locator('#import')).toHaveText(translations[language].import);await expect(page.locator('#download')).toHaveText(translations[language].download);
     await expect(page.locator('.media-panel h2')).toHaveText(translations[language].previewSources);await expect(page.locator('#import-activity')).toHaveText(translations[language].importActivity);
     await expect(page.locator('video,#video-file,#import-video,#sync-offset')).toHaveCount(0);await expect(page.locator('#play')).toBeDisabled();await expect(page.locator('body')).not.toContainText(/\bJSON\b/);
