@@ -23,6 +23,6 @@ export default defineConfig({
     command: 'python3 -m http.server 8876 --bind 127.0.0.1 --directory ../.build/gauge-pages',
     url: 'http://127.0.0.1:8876/',
     reuseExistingServer: false,
-    timeout: 10000,
+    timeout: 60000,
   },
 });
