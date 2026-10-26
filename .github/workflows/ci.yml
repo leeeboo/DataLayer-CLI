@@ -181,6 +181,15 @@ jobs:
         run: |
           $binary = Join-Path (swift build -c release --show-bin-path) 'overlay.exe'
           & $binary --help
+      - uses: actions/download-artifact@v8
+        with:
+          name: shared-export-fixture
+          path: export-fixture
+      - name: Verify the development runtime before collecting the portable package
+        shell: pwsh
+        run: |
+          $binary = Join-Path (swift build -c release --show-bin-path) 'overlay.exe'
+          python -B scripts/verify_export_fixture.py $binary export-fixture export-development-windows
       - name: Collect Windows runtime, notices and matching package sources
         shell: pwsh
         env:
@@ -207,14 +216,6 @@ jobs:
           if ((Split-Path $compiled -Parent) -ne (Resolve-Path .build).Path -or (Split-Path $compiled -Leaf) -notmatch '^x86_64-.*windows') { throw 'Unexpected compiler scratch path' }
           Remove-Item -LiteralPath $compiled -Recurse -Force
           Get-PSDrive -PSProvider FileSystem | Select-Object Name,Free
-      - uses: actions/download-artifact@v8
-        with:
-          name: shared-export-fixture
-          path: export-fixture
-      - name: Export saved project and inspect picture, timing, audio and Alpha
-        shell: pwsh
-        run: |
-          python -B scripts/verify_portable_package.py ".build/package-smoke/DataLayer-CLI-$env:CLI_RELEASE_VERSION-Windows-x86_64" export-fixture export-windows
       - uses: actions/upload-artifact@v7
         with:
           name: release-windows
@@ -229,11 +230,33 @@ jobs:
             .build/releases/*-dependency-sources.tar
             .build/releases/*-dependency-sources.tar.sha256
           retention-days: 7
+      - name: Export saved project and inspect picture, timing, audio and Alpha
+        id: portable-export
+        shell: pwsh
+        run: |
+          python -B scripts/verify_portable_package.py ".build/package-smoke/DataLayer-CLI-$env:CLI_RELEASE_VERSION-Windows-x86_64" export-fixture export-windows
+      - name: Diagnose the bundled executable independently of its launcher
+        if: failure() && steps.portable-export.outcome == 'failure'
+        shell: pwsh
+        run: |
+          $python = (Get-Command python).Source
+          $package = (Resolve-Path ".build/package-smoke/DataLayer-CLI-$env:CLI_RELEASE_VERSION-Windows-x86_64 QA 空格 &").Path
+          $env:PATH = "$package\runtime\bin;$env:SystemRoot\System32"
+          $env:FONTCONFIG_FILE = "$package\runtime\fonts.conf"
+          & $python -B scripts/verify_export_fixture.py "$package\runtime\bin\overlay.exe" export-fixture export-direct-windows
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: export-windows
           path: export-windows/
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: windows-runtime-controls
+          path: |
+            export-development-windows/
+            export-direct-windows/
           retention-days: 7
   compare:
     needs: [test, linux-clean, windows]
