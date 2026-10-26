@@ -53,7 +53,7 @@ def package(version, binary, output, runtime, sources):
         shutil.copytree(runtime, stage / "runtime")
         executable_name = "overlay.exe" if system == "Windows" else "overlay"
         executable = stage / "runtime/bin" / executable_name
-        if hashlib.sha256(binary.read_bytes()).digest() != hashlib.sha256(executable.read_bytes()).digest():
+        if digest(binary) != manifest["build_binary_sha256"]:
             raise ValueError("Collected CLI does not match release executable")
         (stage / "runtime" / ("launcher.exe" if system == "Windows" else "launcher")).rename(stage / executable_name)
         for document in ["LICENSE", "NOTICE.md", "README.md", "AUDIT.md", "ORIGIN.json"]:
@@ -70,6 +70,7 @@ def package(version, binary, output, runtime, sources):
             "repository": "https://github.com/leeeboo/DataLayer-CLI", "revision": revision,
             "working_tree_dirty": False, "platform": system, "architecture": "x86_64",
             "binary_sha256": hashlib.sha256(executable.read_bytes()).hexdigest(),
+            "build_binary_sha256": digest(binary),
             "native_executable": "runtime/bin/" + executable_name,
             "dependency_sources": source_archive.name,
         }, indent=2) + "\n", encoding="utf-8")

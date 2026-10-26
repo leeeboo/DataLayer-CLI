@@ -31,7 +31,10 @@ FONT_CONFIG = '''<?xml version="1.0"?>
 
 
 def run(*args):
-    return subprocess.check_output(args, text=True, stderr=subprocess.PIPE).strip()
+    try:
+        return subprocess.check_output(args, text=True, stderr=subprocess.PIPE).strip()
+    except subprocess.CalledProcessError as error:
+        raise RuntimeError(str(args[0]) + " failed: " + error.stderr) from error
 
 
 def digest(path):
@@ -123,8 +126,6 @@ def collect(binary, destination, source_directory):
     assert "6.1.2" in target["compilerVersion"], target
     swift_dirs = [pathlib.Path(p).resolve() for p in target["paths"]["runtimeLibraryPaths"]]
     if system == "Windows":
-        # Fontconfig reads narrow environment paths; an UTF-8 process code page preserves Unicode installs.
-        windows_utf8_manifest(binary)
         swift_dirs += [pathlib.Path(shutil.which("swift")).resolve().parent]
         msys = pathlib.Path(os.environ["MSYS2_LOCATION"])
         ucrt = msys / "ucrt64"
@@ -202,7 +203,8 @@ def collect(binary, destination, source_directory):
         if output.exists() and digest(output) != digest(path):
             raise ValueError("Conflicting runtime libraries: " + name)
         shutil.copy2(path, output)
-        if system == "Windows" and path in seeds[:2]:
+        # Read imports from original binaries before adding resources to the packaged copies.
+        if system == "Windows" and (path == binary or path in seeds[:2]):
             windows_utf8_manifest(output)
         files.append({"path": output.relative_to(destination).as_posix(), "sha256": digest(output),
                       "provider": "DataLayer-CLI" if path == binary else provider(path)})
@@ -247,6 +249,7 @@ def collect(binary, destination, source_directory):
         (destination / "launcher").write_text(LINUX_LAUNCHER, encoding="utf-8")
         (destination / "launcher").chmod(0o755)
     manifest = {"platform": system, "swift": "6.1.2", "files": files, "packages": packages,
+                "build_binary_sha256": digest(binary),
                 "windows_manifest_change": "Executable resources set activeCodePage UTF-8; codec and renderer code are unchanged." if system == "Windows" else None,
                 "sources": [{"file": p.name, "sha256": digest(p)} for p in sorted(source_directory.iterdir()) if p.is_file()]}
     (destination / "DEPENDENCIES.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")

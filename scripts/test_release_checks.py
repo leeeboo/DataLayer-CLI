@@ -68,11 +68,15 @@ class ReleaseChecks(unittest.TestCase):
                 (collected / "licenses/FFmpeg").write_text("GPL source remains available")
                 shutil_binary = collected / "bin" / ("overlay.exe" if system == "Windows" else "overlay")
                 shutil_binary.write_bytes(binary.read_bytes())
+                if system == "Windows":
+                    shutil_binary.write_bytes(binary.read_bytes() + b"manifest")
                 (collected / ("launcher.exe" if system == "Windows" else "launcher")).write_bytes(b"launcher")
                 sources = root / (system + "-sources")
                 sources.mkdir()
                 (sources / "ffmpeg.src.tar").write_bytes(b"matching source")
                 (collected / "DEPENDENCIES.json").write_text(json.dumps({"platform": system,
+                    "build_binary_sha256": runtime.digest(binary),
+                    "files": [{"path": shutil_binary.relative_to(collected).as_posix(), "sha256": runtime.digest(shutil_binary)}],
                     "sources": [{"file": "ffmpeg.src.tar", "sha256": runtime.digest(sources / "ffmpeg.src.tar")}]}))
                 with patch.object(packaging.platform, "system", return_value=system), patch.object(
                     packaging.platform, "machine", return_value="AMD64"), patch.object(
@@ -87,15 +91,16 @@ class ReleaseChecks(unittest.TestCase):
                         self.assertTrue(any(m.name.endswith("runtime/licenses/FFmpeg") for m in members))
                         self.assertTrue(any(m.name.endswith("/docs/INSTALL.zh-CN.md") for m in members))
                         executable = next(m for m in members if m.name.endswith("/runtime/bin/overlay"))
-                        self.assertEqual(bundle.extractfile(executable).read(), binary.read_bytes())
+                        self.assertEqual(bundle.extractfile(executable).read(), shutil_binary.read_bytes())
                         source = json.loads(bundle.extractfile(next(m for m in members if m.name.endswith("/SOURCE.json"))).read())
                 else:
                     with zipfile.ZipFile(archive) as bundle:
                         self.assertTrue(any(n.endswith("/runtime/bin/overlay.exe") for n in bundle.namelist()))
-                        self.assertEqual(bundle.read(next(n for n in bundle.namelist() if n.endswith("/runtime/bin/overlay.exe"))), binary.read_bytes())
+                        self.assertEqual(bundle.read(next(n for n in bundle.namelist() if n.endswith("/runtime/bin/overlay.exe"))), shutil_binary.read_bytes())
                         source = json.loads(bundle.read(next(n for n in bundle.namelist() if n.endswith("/SOURCE.json"))))
                 self.assertEqual(source["revision"], "a" * 40)
-                self.assertEqual(source["binary_sha256"], hashlib.sha256(binary.read_bytes()).hexdigest())
+                self.assertEqual(source["binary_sha256"], runtime.digest(shutil_binary))
+                self.assertEqual(source["build_binary_sha256"], runtime.digest(binary))
                 with tarfile.open(archive.parent / source["dependency_sources"]) as bundle:
                     self.assertEqual(bundle.extractfile("dependency-sources/ffmpeg.src.tar").read(), b"matching source")
                 with patch.object(packaging.platform, "system", return_value=system), patch.object(
