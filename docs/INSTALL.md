@@ -85,6 +85,8 @@ If a DLL or library is missing, extract the full archive again. Windows binaries
 
 `-h` and `--help` support all 12 documentation languages. Help follows the system or terminal language and falls back to English. Use `--language CODE` (or `--language=CODE`) to override it; the option may appear before or after `--help`. Runtime logs and error summaries remain English.
 
-`overlay --language en --help`
+macOS / Linux: `./overlay --language en --help`
+
+Windows / PowerShell: `.\overlay.exe --language en --help`
 
 `LC_ALL` → `LC_MESSAGES` → `LANGUAGE` → `LANG` → OS. `C` / `POSIX` → English.

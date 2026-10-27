@@ -85,6 +85,8 @@ DLL やライブラリが不足する場合はアーカイブ全体を再展開�
 
 `-h` と `--help` はドキュメントと同じ 12 言語に対応します。システムまたは端末の言語に従い、未対応の場合は英語を使用します。`--language CODE`（または `--language=CODE`）で指定でき、`--help` の前後どちらでも使用できます。実行ログとエラーの要約は引き続き英語です。
 
-`overlay --language ja --help`
+macOS / Linux: `./overlay --language ja --help`
+
+Windows / PowerShell: `.\overlay.exe --language ja --help`
 
 `LC_ALL` → `LC_MESSAGES` → `LANGUAGE` → `LANG` → OS. `C` / `POSIX` → English.

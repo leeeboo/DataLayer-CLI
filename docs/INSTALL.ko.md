@@ -85,6 +85,8 @@ DLL이나 라이브러리가 없다는 메시지가 나오면 전체 압축 파�
 
 `-h`와 `--help`는 문서와 동일한 12개 언어를 지원합니다. 시스템 또는 터미널 언어를 따르며 미지원 시 영어를 사용합니다. `--language CODE`(또는 `--language=CODE`)로 지정할 수 있으며 `--help` 앞뒤 모두 가능합니다. 실행 로그와 오류 요약은 계속 영어로 표시됩니다.
 
-`overlay --language ko --help`
+macOS / Linux: `./overlay --language ko --help`
+
+Windows / PowerShell: `.\overlay.exe --language ko --help`
 
 `LC_ALL` → `LC_MESSAGES` → `LANGUAGE` → `LANG` → OS. `C` / `POSIX` → English.

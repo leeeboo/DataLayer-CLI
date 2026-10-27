@@ -85,6 +85,8 @@ Si une DLL ou bibliothèque manque, extrayez à nouveau toute l’archive. Le bi
 
 `-h` et `--help` prennent en charge les 12 langues de la documentation. L’aide suit la langue du système ou terminal, avec repli sur l’anglais. Utilisez `--language CODE` (ou `--language=CODE`) avant ou après `--help` pour la choisir. Les journaux et résumés d’erreur restent en anglais.
 
-`overlay --language fr --help`
+macOS / Linux: `./overlay --language fr --help`
+
+Windows / PowerShell: `.\overlay.exe --language fr --help`
 
 `LC_ALL` → `LC_MESSAGES` → `LANGUAGE` → `LANG` → OS. `C` / `POSIX` → English.

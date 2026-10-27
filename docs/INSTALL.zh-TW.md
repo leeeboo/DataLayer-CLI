@@ -85,6 +85,8 @@ cd "$cli_directory" &&
 
 `-h` 和 `--help` 支援與文件相同的 12 種語言。預設跟隨系統或終端機語言，無法匹配時使用英文。以 `--language CODE`（或 `--language=CODE`）手動指定，可放在 `--help` 前後。執行記錄和錯誤摘要仍為英文。
 
-`overlay --language zh-TW --help`
+macOS / Linux: `./overlay --language zh-TW --help`
+
+Windows / PowerShell: `.\overlay.exe --language zh-TW --help`
 
 `LC_ALL` → `LC_MESSAGES` → `LANGUAGE` → `LANG` → OS. `C` / `POSIX` → English.

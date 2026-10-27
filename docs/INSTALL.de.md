@@ -85,6 +85,8 @@ Fehlt eine DLL oder Bibliothek, entpacke das komplette Archiv erneut. Die Window
 
 `-h` und `--help` unterstützen die 12 Dokumentationssprachen. Die Hilfe folgt der System- oder Terminalsprache, ersatzweise Englisch. Mit `--language CODE` (oder `--language=CODE`) vor oder nach `--help` wird die Sprache festgelegt. Laufzeitprotokolle und Fehlerzusammenfassungen bleiben Englisch.
 
-`overlay --language de --help`
+macOS / Linux: `./overlay --language de --help`
+
+Windows / PowerShell: `.\overlay.exe --language de --help`
 
 `LC_ALL` → `LC_MESSAGES` → `LANGUAGE` → `LANG` → OS. `C` / `POSIX` → English.

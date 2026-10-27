@@ -85,6 +85,8 @@ Si falta una DLL o biblioteca, vuelve a extraer todo el archivo. El ejecutable d
 
 `-h` y `--help` admiten los 12 idiomas de la documentación. Siguen el idioma del sistema o terminal y usan inglés si no hay coincidencia. Usa `--language CODE` (o `--language=CODE`) antes o después de `--help` para elegirlo. Los registros y resúmenes de error siguen en inglés.
 
-`overlay --language es --help`
+macOS / Linux: `./overlay --language es --help`
+
+Windows / PowerShell: `.\overlay.exe --language es --help`
 
 `LC_ALL` → `LC_MESSAGES` → `LANGUAGE` → `LANG` → OS. `C` / `POSIX` → English.

@@ -85,6 +85,8 @@ DLL या लाइब्रेरी न मिले तो पूरा प�
 
 `-h` और `--help` दस्तावेज़ों की सभी 12 भाषाओं में उपलब्ध हैं। सहायता सिस्टम या टर्मिनल की भाषा चुनती है, मेल न मिलने पर अंग्रेज़ी उपयोग होती है। `--help` के पहले या बाद में `--language CODE` (या `--language=CODE`) से भाषा चुनें। रनटाइम लॉग और त्रुटि सारांश अभी अंग्रेज़ी में हैं।
 
-`overlay --language hi --help`
+macOS / Linux: `./overlay --language hi --help`
+
+Windows / PowerShell: `.\overlay.exe --language hi --help`
 
 `LC_ALL` → `LC_MESSAGES` → `LANGUAGE` → `LANG` → OS. `C` / `POSIX` → English.

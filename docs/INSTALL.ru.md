@@ -85,6 +85,8 @@ cd "$cli_directory" &&
 
 `-h` и `--help` поддерживают 12 языков документации. По умолчанию используется язык системы или терминала, иначе английский. Укажите `--language CODE` (или `--language=CODE`) до или после `--help` для выбора. Журналы выполнения и краткие сообщения об ошибках остаются на английском.
 
-`overlay --language ru --help`
+macOS / Linux: `./overlay --language ru --help`
+
+Windows / PowerShell: `.\overlay.exe --language ru --help`
 
 `LC_ALL` → `LC_MESSAGES` → `LANGUAGE` → `LANG` → OS. `C` / `POSIX` → English.

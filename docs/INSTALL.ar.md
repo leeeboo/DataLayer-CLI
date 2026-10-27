@@ -85,6 +85,8 @@ cd "$cli_directory" &&
 
 يدعم `-h` و`--help` لغات التوثيق الـ 12. تتبع المساعدة لغة النظام أو الطرفية، وتستخدم الإنجليزية عند عدم التطابق. استخدم `--language CODE` (أو `--language=CODE`) قبل `--help` أو بعده لاختيار اللغة. تظل سجلات التشغيل وملخصات الأخطاء بالإنجليزية.
 
-`overlay --language ar --help`
+macOS / Linux: `./overlay --language ar --help`
+
+Windows / PowerShell: `.\overlay.exe --language ar --help`
 
 `LC_ALL` → `LC_MESSAGES` → `LANGUAGE` → `LANG` → OS. `C` / `POSIX` → English.
