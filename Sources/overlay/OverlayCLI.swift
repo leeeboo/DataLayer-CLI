@@ -322,7 +322,7 @@ enum CLIError: Error, CustomStringConvertible {
         }
     }
 
-    static var help: String { CLIHelp.text(.system()) }
+    static let help = CLIHelp.text(.en)
 }
 
 struct ResolvedOverlayLayout {
@@ -725,9 +725,8 @@ public enum OverlayCLI {
         do {
             try await run()
         } catch let error as CLIError {
-            let written = CLIHelp.write(error.description)
-            if !written { exit(1) }
-            if case .helpRequested = error { exit(0) }
+            if case .helpRequested = error { exit(CLIHelp.write(error.description) ? 0 : 1) }
+            print(error.description)
             exit(2)
         } catch let error as FITError {
             fputs("FIT error: \(error.description)\n", stderr)

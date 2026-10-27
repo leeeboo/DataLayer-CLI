@@ -96,4 +96,13 @@ final class CLIHelpTests: XCTestCase {
         let project = try CommandLineOptions.parse(arguments: ["overlay", "--timeline-project", "file.dlsproj", "--output", "movie.mov", "--language", "ja"])
         XCTAssertFalse(project.specifiedArguments.contains("--language"))
     }
+
+    func testNonHelpErrorsKeepTheirExistingEnglishOutput() {
+        XCTAssertThrowsError(try CommandLineOptions.parse(arguments: ["overlay", "--language", "zh-CN"])) { error in
+            guard case CLIError.missingRequired("--fit") = error else { return XCTFail("\(error)") }
+            XCTAssertTrue(String(describing: error).hasPrefix("Missing required argument --fit."))
+            XCTAssertTrue(String(describing: error).contains("Usage:"))
+            XCTAssertFalse(String(describing: error).contains("用法:"))
+        }
+    }
 }
