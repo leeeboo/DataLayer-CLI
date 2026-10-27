@@ -36,9 +36,9 @@ enum CLIHelpLanguage: String, CaseIterable {
         #if os(Windows)
         var count: ULONG = 0
         var length: ULONG = 0
-        if GetUserPreferredUILanguages(ULONG(MUI_LANGUAGE_NAME), &count, nil, &length) != 0, length > 1 {
+        if GetUserPreferredUILanguages(ULONG(MUI_LANGUAGE_NAME), &count, nil, &length), length > 1 {
             var buffer = [WCHAR](repeating: 0, count: Int(length))
-            if GetUserPreferredUILanguages(ULONG(MUI_LANGUAGE_NAME), &count, &buffer, &length) != 0 {
+            if GetUserPreferredUILanguages(ULONG(MUI_LANGUAGE_NAME), &count, &buffer, &length) {
                 return String(decoding: buffer, as: UTF16.self).split(separator: "\0").map(String.init)
             }
         }
@@ -77,7 +77,7 @@ enum CLIHelp {
         #if os(Windows)
         let handle = GetStdHandle(STD_OUTPUT_HANDLE)
         var mode: DWORD = 0
-        if GetConsoleMode(handle, &mode) != 0 {
+        if GetConsoleMode(handle, &mode) {
             // Console code pages cannot represent all twelve languages; redirects stay UTF-8.
             let units = Array((text + "\n").replacingOccurrences(of: "\n", with: "\r\n").utf16)
             return units.withUnsafeBufferPointer { buffer in
@@ -85,7 +85,7 @@ enum CLIHelp {
                 while offset < buffer.count {
                     var written: DWORD = 0
                     guard WriteConsoleW(handle, buffer.baseAddress! + offset,
-                                        DWORD(min(4096, buffer.count - offset)), &written, nil) != 0,
+                                        DWORD(min(4096, buffer.count - offset)), &written, nil),
                           written > 0 else { return false }
                     offset += Int(written)
                 }
