@@ -5,6 +5,7 @@ import os
 import pathlib
 import platform
 import subprocess
+import verify_cli_help
 import verify_export_fixture
 
 
@@ -19,6 +20,7 @@ def verify(package, fixture, output):
              if k.lower() not in ["path", "ld_library_path", "fontconfig_file", "fontconfig_path", "swift_runtime_library_path"]}
     clean["PATH"] = os.path.join(os.environ["SystemRoot"], "System32") if windows else "/usr/bin:/bin"
     subprocess.run([str(binary), "--help"], env=clean, check=True, timeout=30)
+    verify_cli_help.verify(binary, clean)
     smoke = output.with_name(output.name + " QA 空格 &-standalone.mov")
     subprocess.run([str(binary), "--timeline-project", str(fixture / "moved-project/prores-4444.dlsproj"),
                     "--output", str(smoke)], env=clean, check=True, timeout=240)

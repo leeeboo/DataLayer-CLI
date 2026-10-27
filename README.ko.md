@@ -12,9 +12,9 @@ FIT/GPX 활동 데이터를 투명한 텔레메트리 오버레이 또는 합성
 
 | 시스템 | 압축 파일 이름 끝부분 |
 | --- | --- |
-| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
-| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
-| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
+| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-macOS-arm64.zip) |
+| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-Windows-x86_64.zip) |
+| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-Linux-x86_64.tar.gz) |
 
 macOS 실행 파일은 서명 및 공증되었습니다. 별도 런타임 설치가 필요하지 않습니다.
 
@@ -25,6 +25,17 @@ macOS 실행 파일은 서명 및 공증되었습니다. 별도 런타임 설치
 ```sh
 overlay --help
 ```
+
+## 도움말 언어
+
+`-h`와 `--help`는 문서와 동일한 12개 언어를 지원합니다. 시스템 또는 터미널 언어를 따르며 미지원 시 영어를 사용합니다. `--language CODE`(또는 `--language=CODE`)로 지정할 수 있으며 `--help` 앞뒤 모두 가능합니다. 실행 로그와 오류 요약은 계속 영어로 표시됩니다.
+
+```sh
+overlay --help
+overlay --language ko -h
+```
+
+`en, zh-CN, zh-TW, ja, ko, es, fr, de, pt-BR, ru, ar, hi`
 
 ## 빠른 시작
 

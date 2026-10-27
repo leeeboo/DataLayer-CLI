@@ -8,9 +8,9 @@ Lade das Archiv für dein System und die gleichnamige `.sha256`-Datei unter [Rel
 
 | System | Archiv |
 | --- | --- |
-| macOS 13+ / Apple Silicon | `DataLayer-CLI-v0.1.1-macOS-arm64.zip` |
-| Windows 10 1903+ / Windows 11 / x86_64 | `DataLayer-CLI-v0.1.1-Windows-x86_64.zip` |
-| Ubuntu 24.04 / x86_64 | `DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz` |
+| macOS 13+ / Apple Silicon | `DataLayer-CLI-v0.1.2-macOS-arm64.zip` |
+| Windows 10 1903+ / Windows 11 / x86_64 | `DataLayer-CLI-v0.1.2-Windows-x86_64.zip` |
+| Ubuntu 24.04 / x86_64 | `DataLayer-CLI-v0.1.2-Linux-x86_64.tar.gz` |
 
 Ab **v0.1.1** enthalten die Windows/Linux-Archive Swift, FFmpeg, Cairo/Pango und DejaVu-Schriften. **Compiler und Laufzeitumgebungen müssen nicht installiert werden.**
 
@@ -22,7 +22,7 @@ Prüfen, entpacken und starten
 
 ```powershell
 $ErrorActionPreference = "Stop"
-$cliDirectory = "DataLayer-CLI-v0.1.1-Windows-x86_64"
+$cliDirectory = "DataLayer-CLI-v0.1.2-Windows-x86_64"
 $archive = "$cliDirectory.zip"
 $expected = (Get-Content "$archive.sha256").Split(' ')[0]
 if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() -ne $expected) {
@@ -39,7 +39,7 @@ Set-Location $cliDirectory
 Prüfen, entpacken und starten
 
 ```sh
-cli_directory="DataLayer-CLI-v0.1.1-Linux-x86_64"
+cli_directory="DataLayer-CLI-v0.1.2-Linux-x86_64"
 sha256sum -c "$cli_directory.tar.gz.sha256" &&
 tar -xzf "$cli_directory.tar.gz" &&
 cd "$cli_directory" &&
@@ -51,7 +51,7 @@ cd "$cli_directory" &&
 Prüfen, entpacken und starten
 
 ```sh
-cli_directory="DataLayer-CLI-v0.1.1-macOS-arm64"
+cli_directory="DataLayer-CLI-v0.1.2-macOS-arm64"
 shasum -a 256 -c "$cli_directory.zip.sha256" &&
 unzip "$cli_directory.zip" &&
 cd "$cli_directory" &&
@@ -80,3 +80,11 @@ Das Bauen aus dem Quellcode ist optional. Entwickler benötigen Swift sowie Medi
 Fehlt eine DLL oder Bibliothek, entpacke das komplette Archiv erneut. Die Windows-Datei ist nicht signiert; die macOS-Datei ist signiert und notarisiert. Das Linux-Binärpaket unterstützt Ubuntu 24.04 x86_64.
 
 [LICENSE](../LICENSE) · [NOTICE](../NOTICE.md) · `runtime/licenses` · `runtime/DEPENDENCIES.json`
+
+## Hilfesprache
+
+`-h` und `--help` unterstützen die 12 Dokumentationssprachen. Die Hilfe folgt der System- oder Terminalsprache, ersatzweise Englisch. Mit `--language CODE` (oder `--language=CODE`) vor oder nach `--help` wird die Sprache festgelegt. Laufzeitprotokolle und Fehlerzusammenfassungen bleiben Englisch.
+
+`overlay --language de --help`
+
+`LC_ALL` → `LC_MESSAGES` → `LANGUAGE` → `LANG` → OS. `C` / `POSIX` → English.

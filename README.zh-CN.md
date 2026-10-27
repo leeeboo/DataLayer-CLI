@@ -12,9 +12,9 @@
 
 | 系统 | 压缩包后缀 |
 | --- | --- |
-| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
-| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
-| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
+| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-macOS-arm64.zip) |
+| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-Windows-x86_64.zip) |
+| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-Linux-x86_64.tar.gz) |
 
 macOS 版本已签名并公证，无需额外安装运行库。
 
@@ -25,6 +25,17 @@ macOS 版本已签名并公证，无需额外安装运行库。
 ```sh
 overlay --help
 ```
+
+## 帮助语言
+
+`-h` 和 `--help` 支持与文档相同的 12 种语言。默认跟随系统或终端语言，无法匹配时回退英文。使用 `--language CODE`（或 `--language=CODE`）手动指定，放在 `--help` 前后均可。运行日志和错误摘要仍为英文。
+
+```sh
+overlay --help
+overlay --language zh-CN -h
+```
+
+`en, zh-CN, zh-TW, ja, ko, es, fr, de, pt-BR, ru, ar, hi`
 
 ## 快速上手
 

@@ -12,9 +12,9 @@ FIT/GPX गतिविधि डेटा से पारदर्शी ट�
 
 | सिस्टम | आर्काइव नाम का अंतिम भाग |
 | --- | --- |
-| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
-| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
-| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
+| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-macOS-arm64.zip) |
+| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-Windows-x86_64.zip) |
+| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-Linux-x86_64.tar.gz) |
 
 macOS बाइनरी हस्ताक्षरित है और Apple से नोटराइज़ की गई है। अलग रनटाइम इंस्टॉल करने की आवश्यकता नहीं है।
 
@@ -25,6 +25,17 @@ macOS बाइनरी हस्ताक्षरित है और Apple �
 ```sh
 overlay --help
 ```
+
+## सहायता की भाषा
+
+`-h` और `--help` दस्तावेज़ों की सभी 12 भाषाओं में उपलब्ध हैं। सहायता सिस्टम या टर्मिनल की भाषा चुनती है, मेल न मिलने पर अंग्रेज़ी उपयोग होती है। `--help` के पहले या बाद में `--language CODE` (या `--language=CODE`) से भाषा चुनें। रनटाइम लॉग और त्रुटि सारांश अभी अंग्रेज़ी में हैं।
+
+```sh
+overlay --help
+overlay --language hi -h
+```
+
+`en, zh-CN, zh-TW, ja, ko, es, fr, de, pt-BR, ru, ar, hi`
 
 ## शुरुआत करें
 

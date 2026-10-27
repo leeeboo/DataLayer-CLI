@@ -8,9 +8,9 @@
 
 | 시스템 | 압축 파일 |
 | --- | --- |
-| macOS 13+ / Apple Silicon | `DataLayer-CLI-v0.1.1-macOS-arm64.zip` |
-| Windows 10 1903+ / Windows 11 / x86_64 | `DataLayer-CLI-v0.1.1-Windows-x86_64.zip` |
-| Ubuntu 24.04 / x86_64 | `DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz` |
+| macOS 13+ / Apple Silicon | `DataLayer-CLI-v0.1.2-macOS-arm64.zip` |
+| Windows 10 1903+ / Windows 11 / x86_64 | `DataLayer-CLI-v0.1.2-Windows-x86_64.zip` |
+| Ubuntu 24.04 / x86_64 | `DataLayer-CLI-v0.1.2-Linux-x86_64.tar.gz` |
 
 **v0.1.1**부터 Windows/Linux 압축 파일에 Swift, FFmpeg, Cairo/Pango와 DejaVu 글꼴이 포함됩니다. **컴파일러나 런타임을 별도로 설치할 필요가 없습니다.**
 
@@ -22,7 +22,7 @@
 
 ```powershell
 $ErrorActionPreference = "Stop"
-$cliDirectory = "DataLayer-CLI-v0.1.1-Windows-x86_64"
+$cliDirectory = "DataLayer-CLI-v0.1.2-Windows-x86_64"
 $archive = "$cliDirectory.zip"
 $expected = (Get-Content "$archive.sha256").Split(' ')[0]
 if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() -ne $expected) {
@@ -39,7 +39,7 @@ Set-Location $cliDirectory
 확인, 압축 풀기, 실행
 
 ```sh
-cli_directory="DataLayer-CLI-v0.1.1-Linux-x86_64"
+cli_directory="DataLayer-CLI-v0.1.2-Linux-x86_64"
 sha256sum -c "$cli_directory.tar.gz.sha256" &&
 tar -xzf "$cli_directory.tar.gz" &&
 cd "$cli_directory" &&
@@ -51,7 +51,7 @@ cd "$cli_directory" &&
 확인, 압축 풀기, 실행
 
 ```sh
-cli_directory="DataLayer-CLI-v0.1.1-macOS-arm64"
+cli_directory="DataLayer-CLI-v0.1.2-macOS-arm64"
 shasum -a 256 -c "$cli_directory.zip.sha256" &&
 unzip "$cli_directory.zip" &&
 cd "$cli_directory" &&
@@ -80,3 +80,11 @@ cd "$cli_directory" &&
 DLL이나 라이브러리가 없다는 메시지가 나오면 전체 압축 파일을 다시 풀어주세요. Windows 실행 파일은 서명되지 않았고 macOS 실행 파일은 서명 및 공증되었습니다. Linux 바이너리는 Ubuntu 24.04 x86_64를 지원합니다.
 
 [LICENSE](../LICENSE) · [NOTICE](../NOTICE.md) · `runtime/licenses` · `runtime/DEPENDENCIES.json`
+
+## 도움말 언어
+
+`-h`와 `--help`는 문서와 동일한 12개 언어를 지원합니다. 시스템 또는 터미널 언어를 따르며 미지원 시 영어를 사용합니다. `--language CODE`(또는 `--language=CODE`)로 지정할 수 있으며 `--help` 앞뒤 모두 가능합니다. 실행 로그와 오류 요약은 계속 영어로 표시됩니다.
+
+`overlay --language ko --help`
+
+`LC_ALL` → `LC_MESSAGES` → `LANGUAGE` → `LANG` → OS. `C` / `POSIX` → English.

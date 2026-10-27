@@ -12,9 +12,9 @@ Téléchargez l’archive de votre plateforme et son fichier `.sha256` depuis [R
 
 | Système | Fin du nom de l’archive |
 | --- | --- |
-| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
-| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
-| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
+| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-macOS-arm64.zip) |
+| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-Windows-x86_64.zip) |
+| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-Linux-x86_64.tar.gz) |
 
 Le binaire macOS est signé et notarié. Aucun environnement d’exécution supplémentaire n’est nécessaire.
 
@@ -25,6 +25,17 @@ Ajoutez le dossier de l’exécutable au `PATH`. Sinon, remplacez `overlay` ci-d
 ```sh
 overlay --help
 ```
+
+## Langue de l’aide
+
+`-h` et `--help` prennent en charge les 12 langues de la documentation. L’aide suit la langue du système ou terminal, avec repli sur l’anglais. Utilisez `--language CODE` (ou `--language=CODE`) avant ou après `--help` pour la choisir. Les journaux et résumés d’erreur restent en anglais.
+
+```sh
+overlay --help
+overlay --language fr -h
+```
+
+`en, zh-CN, zh-TW, ja, ko, es, fr, de, pt-BR, ru, ar, hi`
 
 ## Démarrage rapide
 

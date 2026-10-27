@@ -8,9 +8,9 @@
 
 | 系統 | 壓縮檔 |
 | --- | --- |
-| macOS 13+ / Apple Silicon | `DataLayer-CLI-v0.1.1-macOS-arm64.zip` |
-| Windows 10 1903+ / Windows 11 / x86_64 | `DataLayer-CLI-v0.1.1-Windows-x86_64.zip` |
-| Ubuntu 24.04 / x86_64 | `DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz` |
+| macOS 13+ / Apple Silicon | `DataLayer-CLI-v0.1.2-macOS-arm64.zip` |
+| Windows 10 1903+ / Windows 11 / x86_64 | `DataLayer-CLI-v0.1.2-Windows-x86_64.zip` |
+| Ubuntu 24.04 / x86_64 | `DataLayer-CLI-v0.1.2-Linux-x86_64.tar.gz` |
 
 從 **v0.1.1** 起，Windows/Linux 套件已包含 Swift、FFmpeg、Cairo/Pango 與 DejaVu 字型，**無須安裝編譯器或執行階段**。
 
@@ -22,7 +22,7 @@
 
 ```powershell
 $ErrorActionPreference = "Stop"
-$cliDirectory = "DataLayer-CLI-v0.1.1-Windows-x86_64"
+$cliDirectory = "DataLayer-CLI-v0.1.2-Windows-x86_64"
 $archive = "$cliDirectory.zip"
 $expected = (Get-Content "$archive.sha256").Split(' ')[0]
 if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() -ne $expected) {
@@ -39,7 +39,7 @@ Set-Location $cliDirectory
 驗證、解壓縮並執行
 
 ```sh
-cli_directory="DataLayer-CLI-v0.1.1-Linux-x86_64"
+cli_directory="DataLayer-CLI-v0.1.2-Linux-x86_64"
 sha256sum -c "$cli_directory.tar.gz.sha256" &&
 tar -xzf "$cli_directory.tar.gz" &&
 cd "$cli_directory" &&
@@ -51,7 +51,7 @@ cd "$cli_directory" &&
 驗證、解壓縮並執行
 
 ```sh
-cli_directory="DataLayer-CLI-v0.1.1-macOS-arm64"
+cli_directory="DataLayer-CLI-v0.1.2-macOS-arm64"
 shasum -a 256 -c "$cli_directory.zip.sha256" &&
 unzip "$cli_directory.zip" &&
 cd "$cli_directory" &&
@@ -80,3 +80,11 @@ cd "$cli_directory" &&
 若提示缺少 DLL 或程式庫，請重新完整解壓縮。Windows 程式尚未簽章；macOS 程式已簽章並公證。Linux 二進位支援目標為 Ubuntu 24.04 x86_64。
 
 [LICENSE](../LICENSE) · [NOTICE](../NOTICE.md) · `runtime/licenses` · `runtime/DEPENDENCIES.json`
+
+## 說明語言
+
+`-h` 和 `--help` 支援與文件相同的 12 種語言。預設跟隨系統或終端機語言，無法匹配時使用英文。以 `--language CODE`（或 `--language=CODE`）手動指定，可放在 `--help` 前後。執行記錄和錯誤摘要仍為英文。
+
+`overlay --language zh-TW --help`
+
+`LC_ALL` → `LC_MESSAGES` → `LANGUAGE` → `LANG` → OS. `C` / `POSIX` → English.

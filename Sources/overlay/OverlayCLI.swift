@@ -36,21 +36,33 @@ struct CommandLineOptions {
         while index < arguments.count {
             let argument = arguments[index]
             switch argument {
-            case "-h", "--help":
-                throw CLIError.helpRequested
-            case "--skip-fit-crc", "--inspect", "--force":
+            case "-h", "--help", "--skip-fit-crc", "--inspect", "--force":
                 flags.insert(argument)
                 index += 1
-            case "--timeline-project", "--video", "--fit", "--output", "--width", "--height", "--fps", "--offset", "--fit-start", "--sync-video", "--sync-fit", "--activity-offset-ms", "--fit-clock-offset-ms", "--bitrate", "--bitrate-bps", "--export-mode", "--codec", "--distance-unit", "--time-zone", "--activity-trim-start", "--activity-trim-end", "--layout-preset":
+            case "--timeline-project", "--video", "--fit", "--output", "--width", "--height", "--fps", "--offset", "--fit-start", "--sync-video", "--sync-fit", "--activity-offset-ms", "--fit-clock-offset-ms", "--bitrate", "--bitrate-bps", "--export-mode", "--codec", "--distance-unit", "--time-zone", "--activity-trim-start", "--activity-trim-end", "--layout-preset", "--language":
                 guard index + 1 < arguments.count else {
                     throw CLIError.missingValue(argument)
                 }
                 values[argument] = arguments[index + 1]
                 index += 2
+            case let value where value.hasPrefix("--language="):
+                values["--language"] = String(value.dropFirst("--language=".count))
+                index += 1
             default:
                 throw CLIError.unknownArgument(argument)
             }
         }
+
+        let language: CLIHelpLanguage
+        if let value = values["--language"] {
+            guard let selected = CLIHelpLanguage.matching(value) else {
+                throw CLIError.invalidLanguage(value)
+            }
+            language = selected
+        } else {
+            language = .system()
+        }
+        if flags.contains("-h") || flags.contains("--help") { throw CLIError.helpRequested(language) }
 
         let timelineProjectURL = values["--timeline-project"].map { URL(fileURLWithPath: $0) }
         if timelineProjectURL == nil, values["--fit"] == nil {
@@ -90,7 +102,7 @@ struct CommandLineOptions {
             validateFITCRC: !flags.contains("--skip-fit-crc"),
             inspectOnly: flags.contains("--inspect"),
             forceOverwrite: flags.contains("--force"),
-            specifiedArguments: Set(values.keys)
+            specifiedArguments: Set(values.keys).subtracting(["--language"])
         )
     }
 
@@ -259,7 +271,8 @@ struct CommandLineOptions {
 }
 
 enum CLIError: Error, CustomStringConvertible {
-    case helpRequested
+    case helpRequested(CLIHelpLanguage)
+    case invalidLanguage(String)
     case missingValue(String)
     case missingRequired(String)
     case invalidValue(String, String)
@@ -276,8 +289,10 @@ enum CLIError: Error, CustomStringConvertible {
 
     var description: String {
         switch self {
-        case .helpRequested:
-            return Self.help
+        case let .helpRequested(language):
+            return CLIHelp.text(language)
+        case let .invalidLanguage(value):
+            return "Unsupported --language: \(value). Use: " + CLIHelpLanguage.allCases.map(\.rawValue).joined(separator: ", ")
         case let .missingValue(name):
             return "Missing value for \(name).\n\n\(Self.help)"
         case let .missingRequired(name):
@@ -307,56 +322,7 @@ enum CLIError: Error, CustomStringConvertible {
         }
     }
 
-    static let help = """
-    Usage:
-      overlay --fit activity.fit|activity.gpx --output overlay.mov [options]
-      overlay --timeline-project project.dlsproj --output output.mov [options]
-
-    Required:
-      --fit PATH         Standard .FIT or .GPX activity file.
-                         Use either --fit or --timeline-project.
-      --timeline-project PATH
-                         DataLayer Studio .dlsproj project file.
-      --output PATH      Output .mov file; individual project clips use name_01.mov, name_02.mov, etc.
-
-    Options:
-      --video PATH       Optional source video. Without one, video mode renders data over a black canvas.
-      --export-mode M    overlay (single-source default) for transparent alpha video, or video for an opaque composited video.
-                         Projects inherit saved export mode, codec, bitrate, trims and render scope.
-                         Explicit CLI options override the corresponding saved settings.
-      --width PX         Override output width, 2...16384 and even. Defaults to source video width, or 1920 without video.
-      --height PX        Override output height, 2...16384 and even. Defaults to source video height, or 1080 without video.
-      --fps N            Override output frame rate, minimum 1. Defaults to source video frame rate, or 30 without video.
-      --fit-start SEC    Activity elapsed time at video 0. Use when recording starts mid-activity.
-      --sync-video SEC   Video timestamp for a sync point. Requires --sync-fit.
-      --sync-fit SEC     FIT elapsed timestamp for the same sync point. Requires --sync-video.
-      --offset SEC       Legacy shorthand: video starts SEC seconds before FIT. Negative starts mid-FIT.
-      --activity-offset-ms MS
-                         Shift Activity Time and all telemetry samples by -999...999 ms.
-                         Positive values select later activity data at the current frame.
-      --fit-clock-offset-ms MS
-                         Shift only the displayed FIT clock/date by -999...999 ms.
-                         Positive values make the displayed clock later.
-      --bitrate KBPS     Average HEVC bitrate in kbps. Default: 12000.
-                         Existing values above 1000000 are accepted as legacy bps.
-      --bitrate-bps BPS  Legacy explicit bps bitrate.
-      --codec NAME       overlay: hevc-alpha (Apple only), prores-4444; default: \(OverlayExportMode.overlay.defaultCodec.rawValue).
-                         video: hevc (default), h264.
-      --distance-unit U  Distance unit for overlay labels: km (default) or m.
-      --time-zone ZONE   Absolute clock/date zone: activity (default), system, or an IANA
-                         identifier such as Asia/Shanghai. Activity falls back to system.
-                         Timeline projects keep their saved choice unless overridden.
-      --activity-trim-start SEC
-                         Rebase overlay data from this original activity elapsed time.
-      --activity-trim-end SEC
-                         Stop overlay data at this original activity elapsed time.
-      --layout-preset P  Use a saved GUI layout preset by name/ID, or a GUI-exported JSON file.
-                         Not used with --timeline-project.
-      --skip-fit-crc     Parse FIT even if CRC validation fails. Ignored for GPX.
-      --inspect          Parse video and activity data, print metadata, do not render.
-      --force            Replace an existing output file. Input files are never overwritten.
-      -h, --help         Show this help.
-    """
+    static var help: String { CLIHelp.text(.system()) }
 }
 
 struct ResolvedOverlayLayout {
@@ -759,10 +725,9 @@ public enum OverlayCLI {
         do {
             try await run()
         } catch let error as CLIError {
-            print(error.description)
-            if case .helpRequested = error {
-                exit(0)
-            }
+            let written = CLIHelp.write(error.description)
+            if !written { exit(1) }
+            if case .helpRequested = error { exit(0) }
             exit(2)
         } catch let error as FITError {
             fputs("FIT error: \(error.description)\n", stderr)

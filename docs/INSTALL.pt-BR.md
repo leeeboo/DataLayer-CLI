@@ -8,9 +8,9 @@ Baixe o arquivo do seu sistema e o `.sha256` correspondente em [Releases](https:
 
 | Sistema | Arquivo |
 | --- | --- |
-| macOS 13+ / Apple Silicon | `DataLayer-CLI-v0.1.1-macOS-arm64.zip` |
-| Windows 10 1903+ / Windows 11 / x86_64 | `DataLayer-CLI-v0.1.1-Windows-x86_64.zip` |
-| Ubuntu 24.04 / x86_64 | `DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz` |
+| macOS 13+ / Apple Silicon | `DataLayer-CLI-v0.1.2-macOS-arm64.zip` |
+| Windows 10 1903+ / Windows 11 / x86_64 | `DataLayer-CLI-v0.1.2-Windows-x86_64.zip` |
+| Ubuntu 24.04 / x86_64 | `DataLayer-CLI-v0.1.2-Linux-x86_64.tar.gz` |
 
 A partir da **v0.1.1**, os arquivos Windows/Linux incluem Swift, FFmpeg, Cairo/Pango e fontes DejaVu. **Não é necessário instalar compilador ou ambiente de execução.**
 
@@ -22,7 +22,7 @@ Verificar, extrair e executar
 
 ```powershell
 $ErrorActionPreference = "Stop"
-$cliDirectory = "DataLayer-CLI-v0.1.1-Windows-x86_64"
+$cliDirectory = "DataLayer-CLI-v0.1.2-Windows-x86_64"
 $archive = "$cliDirectory.zip"
 $expected = (Get-Content "$archive.sha256").Split(' ')[0]
 if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() -ne $expected) {
@@ -39,7 +39,7 @@ Set-Location $cliDirectory
 Verificar, extrair e executar
 
 ```sh
-cli_directory="DataLayer-CLI-v0.1.1-Linux-x86_64"
+cli_directory="DataLayer-CLI-v0.1.2-Linux-x86_64"
 sha256sum -c "$cli_directory.tar.gz.sha256" &&
 tar -xzf "$cli_directory.tar.gz" &&
 cd "$cli_directory" &&
@@ -51,7 +51,7 @@ cd "$cli_directory" &&
 Verificar, extrair e executar
 
 ```sh
-cli_directory="DataLayer-CLI-v0.1.1-macOS-arm64"
+cli_directory="DataLayer-CLI-v0.1.2-macOS-arm64"
 shasum -a 256 -c "$cli_directory.zip.sha256" &&
 unzip "$cli_directory.zip" &&
 cd "$cli_directory" &&
@@ -80,3 +80,11 @@ Compilar a partir do código é opcional. Desenvolvedores ainda precisam de Swif
 Se faltar uma DLL ou biblioteca, extraia novamente o arquivo completo. O binário Windows não é assinado; o de macOS é assinado e notarizado. O binário Linux suporta Ubuntu 24.04 x86_64.
 
 [LICENSE](../LICENSE) · [NOTICE](../NOTICE.md) · `runtime/licenses` · `runtime/DEPENDENCIES.json`
+
+## Idioma da ajuda
+
+`-h` e `--help` aceitam os 12 idiomas da documentação. A ajuda segue o idioma do sistema ou terminal, com inglês como alternativa. Use `--language CODE` (ou `--language=CODE`) antes ou depois de `--help` para escolher. Registros e resumos de erros continuam em inglês.
+
+`overlay --language pt-BR --help`
+
+`LC_ALL` → `LC_MESSAGES` → `LANGUAGE` → `LANG` → OS. `C` / `POSIX` → English.

@@ -12,9 +12,9 @@ FIT/GPX のアクティビティデータから、透明なテレメトリーオ
 
 | システム | アーカイブ名の末尾 |
 | --- | --- |
-| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-macOS-arm64.zip) |
-| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Windows-x86_64.zip) |
-| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.1/DataLayer-CLI-v0.1.1-Linux-x86_64.tar.gz) |
+| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-macOS-arm64.zip) |
+| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-Windows-x86_64.zip) |
+| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-Linux-x86_64.tar.gz) |
 
 macOS 版は署名・公証済みです。追加のランタイムは不要です。
 
@@ -25,6 +25,17 @@ macOS 版は署名・公証済みです。追加のランタイムは不要で�
 ```sh
 overlay --help
 ```
+
+## ヘルプの言語
+
+`-h` と `--help` はドキュメントと同じ 12 言語に対応します。システムまたは端末の言語に従い、未対応の場合は英語を使用します。`--language CODE`（または `--language=CODE`）で指定でき、`--help` の前後どちらでも使用できます。実行ログとエラーの要約は引き続き英語です。
+
+```sh
+overlay --help
+overlay --language ja -h
+```
+
+`en, zh-CN, zh-TW, ja, ko, es, fr, de, pt-BR, ru, ar, hi`
 
 ## クイックスタート
 
