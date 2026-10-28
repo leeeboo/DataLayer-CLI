@@ -726,7 +726,7 @@ public enum OverlayCLI {
             try await run()
         } catch let error as CLIError {
             if case .helpRequested = error { exit(CLIHelp.write(error.description) ? 0 : 1) }
-            print(error.description)
+            fputs(error.description + "\n", stderr)
             exit(2)
         } catch let error as FITError {
             fputs("FIT error: \(error.description)\n", stderr)

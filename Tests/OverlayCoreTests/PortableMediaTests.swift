@@ -5,10 +5,10 @@ import XCTest
 
 final class PortableMediaTests: XCTestCase {
     func testAudioPaddingWithMissingTimestampsHasAnExactFiniteSampleCount() throws {
-        for duration in [0.1, 0.10001] {
+        for (timestamp, duration) in [("NAN", 0.1), ("if(gte(N,1024),NAN,PTS)", 0.10001)] {
             let process = Process(), output = Pipe()
             process.executableURL = try PortableMedia.executable("ffmpeg")
-            let graph = "[0:a]aformat=sample_fmts=fltp:channel_layouts=stereo,asetpts=NAN[input];" +
+            let graph = "[0:a]aformat=sample_fmts=fltp:channel_layouts=stereo,asetpts='\(timestamp)'[input];" +
                 PortableVideoExport.audioMixFilter(labels: ["input"], duration: duration)
             process.arguments = ["-v", "error", "-nostdin", "-f", "lavfi", "-i", "sine=sample_rate=48000:duration=0.04",
                                  "-filter_complex", graph, "-map", "[audio]", "-f", "s16le", "-fs", "65536", "pipe:1"]

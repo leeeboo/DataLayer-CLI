@@ -21,8 +21,12 @@ def verify(binary, environment=None):
         result = subprocess.run([binary, *args], env={**clean, **(locale or {})},
                                 capture_output=True, timeout=30)
         assert result.returncode == status, (args, result.returncode, result.stderr.decode("utf-8"))
-        assert not result.stderr, result.stderr
-        return result.stdout.decode("utf-8", errors="strict")
+        if status == 0:
+            assert not result.stderr, result.stderr
+            return result.stdout.decode("utf-8", errors="strict")
+        assert not result.stdout, "Argument errors must leave stdout empty"
+        assert result.stderr, "Argument errors must explain the failure on stderr"
+        return result.stderr.decode("utf-8", errors="strict")
 
     texts = {}
     for code, heading in HEADINGS.items():
@@ -45,9 +49,11 @@ def verify(binary, environment=None):
         assert run(["--help"], locale) == texts[code], locale
     for args in [["--help", "--language=invalid"], ["-h", "--language"], ["--language=", "--help"]]:
         assert "--language" in run(args, status=2)
+    for args, token in [(["--bogus"], "--bogus"), (["--output"], "--output")]:
+        assert token in run(args, status=2)
     if os.name == "nt":
         verify_windows_console(binary, clean)
-    print("CLI help: 12 languages, both flags, manual override, locale precedence, UTF-8 and invalid arguments passed.")
+    print("CLI help: 12 languages, both flags, manual override, locale precedence, UTF-8 and error output streams passed.")
 
 
 def verify_windows_console(binary, environment):
