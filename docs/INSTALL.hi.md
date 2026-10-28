@@ -8,9 +8,9 @@
 
 | सिस्टम | पैकेज |
 | --- | --- |
-| macOS 13+ / Apple Silicon | `DataLayer-CLI-v0.1.2-macOS-arm64.zip` |
-| Windows 10 1903+ / Windows 11 / x86_64 | `DataLayer-CLI-v0.1.2-Windows-x86_64.zip` |
-| Ubuntu 24.04 / x86_64 | `DataLayer-CLI-v0.1.2-Linux-x86_64.tar.gz` |
+| macOS 13+ / Apple Silicon | `DataLayer-CLI-v0.1.3-macOS-arm64.zip` |
+| Windows 10 1903+ / Windows 11 / x86_64 | `DataLayer-CLI-v0.1.3-Windows-x86_64.zip` |
+| Ubuntu 24.04 / x86_64 | `DataLayer-CLI-v0.1.3-Linux-x86_64.tar.gz` |
 
 **v0.1.1** से Windows/Linux पैकेज में Swift, FFmpeg, Cairo/Pango और DejaVu फ़ॉन्ट शामिल हैं। **कंपाइलर या रनटाइम अलग से इंस्टॉल करने की ज़रूरत नहीं है।**
 
@@ -22,7 +22,7 @@
 
 ```powershell
 $ErrorActionPreference = "Stop"
-$cliDirectory = "DataLayer-CLI-v0.1.2-Windows-x86_64"
+$cliDirectory = "DataLayer-CLI-v0.1.3-Windows-x86_64"
 $archive = "$cliDirectory.zip"
 $expected = (Get-Content "$archive.sha256").Split(' ')[0]
 if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() -ne $expected) {
@@ -39,7 +39,7 @@ Set-Location $cliDirectory
 जांचें, निकालें और चलाएं
 
 ```sh
-cli_directory="DataLayer-CLI-v0.1.2-Linux-x86_64"
+cli_directory="DataLayer-CLI-v0.1.3-Linux-x86_64"
 sha256sum -c "$cli_directory.tar.gz.sha256" &&
 tar -xzf "$cli_directory.tar.gz" &&
 cd "$cli_directory" &&
@@ -51,7 +51,7 @@ cd "$cli_directory" &&
 जांचें, निकालें और चलाएं
 
 ```sh
-cli_directory="DataLayer-CLI-v0.1.2-macOS-arm64"
+cli_directory="DataLayer-CLI-v0.1.3-macOS-arm64"
 shasum -a 256 -c "$cli_directory.zip.sha256" &&
 unzip "$cli_directory.zip" &&
 cd "$cli_directory" &&

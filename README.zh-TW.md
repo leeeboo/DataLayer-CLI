@@ -12,9 +12,9 @@
 
 | 系統 | 壓縮檔後綴 |
 | --- | --- |
-| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-macOS-arm64.zip) |
-| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-Windows-x86_64.zip) |
-| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-Linux-x86_64.tar.gz) |
+| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.3/DataLayer-CLI-v0.1.3-macOS-arm64.zip) |
+| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.3/DataLayer-CLI-v0.1.3-Windows-x86_64.zip) |
+| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.3/DataLayer-CLI-v0.1.3-Linux-x86_64.tar.gz) |
 
 macOS 版本已簽署並通過公證，不需額外安裝執行階段。
 

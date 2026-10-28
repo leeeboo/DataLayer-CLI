@@ -12,9 +12,9 @@ FIT/GPX 활동 데이터를 투명한 텔레메트리 오버레이 또는 합성
 
 | 시스템 | 압축 파일 이름 끝부분 |
 | --- | --- |
-| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-macOS-arm64.zip) |
-| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-Windows-x86_64.zip) |
-| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.2/DataLayer-CLI-v0.1.2-Linux-x86_64.tar.gz) |
+| macOS 13+ / Apple Silicon | [macOS-arm64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.3/DataLayer-CLI-v0.1.3-macOS-arm64.zip) |
+| Windows 10 1903+ / Windows 11 / x86_64 | [Windows-x86_64.zip](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.3/DataLayer-CLI-v0.1.3-Windows-x86_64.zip) |
+| Ubuntu 24.04 / x86_64 | [Linux-x86_64.tar.gz](https://github.com/leeeboo/DataLayer-CLI/releases/download/v0.1.3/DataLayer-CLI-v0.1.3-Linux-x86_64.tar.gz) |
 
 macOS 실행 파일은 서명 및 공증되었습니다. 별도 런타임 설치가 필요하지 않습니다.
 
