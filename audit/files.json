@@ -104,6 +104,7 @@
   "scripts/package_portable_release.py",
   "scripts/package_release.sh",
   "scripts/prepare_export_fixture.py",
+  "scripts/test_cli_output.py",
   "scripts/test_release_checks.py",
   "scripts/test_source_boundary.py",
   "scripts/verify_export_fixture.py"

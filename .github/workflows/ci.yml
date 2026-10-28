@@ -44,7 +44,7 @@ jobs:
       - name: Run all core and CLI tests
         run: swift test
       - name: Check command entry point
-        run: .build/release/overlay --help
+        run: python3 -B scripts/test_cli_output.py .build/release/overlay
       - name: Install media inspection runtime
         run: command -v ffmpeg || brew install ffmpeg
       - uses: actions/download-artifact@v8
@@ -80,7 +80,7 @@ jobs:
       - name: Run shared and portable media regressions
         run: swift test -j 4
       - name: Check command entry point
-        run: .build/release/overlay --help
+        run: python3 -B scripts/test_cli_output.py .build/release/overlay
       - name: Package and unpack the native Linux release
         run: |
           python3 -B scripts/package_portable_release.py "$CLI_RELEASE_VERSION" .build/release/overlay .build/releases
@@ -148,7 +148,7 @@ jobs:
         shell: pwsh
         run: |
           $binary = Join-Path (swift build -c release --show-bin-path) 'overlay.exe'
-          & $binary --help
+          python -B scripts/test_cli_output.py $binary
       - name: Package and unpack the native Windows release
         shell: pwsh
         run: |
