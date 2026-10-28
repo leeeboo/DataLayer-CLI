@@ -4,6 +4,27 @@ import XCTest
 @testable import OverlayCore
 
 final class PortableMediaTests: XCTestCase {
+    func testAudioPaddingWithMissingTimestampsHasAnExactFiniteSampleCount() throws {
+        for (timestamp, duration) in [("NAN", 0.1), ("if(gte(N,1024),NAN,PTS)", 0.10001)] {
+            let process = Process(), output = Pipe()
+            process.executableURL = try PortableMedia.executable("ffmpeg")
+            let graph = "[0:a]aformat=sample_fmts=fltp:channel_layouts=stereo,asetpts='\(timestamp)'[input];" +
+                PortableVideoExport.audioMixFilter(labels: ["input"], duration: duration)
+            process.arguments = ["-v", "error", "-nostdin", "-f", "lavfi", "-i", "sine=sample_rate=48000:duration=0.04",
+                                 "-filter_complex", graph, "-map", "[audio]", "-f", "s16le", "-fs", "65536", "pipe:1"]
+            process.standardInput = FileHandle.nullDevice
+            process.standardOutput = output
+            process.standardError = FileHandle.nullDevice
+            try process.run()
+            let data = try XCTUnwrap(output.fileHandleForReading.readToEnd())
+            process.waitUntilExit()
+            XCTAssertEqual(process.terminationStatus, 0)
+            XCTAssertEqual(data.count, Int((duration * 48_000).rounded(.up)) * 4)
+            XCTAssertTrue(data.prefix(1920 * 4).contains { $0 != 0 }, "Preserve the audible source")
+            XCTAssertTrue(data.dropFirst(1920 * 4).allSatisfy { $0 == 0 }, "Pad only the remaining samples with silence")
+        }
+    }
+
     func testHEVCAlphaIsRejectedWithoutTouchingExistingOutput() throws {
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
