@@ -356,7 +356,7 @@ public struct TimelineProjectExportSettings: Codable, Equatable {
 
 /// A whole project: output settings, imported assets, and a bottom-to-top stack of tracks.
 public struct TimelineProject: Codable, Equatable {
-    public static let currentSchemaVersion = 5
+    public static let currentSchemaVersion = 6
 
     public var schemaVersion: Int
     public var outputWidth: Int
@@ -448,9 +448,12 @@ public struct TimelineProject: Codable, Equatable {
         let hasVideoTransforms = tracks.contains { track in
             track.clips.contains { $0.videoTransform != .identity }
         }
+        let hasSpatialSettings = tracks.contains { track in
+            track.clips.contains { $0.videoTransform.hasScaleOrPositionAdjustments || !$0.videoTransform.isScaleLocked }
+        }
         // Older readers must reject transformed projects rather than silently drop orientation.
         // Unchanged legacy projects retain their existing format; color features require v4.
-        let savedVersion = max(schemaVersion, hasVideoTransforms ? 5 : hasColorFeatures ? 4 : 1)
+        let savedVersion = max(schemaVersion, hasSpatialSettings ? 6 : hasVideoTransforms ? 5 : hasColorFeatures ? 4 : 1)
         try container.encode(savedVersion, forKey: .schemaVersion)
         try container.encode(outputWidth, forKey: .outputWidth)
         try container.encode(outputHeight, forKey: .outputHeight)

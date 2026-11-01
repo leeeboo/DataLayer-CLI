@@ -55,13 +55,69 @@ final class VideoTransformRenderingTests: XCTestCase {
         }
     }
 
+    func testSpatialAdjustmentsMatchEncodedVideoAndKeepOverlayAtOriginalPositionAndSize() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = directory.appendingPathComponent("corners.mov"), output = directory.appendingPathComponent("output.mov")
+        try await makeSource(at: source)
+        let cases: [(VideoTransform, [(Int, Int, Int?)])] = [
+            (VideoTransform(scaleX: 0.5, scaleY: 0.5),
+                [(96,128,0), (224,128,1), (96,192,2), (224,192,3), (40,160,nil), (160,80,nil)]),
+            (VideoTransform(scaleX: 1.5, scaleY: 0.5, isScaleLocked: false),
+                [(32,128,0), (288,128,1), (32,192,2), (288,192,3), (160,80,nil)]),
+            (VideoTransform(quarterTurns: 1, scaleX: 0.5),
+                [(80,96,2), (240,96,0), (80,224,3), (240,224,1), (32,160,nil), (160,64,nil)]),
+            (VideoTransform(scaleX: 0.5, scaleY: 0.5, positionX: 0.5, positionY: 0.5),
+                [(176,48,0), (304,48,1), (176,112,2), (304,112,3), (80,80,nil), (240,160,nil)]),
+            (VideoTransform(quarterTurns: 1, scaleX: 0.5, positionX: -0.5, positionY: -0.25),
+                [(16,136,2), (160,136,0), (16,264,3), (160,264,1), (240,160,nil)]),
+            (VideoTransform(positionX: 3), [(160,160,nil)]),
+            (VideoTransform(scaleX: 99.99, scaleY: 99.99), [])
+        ]
+        let duration = Double(cases.count)
+        // An opaque panel keeps encoded text-edge detection independent of the changing video
+        // underneath it, including the heavily interpolated background at maximum zoom.
+        let layout = OverlayLayout(elements: [OverlayElement(id: "heart", kind: .heartRate,
+            frame: OverlayComponentFrame(x: 0.02, y: 0.02, scale: 2, style: OverlayComponentStyle(panelOpacity: 1)),
+            customization: OverlayElementCustomization(showsLabel: false, showsUnit: false, showsPanel: true,
+                valueColor: OverlayColor(red: 1, green: 1, blue: 1)))])
+        let project = TimelineProject(outputWidth: 320, outputHeight: 320, framesPerSecond: 2, distanceUnit: .kilometers,
+            assets: [MediaAsset(id: "video", kind: .video, url: source, displayName: "Source", duration: 1),
+                     MediaAsset(id: "activity", kind: .activity, url: directory.appendingPathComponent("a.fit"), displayName: "Activity", duration: duration)],
+            tracks: [TimelineTrack(id: "v", kind: .video, name: "V", clips: cases.enumerated().map { index, entry in
+                TimelineClip(id: "v\(index)", assetID: "video", timelineStart: Double(index), duration: 1, videoTransform: entry.0)
+            }), TimelineTrack(id: "o", kind: .overlay, name: "O", clips: [
+                TimelineClip(id: "o", assetID: "activity", timelineStart: 0, duration: duration, layout: layout)])])
+        let built = try TimelineVideoCompositionBuilder.make(project: project,
+            videoClips: project.enabledClips(kind: .video), requiredEnd: duration)
+        let preview = try inspectFrames(asset: built.composition, videoComposition: built.videoComposition,
+            transforms: cases.map(\.0), spatialSamples: cases.map(\.1))
+        _ = try TimelineVideoWriter(outputURL: output, project: project,
+            telemetrySeriesByAssetID: ["activity": TelemetrySeries(samples: [
+                TelemetrySample(elapsed: 0, heartRate: 150), TelemetrySample(elapsed: duration, heartRate: 150)])],
+            config: TimelineVideoWriterConfig(width: 320, height: 320, framesPerSecond: 2,
+                timelineStart: 0, duration: duration, codec: .h264)).write()
+        let encoded = try inspectFrames(asset: AVURLAsset(url: output), transforms: cases.map(\.0), spatialSamples: cases.map(\.1))
+        XCTAssertEqual(preview.count, cases.count * 2)
+        XCTAssertEqual(encoded.count, preview.count)
+        let first = try XCTUnwrap(encoded.first)
+        XCTAssertGreaterThan(first.count, 5)
+        for frame in encoded {
+            XCTAssertEqual(frame.minX, first.minX, accuracy: 2)
+            XCTAssertEqual(frame.minY, first.minY, accuracy: 2)
+            XCTAssertEqual(frame.maxX, first.maxX, accuracy: 2)
+            XCTAssertEqual(frame.maxY, first.maxY, accuracy: 2)
+        }
+    }
+
     private struct WhiteBounds {
         var minX = 320.0, minY = 320.0, maxX = 0.0, maxY = 0.0
         var count = 0
     }
 
     private func inspectFrames(asset: AVAsset, videoComposition: AVVideoComposition? = nil,
-                               transforms: [VideoTransform]) throws -> [WhiteBounds] {
+                               transforms: [VideoTransform], spatialSamples: [[(Int, Int, Int?)]]? = nil) throws -> [WhiteBounds] {
         let reader = try AVAssetReader(asset: asset)
         let settings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
         let output: AVAssetReaderOutput
@@ -93,11 +149,13 @@ final class VideoTransformRenderingTests: XCTestCase {
             defer { CVPixelBufferUnlockBaseAddress(frame, .readOnly) }
             let bytes = try XCTUnwrap(CVPixelBufferGetBaseAddress(frame)).assumingMemoryBound(to: UInt8.self)
             let stride = CVPixelBufferGetBytesPerRow(frame)
-            for (corner, point) in points.enumerated() {
-                let offset = point.1 * stride + point.0 * 4
+            let samples = spatialSamples?[index] ?? points.enumerated().map { ($0.element.0, $0.element.1, Optional(corners[$0.offset])) }
+            for (x, y, color) in samples {
+                let offset = y * stride + x * 4
+                let expected = color.map { palette[$0] } ?? [0, 0, 0]
                 for channel in 0..<3 {
-                    XCTAssertEqual(Double(bytes[offset + 2 - channel]), Double(palette[corners[corner]][channel]), accuracy: 40,
-                        "t=\(time), \(transform), corner \(corner), channel \(channel)")
+                    XCTAssertEqual(Double(bytes[offset + 2 - channel]), Double(expected[channel]), accuracy: 40,
+                        "t=\(time), \(transform), point \(x),\(y), channel \(channel)")
                 }
             }
             var white = WhiteBounds()

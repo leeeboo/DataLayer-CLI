@@ -43,6 +43,112 @@ final class VideoTransformTests: XCTestCase {
         XCTAssertEqual(VideoTransform.identity.ffmpegFilters, [])
     }
 
+    func testScaleLocksPreserveCurrentRatioAndUnlockAllowsIndependentAxes() throws {
+        var transform = VideoTransform()
+        XCTAssertTrue(transform.isScaleLocked)
+        transform.setScaleX(1.5)
+        XCTAssertEqual(transform.scaleX, 1.5)
+        XCTAssertEqual(transform.scaleY, 1.5)
+        transform.isScaleLocked = false
+        transform.setScaleY(0.5)
+        XCTAssertEqual(transform.scaleX, 1.5)
+        XCTAssertEqual(transform.scaleY, 0.5)
+        transform.isScaleLocked = true
+        transform.setScaleX(2)
+        XCTAssertEqual(transform.scaleX, 2)
+        XCTAssertEqual(transform.scaleY, 2.0 / 3, accuracy: 0.000001)
+        transform.setScaleY(1)
+        XCTAssertEqual(transform.scaleX, 3)
+        XCTAssertEqual(transform.scaleY, 1)
+        let saved = try JSONDecoder().decode(VideoTransform.self, from: JSONEncoder().encode(transform))
+        XCTAssertEqual(saved, transform)
+    }
+
+    func testSpatialDefaultsResetAndLimitsPreserveMirrors() throws {
+        let legacy = try JSONDecoder().decode(VideoTransform.self, from: Data(#"{"quarterTurns":1,"flipHorizontal":true}"#.utf8))
+        XCTAssertEqual(legacy.scaleX, 1)
+        XCTAssertEqual(legacy.scaleY, 1)
+        XCTAssertTrue(legacy.isScaleLocked)
+        XCTAssertEqual(legacy.positionX, 0)
+        var transform = VideoTransform(quarterTurns: 1, flipHorizontal: true, scaleX: 1.5, scaleY: 0.5,
+            isScaleLocked: false, positionX: 0.5, positionY: -0.25)
+        transform.setScaleX(0)
+        XCTAssertEqual(transform.scaleX, 0.01)
+        transform.setScaleY(99999)
+        XCTAssertEqual(transform.scaleY, 99.99)
+        transform.positionX = .infinity
+        XCTAssertEqual(transform.positionX, 0)
+        transform.resetScaleAndPosition()
+        XCTAssertEqual(transform.quarterTurns, 1)
+        XCTAssertTrue(transform.flipHorizontal)
+        XCTAssertEqual(transform.scaleX, 1)
+        XCTAssertEqual(transform.scaleY, 1)
+        XCTAssertEqual(transform.positionY, 0)
+        XCTAssertTrue(transform.isScaleLocked)
+    }
+
+    func testSpatialSettingsRequireNewSchemaAndSurviveSplitting() throws {
+        let transform = VideoTransform(scaleX: 1.5, scaleY: 0.5, isScaleLocked: false, positionX: 0.5, positionY: -0.25)
+        var project = TimelineProject(outputWidth: 640, outputHeight: 360, framesPerSecond: 10, distanceUnit: .kilometers,
+            tracks: [TimelineTrack(id: "v", kind: .video, name: "V", clips: [
+                TimelineClip(id: "c", assetID: "source", timelineStart: 0, duration: 2, videoTransform: transform)])], schemaVersion: 5)
+        let data = try JSONEncoder().encode(project)
+        project = try JSONDecoder().decode(TimelineProject.self, from: data)
+        XCTAssertEqual(project.schemaVersion, 6)
+        XCTAssertEqual(project.splitClips(atTimelineTime: 1), 1)
+        XCTAssertEqual(project.tracks[0].clips.map(\.videoTransform), [transform, transform])
+    }
+
+    func testPortableSpatialFiltersProduceExpectedPixelsAndBoundedFrames() throws {
+        #if os(Windows)
+        let binary = "ffmpeg.exe", separator: Character = ";"
+        #else
+        let binary = "ffmpeg", separator: Character = ":"
+        #endif
+        let search = (ProcessInfo.processInfo.environment["PATH"] ?? "").split(separator: separator)
+        guard let executable = search.map({ URL(fileURLWithPath: String($0)).appendingPathComponent(binary) })
+            .first(where: { FileManager.default.isExecutableFile(atPath: $0.path) }) else {
+            throw XCTSkip("FFmpeg is not installed in this test environment")
+        }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = "color=c=red:s=64x64:r=1:d=1,drawbox=x=32:y=0:w=32:h=32:color=lime:t=fill,drawbox=x=0:y=32:w=32:h=32:color=blue:t=fill,drawbox=x=32:y=32:w=32:h=32:color=yellow:t=fill"
+        let cases: [(VideoTransform, [(Int, Int, Int)])] = [
+            (VideoTransform(scaleX: 0.5, scaleY: 0.5, positionX: 0.5, positionY: 0.5),
+                [(40,8,0), (56,8,1), (40,24,2), (56,24,3), (8,8,4), (48,48,4)]),
+            (VideoTransform(quarterTurns: 1, scaleX: 0.5),
+                [(8,24,2), (56,24,0), (8,40,3), (56,40,1), (32,8,4)]),
+            (VideoTransform(quarterTurns: 3, flipHorizontal: true, scaleX: 0.5),
+                [(8,24,0), (56,24,2), (8,40,1), (56,40,3), (32,8,4)]),
+            (VideoTransform(scaleX: 99.99, scaleY: 99.99), [])
+        ]
+        let palette = [[255,0,0], [0,255,0], [0,0,255], [255,255,0], [0,0,0]]
+        for (index, entry) in cases.enumerated() {
+            let output = directory.appendingPathComponent("\(index).rgba")
+            let filter = (entry.0.ffmpegGeometryFilters(width: 64, height: 64) + ["format=rgba"]).joined(separator: ",")
+            let process = Process(), errors = Pipe()
+            process.executableURL = executable
+            process.arguments = ["-hide_banner", "-loglevel", "error", "-filter_threads", "1", "-f", "lavfi", "-i", source,
+                "-vf", filter, "-frames:v", "1", "-f", "rawvideo", output.path]
+            process.standardError = errors
+            try process.run()
+            let detail = String(decoding: errors.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+            process.waitUntilExit()
+            XCTAssertEqual(process.terminationStatus, 0, detail)
+            let bytes = try Data(contentsOf: output)
+            XCTAssertEqual(bytes.count, 64 * 64 * 4, "Extreme zoom must keep a fixed-size output canvas")
+            for (x, y, color) in entry.1 {
+                for channel in 0..<3 {
+                    XCTAssertEqual(Double(bytes[(y * 64 + x) * 4 + channel]), Double(palette[color][channel]), accuracy: 20,
+                        "case \(index), point \(x),\(y), channel \(channel)")
+                }
+                XCTAssertEqual(bytes[(y * 64 + x) * 4 + 3], color == 4 ? 0 : 255,
+                    "Spatial edits preserve source opacity and leave uncovered pixels transparent")
+            }
+        }
+    }
+
     func testLegacyProjectOnlyUpgradesSchemaWhenOrientationRequiresIt() throws {
         var project = TimelineProject(outputWidth: 64, outputHeight: 64, framesPerSecond: 2, distanceUnit: .kilometers,
             tracks: [TimelineTrack(id: "v", kind: .video, name: "V", clips: [
@@ -58,6 +164,18 @@ final class VideoTransformTests: XCTestCase {
     }
 
     #if canImport(CoreGraphics)
+    func testPositionUsesCanvasCoordinatesAndScalePrecedesRotation() {
+        let size = CGSize(width: 80, height: 40)
+        let geometry = VideoTransform(quarterTurns: 1, scaleX: 0.5, scaleY: 1,
+            positionX: 0.5, positionY: 0.5)
+        let transform = TimelineVideoCompositionBuilder.aspectFitTransform(naturalSize: size,
+            preferredTransform: .identity, videoTransform: geometry, renderSize: size)
+        XCTAssertEqual(CGRect(origin: .zero, size: size).applying(transform), CGRect(x: 40, y: 10, width: 40, height: 40))
+        let smallerPreview = TimelineVideoCompositionBuilder.aspectFitTransform(naturalSize: size,
+            preferredTransform: .identity, videoTransform: geometry, renderSize: CGSize(width: 40, height: 20))
+        XCTAssertEqual(CGRect(origin: .zero, size: size).applying(smallerPreview), CGRect(x: 20, y: 5, width: 20, height: 20))
+    }
+
     func testQuarterTurnKeepsOriginalScaleAndCanvasCenter() {
         let size = CGSize(width: 80, height: 40)
         let transform = TimelineVideoCompositionBuilder.aspectFitTransform(naturalSize: size,

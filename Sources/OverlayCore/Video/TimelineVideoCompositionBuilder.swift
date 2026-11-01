@@ -254,7 +254,9 @@ public enum TimelineVideoCompositionBuilder {
             renderSize.height / max(1, displaySize.height)
         )
         let x = -transformedRect.minX * scale + (renderSize.width - abs(transformedRect.width) * scale) / 2
+            + CGFloat(videoTransform.positionX) * renderSize.width / 2
         let y = -transformedRect.minY * scale + (renderSize.height - abs(transformedRect.height) * scale) / 2
+            + CGFloat(videoTransform.positionY) * renderSize.height / 2
         return sourceTransform
             .concatenating(CGAffineTransform(scaleX: scale, y: scale))
             .concatenating(CGAffineTransform(translationX: x, y: y))
