@@ -76,6 +76,7 @@ public enum TimelineVideoCompositionBuilder {
                 aspectFitTransform(
                     naturalSize: sourceVideoTrack.naturalSize,
                     preferredTransform: sourceVideoTrack.preferredTransform,
+                    videoTransform: clip.videoTransform,
                     renderSize: renderSize
                 ),
                 at: destinationStart
@@ -236,20 +237,25 @@ public enum TimelineVideoCompositionBuilder {
         )
     }
 
-    static func aspectFitTransform(
+    public static func aspectFitTransform(
         naturalSize: CGSize,
         preferredTransform: CGAffineTransform,
+        videoTransform: VideoTransform = .identity,
         renderSize: CGSize
     ) -> CGAffineTransform {
-        let transformedRect = CGRect(origin: .zero, size: naturalSize).applying(preferredTransform)
-        let displaySize = CGSize(width: abs(transformedRect.width), height: abs(transformedRect.height))
+        let sourceTransform = videoTransform.sourceTransform(naturalSize: naturalSize, preferredTransform: preferredTransform)
+        let transformedRect = CGRect(origin: .zero, size: naturalSize).applying(sourceTransform)
+        // Fit the recorded source once. A manual rotation keeps that scale and the canvas fixed,
+        // so pixels outside the canvas are cropped exactly as in JianYing's 90-degree action.
+        let originalRect = CGRect(origin: .zero, size: naturalSize).applying(preferredTransform)
+        let displaySize = CGSize(width: abs(originalRect.width), height: abs(originalRect.height))
         let scale = min(
             renderSize.width / max(1, displaySize.width),
             renderSize.height / max(1, displaySize.height)
         )
-        let x = -transformedRect.minX * scale + (renderSize.width - displaySize.width * scale) / 2
-        let y = -transformedRect.minY * scale + (renderSize.height - displaySize.height * scale) / 2
-        return preferredTransform
+        let x = -transformedRect.minX * scale + (renderSize.width - abs(transformedRect.width) * scale) / 2
+        let y = -transformedRect.minY * scale + (renderSize.height - abs(transformedRect.height) * scale) / 2
+        return sourceTransform
             .concatenating(CGAffineTransform(scaleX: scale, y: scale))
             .concatenating(CGAffineTransform(translationX: x, y: y))
     }

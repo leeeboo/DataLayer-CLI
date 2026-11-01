@@ -938,6 +938,7 @@ public final class TimelineVideoWriter {
             let sourceTransform = TimelineVideoCompositionBuilder.aspectFitTransform(
                 naturalSize: sourceSize,
                 preferredTransform: videoTrack.preferredTransform,
+                videoTransform: clip.videoTransform,
                 renderSize: renderSize
             )
             diagnosePreparation(

@@ -162,6 +162,8 @@ public struct TimelineClip: Codable, Equatable, Identifiable {
     public var lut: ClipLUT?
     /// Source color interpretation for this clip; nil uses automatic source detection.
     public var colorSettings: VideoColorSettings?
+    /// Orientation adjustments to the source video only; overlays retain their canvas coordinates.
+    public var videoTransform: VideoTransform
     /// Per-clip distance unit (overlay clips only; `nil` inherits the project setting).
     public var distanceUnit: OverlayDistanceUnit?
     /// Disabled clips remain editable on the timeline but are omitted from preview and export.
@@ -178,6 +180,7 @@ public struct TimelineClip: Codable, Equatable, Identifiable {
         layout: OverlayLayout? = nil,
         lut: ClipLUT? = nil,
         colorSettings: VideoColorSettings? = nil,
+        videoTransform: VideoTransform = .identity,
         distanceUnit: OverlayDistanceUnit? = nil,
         isEnabled: Bool = true,
         isAlignmentPending: Bool = false
@@ -190,6 +193,7 @@ public struct TimelineClip: Codable, Equatable, Identifiable {
         self.layout = layout
         self.lut = lut
         self.colorSettings = colorSettings
+        self.videoTransform = videoTransform
         self.distanceUnit = distanceUnit
         self.isEnabled = isEnabled
         self.isAlignmentPending = isAlignmentPending
@@ -204,6 +208,7 @@ public struct TimelineClip: Codable, Equatable, Identifiable {
         case layout
         case lut
         case colorSettings
+        case videoTransform
         case distanceUnit
         case isEnabled
         case isAlignmentPending
@@ -219,6 +224,7 @@ public struct TimelineClip: Codable, Equatable, Identifiable {
         layout = try container.decodeIfPresent(OverlayLayout.self, forKey: .layout)
         lut = try container.decodeIfPresent(ClipLUT.self, forKey: .lut)
         colorSettings = try container.decodeIfPresent(VideoColorSettings.self, forKey: .colorSettings)
+        videoTransform = try container.decodeIfPresent(VideoTransform.self, forKey: .videoTransform) ?? .identity
         distanceUnit = try container.decodeIfPresent(OverlayDistanceUnit.self, forKey: .distanceUnit)
         isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
         isAlignmentPending = try container.decodeIfPresent(Bool.self, forKey: .isAlignmentPending) ?? false
@@ -350,7 +356,7 @@ public struct TimelineProjectExportSettings: Codable, Equatable {
 
 /// A whole project: output settings, imported assets, and a bottom-to-top stack of tracks.
 public struct TimelineProject: Codable, Equatable {
-    public static let currentSchemaVersion = 4
+    public static let currentSchemaVersion = 5
 
     public var schemaVersion: Int
     public var outputWidth: Int
@@ -439,8 +445,12 @@ public struct TimelineProject: Codable, Equatable {
             || tracks.contains { track in
                 track.clips.contains { $0.lut != nil || $0.colorSettings != nil }
             }
-        let savedVersion = hasColorFeatures
-            ? max(schemaVersion, Self.currentSchemaVersion) : schemaVersion
+        let hasVideoTransforms = tracks.contains { track in
+            track.clips.contains { $0.videoTransform != .identity }
+        }
+        // Older readers must reject transformed projects rather than silently drop orientation.
+        // Unchanged legacy projects retain their existing format; color features require v4.
+        let savedVersion = max(schemaVersion, hasVideoTransforms ? 5 : hasColorFeatures ? 4 : 1)
         try container.encode(savedVersion, forKey: .schemaVersion)
         try container.encode(outputWidth, forKey: .outputWidth)
         try container.encode(outputHeight, forKey: .outputHeight)

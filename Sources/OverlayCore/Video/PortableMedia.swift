@@ -338,10 +338,11 @@ enum PortableVideoExport {
                 let sourceStart = trackStart + clip.sourceIn
                 let phase = trackStart + source - destination + timing.frameDuration.seconds / 2
                 let color = try colorFilters(clip: clip, asset: asset, directory: directory, index: offset)
+                let geometry = clip.videoTransform.ffmpegFilters.map { "," + $0 }.joined()
                 let matrix = stream.color_space == "bt2020nc" ? "bt2020" : stream.color_space == "smpte170m" || stream.color_space == "bt470bg" ? "bt601" : "bt709"
                 let range = stream.color_range == "pc" ? "pc" : "tv"
                 // Preserve source PTS and preroll: Apple's reader accepts the latest frame within half an output frame.
-                filters.append("[\(input):v]trim=start=\(PortableMedia.number(trackStart)):end=\(PortableMedia.number(sourceStart + clip.duration)),settb=1/120000000,setpts=PTS-\(PortableMedia.number(phase))/TB\(color),scale=\(config.width):\(config.height):in_color_matrix=\(matrix):in_range=\(range):out_range=pc:force_original_aspect_ratio=decrease:flags=bicubic,pad=\(config.width):\(config.height):(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=rgba[clip\(offset)]")
+                filters.append("[\(input):v]trim=start=\(PortableMedia.number(trackStart)):end=\(PortableMedia.number(sourceStart + clip.duration)),settb=1/120000000,setpts=PTS-\(PortableMedia.number(phase))/TB\(color),scale=\(config.width):\(config.height):in_color_matrix=\(matrix):in_range=\(range):out_range=pc:force_original_aspect_ratio=decrease:flags=bicubic\(geometry),pad=w='max(iw,\(config.width))':h='max(ih,\(config.height))':x=(ow-iw)/2:y=(oh-ih)/2:color=black,crop=\(config.width):\(config.height):(iw-ow)/2:(ih-oh)/2,setsar=1,format=rgba[clip\(offset)]")
                 let next = "base\(offset + 1)"
                 filters.append("[\(videoLabel)][clip\(offset)]overlay=eof_action=repeat:repeatlast=1:format=rgb:x='if(gte(t,\(PortableMedia.number(destination)))*lt(t,\(PortableMedia.number(destination+duration))),0,NAN)'[\(next)]")
                 videoLabel = next
