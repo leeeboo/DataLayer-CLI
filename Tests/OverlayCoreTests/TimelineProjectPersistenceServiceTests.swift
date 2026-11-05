@@ -3,6 +3,48 @@ import OverlayCore
 import XCTest
 
 final class TimelineProjectPersistenceServiceTests: XCTestCase {
+    func testLoadingRejectsDuplicateIdentifiersBeforeResolvingMedia() throws {
+        let asset = MediaAsset(id: "source", kind: .video, url: URL(fileURLWithPath: "/offline.mov"),
+                               displayName: "video.mov", duration: 2)
+        let clip = TimelineClip(id: "clip", assetID: asset.id, timelineStart: 0, duration: 1)
+        let track = TimelineTrack(id: "track", kind: .video, name: "Video", clips: [clip])
+        var duplicateAssets = makeProject(asset: asset)
+        duplicateAssets.assets.append(asset)
+        var duplicateTracks = makeProject(asset: asset)
+        duplicateTracks.tracks = [track, track]
+        var duplicateClips = makeProject(asset: asset)
+        duplicateClips.tracks = [track]
+        duplicateClips.tracks[0].clips.append(clip)
+        var duplicateClipsAcrossTracks = makeProject(asset: asset)
+        var upperTrack = track
+        upperTrack.id = "upper"
+        duplicateClipsAcrossTracks.tracks = [track, upperTrack]
+
+        for project in [duplicateAssets, duplicateTracks, duplicateClips, duplicateClipsAcrossTracks] {
+            let data = try JSONEncoder().encode(project)
+            XCTAssertThrowsError(try TimelineProjectPersistenceService.project(from: data,
+                isReadableURL: { _ in XCTFail("Invalid identities must fail before media resolution"); return false })) { error in
+                guard case DecodingError.dataCorrupted = error else { return XCTFail("Unexpected error: \(error)") }
+            }
+        }
+    }
+
+    func testLoadingAllowsRepeatedDisplayNamesAndIdentifiersAcrossDifferentNamespaces() throws {
+        let first = MediaAsset(id: "shared", kind: .video, url: URL(fileURLWithPath: "/one/video.mov"),
+                               displayName: "video.mov", duration: 2)
+        var second = first
+        second.id = "second"
+        second.url = URL(fileURLWithPath: "/two/video.mov")
+        var project = makeProject(asset: first, schemaVersion: 1)
+        project.assets.append(second)
+        project.tracks = [TimelineTrack(id: "shared", kind: .video, name: "Video", clips: [
+            TimelineClip(id: "shared", assetID: first.id, timelineStart: 0, duration: 1),
+            TimelineClip(id: "second", assetID: second.id, timelineStart: 1, duration: 1)
+        ])]
+        let loaded = try TimelineProjectPersistenceService.project(from: JSONEncoder().encode(project), isReadableURL: { _ in false })
+        XCTAssertEqual(loaded, project)
+    }
+
     func testMovedUnicodeDirectoryRestoresRealFilesAndPreservesWeatherAndExportSettings() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let original = root.appendingPathComponent("original 工程")

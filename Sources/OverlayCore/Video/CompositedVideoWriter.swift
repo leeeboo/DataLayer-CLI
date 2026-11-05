@@ -289,7 +289,7 @@ public final class CompositedVideoWriter {
                 "Output duration and frame rate produce too many frames. Lower the duration or frame rate."
             )
         }
-        let encoderFrameRate = try encoderFrameRateValue(timing.framesPerSecond)
+        let encoderFrameRate = try VideoExportSupport.encoderFrameRateValue(timing.framesPerSecond)
         diagnose(
             stage: .prepareTimeline,
             phase: .end,
@@ -1175,16 +1175,6 @@ public final class CompositedVideoWriter {
            outputIsDirectory.boolValue {
             throw OverlayVideoError.invalidConfiguration("Output path must be a file, not a directory: \(outputURL.path)")
         }
-    }
-
-    private func encoderFrameRateValue(_ framesPerSecond: Double) throws -> Int {
-        let rounded = framesPerSecond.rounded()
-        guard rounded.isFinite,
-              rounded >= 1,
-              rounded <= Double(Int.max) else {
-            throw OverlayVideoError.invalidConfiguration("Output frame rate is too large for the encoder.")
-        }
-        return Int(rounded)
     }
 
     private func makeTemporaryOutputURL(tag: String) -> URL {

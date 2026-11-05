@@ -277,6 +277,8 @@ public final class FITParser {
             throw FITError.fileTooLarge(maximumBytes: Self.maximumFileSizeBytes, actualBytes: data.count)
         }
         guard data.count >= 14 else { throw FITError.fileTooSmall }
+        // Data slices retain their original indices; FIT offsets are relative to this file.
+        let data = data.startIndex == 0 ? data : Data(data)
 
         let headerSize = Int(data[0])
         guard headerSize >= 12 else { throw FITError.unsupportedHeaderSize(headerSize) }
@@ -629,6 +631,13 @@ public final class FITParser {
         var developerFieldDescription = FITDeveloperFieldDescription()
 
         for field in definition.fields {
+            // The compressed header replaces the timestamp payload in the reused definition.
+            if compressedTimestamp != nil, field.number == 253 {
+                guard field.size == 4, field.baseType & 0x1F == 6 else {
+                    throw FITError.malformedRecord(offset: reader.offset)
+                }
+                continue
+            }
             let bytes = try reader.readBytes(count: Int(field.size))
             if definition.globalMessageNumber == 2, field.number == 5 {
                 if field.baseType & 0x1F == 1 { timeZoneOffsets = Array(bytes) }

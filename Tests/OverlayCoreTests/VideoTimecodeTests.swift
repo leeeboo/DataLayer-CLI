@@ -2,6 +2,23 @@ import XCTest
 @testable import OverlayCore
 
 final class VideoTimecodeTests: XCTestCase {
+    func testDecodedProjectWithUnrepresentablePreviewTimeDoesNotTrap() throws {
+        let project = try JSONDecoder().decode(TimelineProject.self, from: Data("""
+        {"outputWidth":1920,"outputHeight":1080,"framesPerSecond":30,"distanceUnit":"km","previewTime":1e100}
+        """.utf8))
+        XCTAssertEqual(VideoTimecode.string(at: try XCTUnwrap(project.previewTime),
+            framesPerSecond: project.framesPerSecond, mode: .nonDropFrame), "00:00:00:00")
+    }
+
+    func testUnrepresentableFrameRatesAndFullIntegerFrameRangeDoNotTrap() {
+        for rate in [Double.greatestFiniteMagnitude, -Double.greatestFiniteMagnitude, Double.infinity, Double.nan] {
+            XCTAssertEqual(VideoTimecode.string(frameNumber: 30, framesPerSecond: rate, mode: .nonDropFrame),
+                rate == -Double.greatestFiniteMagnitude ? "00:00:30:00" : "00:00:01:00")
+        }
+        XCTAssertEqual(VideoTimecode.string(frameNumber: .max, framesPerSecond: 30_000.0 / 1_001.0, mode: .dropFrame),
+            "85487080013854:22:15;29")
+    }
+
     func testPreferredDisplayModeUsesDFOnlyForFractionalNTSCRates() {
         XCTAssertEqual(VideoTimecode.preferredDisplayMode(for: 29.97), .dropFrame)
         XCTAssertEqual(VideoTimecode.preferredDisplayMode(for: 60_000.0 / 1_001.0), .dropFrame)

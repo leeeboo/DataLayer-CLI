@@ -307,6 +307,12 @@ final class CompositedVideoWriterTests: XCTestCase {
         )
     }
 
+    func testWriterRejectsEncoderFrameRateOverflowBeforeExport() {
+        assertWriterRejectsInvalidConfiguration(
+            makeConfig(framesPerSecond: Double(Int.max), duration: Double.leastNormalMagnitude)
+        )
+    }
+
     // MARK: - Trim and overlay correctness
 
     func testTrimExportSelectsSourceFramesAtStartTime() async throws {

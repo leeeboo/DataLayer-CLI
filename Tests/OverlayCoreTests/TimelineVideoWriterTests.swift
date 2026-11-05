@@ -7,6 +7,27 @@ import CoreVideo
 import XCTest
 
 final class TimelineVideoWriterTests: XCTestCase {
+    func testMultiOverlayWriterRejectsEncoderFrameRateOverflowBeforeExport() {
+        let output = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
+        defer { try? FileManager.default.removeItem(at: output) }
+        let asset = MediaAsset(id: "fit", kind: .activity, url: URL(fileURLWithPath: "/unused.fit"),
+                               displayName: "Activity", duration: 1)
+        let project = TimelineProject(outputWidth: 2, outputHeight: 2, framesPerSecond: 30,
+            distanceUnit: .kilometers, assets: [asset], tracks: (0...1).map { index in
+                TimelineTrack(id: "track\(index)", kind: .overlay, name: "Overlay", clips: [
+                    TimelineClip(id: "clip\(index)", assetID: asset.id, timelineStart: 0, duration: 1)
+                ])
+            })
+        let writer = TimelineVideoWriter(outputURL: output, project: project,
+            telemetrySeriesByAssetID: [asset.id: TelemetrySeries(samples: [.init(elapsed: 0)])],
+            config: TimelineVideoWriterConfig(width: 2, height: 2, framesPerSecond: Double(Int.max),
+                duration: Double.leastNormalMagnitude, codec: .proRes4444))
+        XCTAssertThrowsError(try writer.write()) { error in
+            guard case OverlayVideoError.invalidConfiguration = error else { return XCTFail("Unexpected error: \(error)") }
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: output.path))
+    }
+
     func testLUTPreviewAndEncodedExportRespectClipBoundariesAndBlackGaps() async throws {
         let source = temporaryMovieURL("lut-source")
         let output = temporaryMovieURL("lut-output")

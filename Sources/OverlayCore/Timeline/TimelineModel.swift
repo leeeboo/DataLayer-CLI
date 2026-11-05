@@ -434,6 +434,19 @@ public struct TimelineProject: Codable, Equatable {
         timeZone = try container.decodeIfPresent(OverlayTimeZone.self, forKey: .timeZone) ?? .activity
         assets = try container.decodeIfPresent([MediaAsset].self, forKey: .assets) ?? []
         tracks = try container.decodeIfPresent([TimelineTrack].self, forKey: .tracks) ?? []
+        guard Set(assets.map(\.id)).count == assets.count else {
+            throw DecodingError.dataCorruptedError(forKey: .assets, in: container,
+                debugDescription: "Timeline asset identifiers must be unique.")
+        }
+        guard Set(tracks.map(\.id)).count == tracks.count else {
+            throw DecodingError.dataCorruptedError(forKey: .tracks, in: container,
+                debugDescription: "Timeline track identifiers must be unique.")
+        }
+        let clips = tracks.flatMap(\.clips)
+        guard Set(clips.map(\.id)).count == clips.count else {
+            throw DecodingError.dataCorruptedError(forKey: .tracks, in: container,
+                debugDescription: "Timeline clip identifiers must be unique across tracks.")
+        }
         sourceMatchPoint = try container.decodeIfPresent(TimelineSourceMatchPoint.self, forKey: .sourceMatchPoint)
         exportSettings = try container.decodeIfPresent(TimelineProjectExportSettings.self, forKey: .exportSettings)
         previewTime = try container.decodeIfPresent(TimeInterval.self, forKey: .previewTime)

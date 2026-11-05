@@ -26,7 +26,7 @@ public enum VideoTimecode {
         let rate = FrameRateCanonicalizer.canonicalize(framesPerSecond)
         let safeSeconds = seconds.isFinite ? max(0, seconds) : 0
         let safeRate = rate.isFinite && rate > 0 ? rate : 30
-        let frameNumber = Int64((safeSeconds * safeRate + 0.000_000_1).rounded(.down))
+        let frameNumber = Int64(exactly: (safeSeconds * safeRate + 0.000_000_1).rounded(.down)) ?? 0
         return string(frameNumber: frameNumber, framesPerSecond: safeRate, mode: mode)
     }
 
@@ -36,23 +36,21 @@ public enum VideoTimecode {
         mode: VideoTimecodeMode
     ) -> String {
         let rate = FrameRateCanonicalizer.canonicalize(framesPerSecond)
-        let nominal = max(1, Int64(rate.isFinite ? rate.rounded() : 30))
-        let safeFrameNumber = max(0, frameNumber)
+        let nominal = UInt64(exactly: max(1, rate.isFinite ? rate.rounded() : 30)) ?? 30
+        // Added drop-frame labels can exceed Int64.max even when the source frame fits.
+        let safeFrameNumber = UInt64(max(0, frameNumber))
         let isDropFrameRate = abs(rate - FrameRateCanonicalizer.ntsc29_97) < 0.000_001
             || abs(rate - FrameRateCanonicalizer.ntsc59_94) < 0.000_001
         let usesDropFrame = mode == .dropFrame && isDropFrameRate
-        let labeledFrameNumber: Int64
+        let labeledFrameNumber: UInt64
 
         if usesDropFrame {
-            let droppedPerMinute: Int64 = nominal == 60 ? 4 : 2
+            let droppedPerMinute: UInt64 = nominal == 60 ? 4 : 2
             let framesPerMinute = nominal * 60 - droppedPerMinute
             let framesPerTenMinutes = nominal * 600 - droppedPerMinute * 9
             let tenMinuteBlocks = safeFrameNumber / framesPerTenMinutes
             let framesIntoBlock = safeFrameNumber % framesPerTenMinutes
-            let completedDroppingMinutes = max(
-                0,
-                (framesIntoBlock - droppedPerMinute) / framesPerMinute
-            )
+            let completedDroppingMinutes = (max(framesIntoBlock, droppedPerMinute) - droppedPerMinute) / framesPerMinute
             labeledFrameNumber = safeFrameNumber
                 + droppedPerMinute * 9 * tenMinuteBlocks
                 + droppedPerMinute * completedDroppingMinutes
@@ -64,7 +62,7 @@ public enum VideoTimecode {
         let totalSeconds = labeledFrameNumber / nominal
         let separator = usesDropFrame ? ";" : ":"
         return String(
-            format: "%02lld:%02lld:%02lld%@%02lld",
+            format: "%02llu:%02llu:%02llu%@%02llu",
             totalSeconds / 3_600,
             (totalSeconds / 60) % 60,
             totalSeconds % 60,

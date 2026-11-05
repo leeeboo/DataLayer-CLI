@@ -483,7 +483,7 @@ public final class TimelineVideoWriter {
             }
             let frameCount = timing.frameCount
             let fps = timing.framesPerSecond
-            let encoderFrameRate = try encoderFrameRateValue(fps)
+            let encoderFrameRate = try VideoExportSupport.encoderFrameRateValue(fps)
             let hardwareProfile = OverlayHardwareProfile.current
             diagnose(stage: .prepareWriter, phase: .begin, totalFrames: frameCount)
 
@@ -1353,16 +1353,6 @@ public final class TimelineVideoWriter {
             throw OverlayVideoError.invalidConfiguration("\(config.codec.displayName) cannot be used for transparent overlay export.")
         }
         try validateOutputURL()
-    }
-
-    private func encoderFrameRateValue(_ framesPerSecond: Double) throws -> Int {
-        let rounded = framesPerSecond.rounded()
-        guard rounded.isFinite,
-              rounded >= 1,
-              rounded <= Double(Int.max) else {
-            throw OverlayVideoError.invalidConfiguration("Output frame rate is too large for the encoder.")
-        }
-        return Int(rounded)
     }
 
     private func validateOutputURL() throws {

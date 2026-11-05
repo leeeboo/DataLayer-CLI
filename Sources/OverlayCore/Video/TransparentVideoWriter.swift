@@ -351,7 +351,7 @@ public final class TransparentVideoWriter {
         }
         let encoderFrameRate: Int
         do {
-            encoderFrameRate = try encoderFrameRateValue(fps)
+            encoderFrameRate = try VideoExportSupport.encoderFrameRateValue(fps)
         } catch {
             diagnoseFailure(stage: .prepareWriter, error: error, totalFrames: frameCount)
             throw error
@@ -828,16 +828,6 @@ public final class TransparentVideoWriter {
         }
     }
 
-    private func encoderFrameRateValue(_ framesPerSecond: Double) throws -> Int {
-        let rounded = framesPerSecond.rounded()
-        guard rounded.isFinite,
-              rounded >= 1,
-              rounded <= Double(Int.max) else {
-            throw OverlayVideoError.invalidConfiguration("Output frame rate is too large for the encoder.")
-        }
-        return Int(rounded)
-    }
-
     func makeTemporaryOutputURL() -> URL {
         Self.makeTemporaryOutputURL(
             for: outputURL,
@@ -1044,6 +1034,13 @@ enum VideoExportSupport {
     static var temporaryDirectory = FileManager.default.temporaryDirectory
     private static let copyChunkSize = 1_048_576
     private static let cancellationPollInterval: DispatchTimeInterval = .milliseconds(50)
+
+    static func encoderFrameRateValue(_ framesPerSecond: Double) throws -> Int {
+        guard let value = Int(exactly: framesPerSecond.rounded()), value >= 1 else {
+            throw OverlayVideoError.invalidConfiguration("Output frame rate is too large for the encoder.")
+        }
+        return value
+    }
 
     static func throwIfCancelled(_ cancellationHandler: (() -> Bool)?) throws {
         if cancellationHandler?() == true {

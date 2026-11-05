@@ -216,14 +216,24 @@ final class TransparentVideoWriterTests: XCTestCase {
     }
 
     func testWriterRejectsEncoderFrameRateOverflowBeforeExport() {
-        assertWriterRejectsInvalidConfiguration(
-            config: TransparentVideoWriterConfig(
-                width: 2,
-                height: 2,
-                framesPerSecond: Double(Int.max) * 2,
-                duration: Double.leastNormalMagnitude
+        for frameRate in [Double(Int.max), Double(Int.max) * 2] {
+            assertWriterRejectsInvalidConfiguration(
+                config: TransparentVideoWriterConfig(
+                    width: 2,
+                    height: 2,
+                    framesPerSecond: frameRate,
+                    duration: Double.leastNormalMagnitude
+                )
             )
-        )
+        }
+    }
+
+    func testEncoderFrameRateConversionKeepsRoundingAndRejectsUnrepresentableValues() throws {
+        XCTAssertEqual(try VideoExportSupport.encoderFrameRateValue(29.97), 30)
+        XCTAssertEqual(try VideoExportSupport.encoderFrameRateValue(Double(Int.max).nextDown), Int.max - 1023)
+        for value in [Double(Int.max), Double.infinity, Double.nan, 0] {
+            XCTAssertThrowsError(try VideoExportSupport.encoderFrameRateValue(value))
+        }
     }
 
     func testWriterRejectsPlainVideoCodecBeforeExport() {

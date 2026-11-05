@@ -3,6 +3,54 @@ import Foundation
 import XCTest
 
 final class FITParserTests: XCTestCase {
+    func testCompressedTimestampReusesDefinitionWithoutTimestampPayload() throws {
+        var content = Data()
+        // A compressed record reuses this definition, omitting only field 253's payload.
+        content.append(contentsOf: [0x60, 0, 0, 20, 0, 3,
+                                   253, 4, 0x86, 3, 1, 2, 5, 4, 0x86,
+                                   1, 0, 2, 0])
+        for second in 0...2 {
+            content.append(second == 1 ? 0x89 : 0)
+            if second != 1 { appendUInt32(1_000 + UInt32(second), to: &content) }
+            content.append(150 + UInt8(second))
+            appendUInt32(UInt32(second * 300), to: &content)
+            appendUInt16(UInt16(200 + second), to: &content)
+        }
+
+        let series = try FITParser().parse(data: makeFITFile(content: content))
+        XCTAssertEqual(series.duration, 2)
+        XCTAssertEqual(series.samples.map(\.heartRate), [150, 151, 152])
+        XCTAssertEqual(series.samples.map(\.distanceMeters), [0, 3, 6])
+    }
+
+    func testParsesDataSliceWithNonzeroStartIndex() throws {
+        let file = makeFITFile(records: [
+            TestRecord(timestamp: 1_000, latitude: 0, longitude: 0,
+                       distanceMeters: 0, speed: 3, heartRate: 150, cadence: 90),
+            TestRecord(timestamp: 1_001, latitude: 0, longitude: 0,
+                       distanceMeters: 3, speed: 3, heartRate: 151, cadence: 90)
+        ])
+        var envelope = Data([0xFF, 0xFF])
+        envelope.append(file)
+        let slice = envelope.dropFirst(2)
+        XCTAssertEqual(slice.startIndex, 2)
+        XCTAssertEqual(try FITParser().parse(data: slice), try FITParser().parse(data: file))
+    }
+
+    func testCompressedTimestampRejectsMalformedTimestampFieldDefinitions() {
+        for (size, baseType): (UInt8, UInt8) in [(2, 0x86), (4, 0x84), (8, 0x89)] {
+            var content = Data()
+            appendStandardRecordDefinition(localMessageType: 0, to: &content)
+            appendRecord(TestRecord(timestamp: 1_000, latitude: 0, longitude: 0,
+                distanceMeters: 0, speed: 3, heartRate: 150, cadence: 90), localMessageType: 0, to: &content)
+            content.append(contentsOf: [0x41, 0, 0, 20, 0, 2, 253, size, baseType, 3, 1, 2])
+            content.append(contentsOf: [0xA9, 151])
+            XCTAssertThrowsError(try FITParser().parse(data: makeFITFile(content: content))) { error in
+                guard case FITError.malformedRecord = error else { return XCTFail("Unexpected error: \(error)") }
+            }
+        }
+    }
+
     func testDecelerationCorrectionOnlyAppliesToIdentifiedRunningSessions() throws {
         for sports: [UInt8] in [[1], [2], [0], [255], [], [1, 2], [1, 255]] {
             var content = Data([0x41, 0, 0, 18, 0, 2, 2, 4, 0x86, 5, 1, 0])
