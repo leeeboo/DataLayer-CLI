@@ -7,6 +7,60 @@ import CoreVideo
 import XCTest
 
 final class TimelineVideoWriterTests: XCTestCase {
+    func testSingleAssetPreviewPreservesEmptyEditSegmentsWithoutApplyingLUTToBlack() throws {
+        let source = temporaryMovieURL("preview-empty-edits")
+        defer { Self.removeTemporaryFile(source) }
+        try makeTinySourceVideo(at: source, frameCount: 8, framesPerSecond: 8, includeAudio: true) { _ in (0, 0, 255) }
+        let sourceAsset = AVURLAsset(url: source)
+        let sourceTrack = try XCTUnwrap(sourceAsset.tracks(withMediaType: .video).first)
+        defer { withExtendedLifetime(sourceAsset) {} }
+        let composition = AVMutableComposition()
+        let track = try XCTUnwrap(composition.addMutableTrack(withMediaType: .video,
+            preferredTrackID: kCMPersistentTrackID_Invalid))
+        let sourceRange = CMTimeRange(start: .zero, duration: CMTime(value: 1, timescale: 4))
+        try track.insertTimeRange(sourceRange, of: sourceTrack, at: CMTime(value: 1, timescale: 4))
+        try track.insertTimeRange(sourceRange, of: sourceTrack, at: CMTime(value: 3, timescale: 4))
+        let sourceAudio = try XCTUnwrap(sourceAsset.tracks(withMediaType: .audio).first)
+        let audioTrack = try XCTUnwrap(composition.addMutableTrack(withMediaType: .audio,
+            preferredTrackID: kCMPersistentTrackID_Invalid))
+        try audioTrack.insertTimeRange(sourceRange, of: sourceAudio, at: CMTime(value: 1, timescale: 1))
+        let red = ClipLUT(lut: try CubeLUT(text: "LUT_3D_SIZE 2\n" +
+            Array(repeating: "1 0 0", count: 8).joined(separator: "\n"), name: "Red"))
+        let videoComposition = TimelineVideoCompositionBuilder.makeSingleAssetVideoComposition(
+            asset: composition, trackID: track.trackID,
+            timeRange: CMTimeRange(start: .zero, duration: composition.duration),
+            transform: .identity, renderSize: CGSize(width: 64, height: 64),
+            sourceInfo: nil, settings: nil, lut: red)
+        let reader = try AVAssetReader(asset: composition)
+        let output = AVAssetReaderVideoCompositionOutput(videoTracks: [track], videoSettings: [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+        ])
+        output.videoComposition = videoComposition
+        reader.add(output)
+        XCTAssertTrue(reader.startReading())
+        var frameTimes: [Double] = []
+        while let sample = output.copyNextSampleBuffer() {
+            let buffer = try XCTUnwrap(CMSampleBufferGetImageBuffer(sample))
+            CVPixelBufferLockBaseAddress(buffer, .readOnly)
+            defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
+            let data = try XCTUnwrap(CVPixelBufferGetBaseAddress(buffer)).assumingMemoryBound(to: UInt8.self)
+            let offset = 32 * CVPixelBufferGetBytesPerRow(buffer) + 32 * 4
+            let time = CMSampleBufferGetPresentationTimeStamp(sample).seconds
+            let hasVideo = (0.25..<0.5).contains(time) || (0.75..<1).contains(time)
+            XCTAssertEqual(Int(data[offset + 2]), hasVideo ? 255 : 0, accuracy: 5, "time=\(time)")
+            XCTAssertLessThan(data[offset], 5)
+            XCTAssertLessThan(data[offset + 1], 5)
+            XCTAssertEqual(data[offset + 3], 255)
+            frameTimes.append(time)
+        }
+        XCTAssertEqual(reader.status, .completed, "\(String(describing: reader.error))")
+        XCTAssertTrue(frameTimes.contains { (0..<0.25).contains($0) })
+        XCTAssertTrue(frameTimes.contains { (0.25..<0.5).contains($0) })
+        XCTAssertTrue(frameTimes.contains { (0.5..<0.75).contains($0) })
+        XCTAssertTrue(frameTimes.contains { (0.75..<1).contains($0) })
+        XCTAssertTrue(frameTimes.contains { (1..<1.25).contains($0) })
+    }
+
     func testMultiOverlayWriterRejectsEncoderFrameRateOverflowBeforeExport() {
         let output = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
         defer { try? FileManager.default.removeItem(at: output) }

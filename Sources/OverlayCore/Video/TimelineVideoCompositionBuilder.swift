@@ -187,23 +187,44 @@ public enum TimelineVideoCompositionBuilder {
     ) -> AVMutableVideoComposition {
         let videoComposition = AVMutableVideoComposition()
         videoComposition.renderSize = renderSize
-        let trackRate = asset.tracks(withMediaType: .video)
-            .first(where: { $0.trackID == trackID })?.nominalFrameRate
+        let track = asset.tracks(withMediaType: .video).first(where: { $0.trackID == trackID })
+        let trackRate = track?.nominalFrameRate
         let frameRate = trackRate.flatMap { $0 > 0 ? Double($0) : nil } ?? 30
         videoComposition.frameDuration = FrameRateCanonicalizer.frameDuration(
             for: frameRate,
             preferredTimescale: 60_000
         )
-        videoComposition.instructions = [LUTVideoInstruction(
-            timeRange: timeRange,
-            trackID: trackID,
-            transform: transform,
-            sourceInfo: sourceInfo ?? asset.tracks(withMediaType: .video)
-                .first(where: { $0.trackID == trackID })?
-                .formatDescriptions.first.flatMap { VideoColorInfo.read(from: $0 as! CMFormatDescription) },
-            colorSettings: settings,
-            lut: lut
-        )]
+        let colorInfo = sourceInfo ?? track?.formatDescriptions.first
+            .flatMap { VideoColorInfo.read(from: $0 as! CMFormatDescription) }
+        func instruction(_ range: CMTimeRange, sourceTrackID: CMPersistentTrackID?) -> LUTVideoInstruction {
+            LUTVideoInstruction(timeRange: range, trackID: sourceTrackID, transform: transform,
+                sourceInfo: colorInfo, colorSettings: settings, lut: lut)
+        }
+
+        // Edit lists can contain empty video segments even when the track's timeRange covers
+        // the entire asset. Requiring that track in an empty segment gives the compositor no
+        // source frame, failing playback with unreadableVideo and image generation with -11832.
+        let segments = track?.segments ?? []
+        let sourceRanges = segments.isEmpty ? [track?.timeRange ?? timeRange]
+            : segments.filter { !$0.isEmpty }.map { $0.timeMapping.target }
+        var instructions: [LUTVideoInstruction] = []
+        var cursor = timeRange.start
+        let end = CMTimeRangeGetEnd(timeRange)
+        for sourceRange in sourceRanges.sorted(by: { $0.start < $1.start }) {
+            let range = CMTimeRangeGetIntersection(sourceRange, otherRange: timeRange)
+            guard range.isValid, range.duration > .zero else { continue }
+            if range.start > cursor {
+                instructions.append(instruction(CMTimeRange(start: cursor,
+                    duration: CMTimeSubtract(range.start, cursor)), sourceTrackID: nil))
+            }
+            instructions.append(instruction(range, sourceTrackID: trackID))
+            cursor = CMTimeRangeGetEnd(range)
+        }
+        if cursor < end {
+            instructions.append(instruction(CMTimeRange(start: cursor,
+                duration: CMTimeSubtract(end, cursor)), sourceTrackID: nil))
+        }
+        videoComposition.instructions = instructions
         videoComposition.customVideoCompositorClass = LUTVideoCompositor.self
         return videoComposition
     }
