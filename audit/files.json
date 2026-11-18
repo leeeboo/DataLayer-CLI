@@ -173,6 +173,7 @@
   "web/package.json",
   "web/playwright.config.mjs",
   "web/prepare-site.mjs",
+  "web/prepare-toy.mjs",
   "web/preview.mjs",
   "web/render-color.mjs",
   "web/render-special.mjs",
@@ -202,5 +203,8 @@
   "web/tests/wasm-fixture.mjs",
   "web/tests/weather.spec.mjs",
   "web/tests/weather.test.mjs",
+  "web/toy/index.html",
+  "web/toy/preview.mjs",
+  "web/toy/style.css",
   "web/weather.mjs"
 ]
