@@ -245,11 +245,6 @@ struct CommandLineOptions {
         return codec
     }
 
-    private static func parseDistanceUnit(_ raw: String?) throws -> OverlayDistanceUnit {
-        guard let raw else { return .kilometers }
-        return try parseDistanceUnitOverride(raw) ?? .kilometers
-    }
-
     private static func parseDistanceUnitOverride(_ raw: String?) throws -> OverlayDistanceUnit? {
         guard let raw else { return nil }
         guard let unit = OverlayDistanceUnit(rawValue: raw) else {
@@ -328,6 +323,7 @@ enum CLIError: Error, CustomStringConvertible {
 struct ResolvedOverlayLayout {
     var layout: OverlayLayout
     var presetName: String?
+    var presetFileURL: URL? = nil
 }
 
 func resolveOverlayLayout(
@@ -369,10 +365,10 @@ private func resolveOverlayLayout(fromPresetFile fileURL: URL) throws -> Resolve
         let sanitizedState = state.sanitized
         if let defaultPresetID = sanitizedState.defaultPresetID,
            let defaultPreset = sanitizedState.presets.first(where: { $0.id == defaultPresetID }) {
-            return ResolvedOverlayLayout(layout: defaultPreset.layout.sanitized, presetName: defaultPreset.name)
+            return ResolvedOverlayLayout(layout: defaultPreset.layout.sanitized, presetName: defaultPreset.name, presetFileURL: fileURL)
         }
         if let preset = sanitizedState.presets.first {
-            return ResolvedOverlayLayout(layout: preset.layout.sanitized, presetName: preset.name)
+            return ResolvedOverlayLayout(layout: preset.layout.sanitized, presetName: preset.name, presetFileURL: fileURL)
         }
         throw CLIError.layoutPresetFileInvalid(fileURL.path)
     }
@@ -382,7 +378,7 @@ private func resolveOverlayLayout(fromPresetFile fileURL: URL) throws -> Resolve
         guard let sanitizedPreset = sanitizedState.presets.first else {
             throw CLIError.layoutPresetFileInvalid(fileURL.path)
         }
-        return ResolvedOverlayLayout(layout: sanitizedPreset.layout.sanitized, presetName: sanitizedPreset.name)
+        return ResolvedOverlayLayout(layout: sanitizedPreset.layout.sanitized, presetName: sanitizedPreset.name, presetFileURL: fileURL)
     }
 
     throw CLIError.layoutPresetFileInvalid(fileURL.path)
@@ -407,9 +403,9 @@ func loadTimelineProject(from fileURL: URL) throws -> TimelineProject {
     }
 }
 
-func run() async throws {
+func run(arguments: [String] = CommandLine.arguments) async throws {
     TransparentVideoWriter.removeStaleTemporaryOutputs()
-    let options = try CommandLineOptions.parse(arguments: CommandLine.arguments)
+    let options = try CommandLineOptions.parse(arguments: arguments)
     #if os(Linux) || os(Windows)
     if !options.inspectOnly { TransparentVideoWriter.removeStaleTemporaryOutputs(in: options.outputURL.deletingLastPathComponent()) }
     #endif
@@ -472,7 +468,7 @@ func run() async throws {
     try validateOutputDimensions(width: width, height: height)
     try validateOutputSafety(
         outputURL: options.outputURL,
-        inputURLs: [fitURL, options.videoURL].compactMap { $0 },
+        inputURLs: [fitURL, options.videoURL, resolvedLayout.presetFileURL].compactMap { $0 },
         forceOverwrite: options.forceOverwrite
     )
     let progressHandler: (Int, Int) -> Void = { completed, total in
@@ -572,12 +568,33 @@ func renderTimelineProject(options: CommandLineOptions, projectURL: URL) throws 
     }
     if let timeZone = options.timeZoneOverride { project.timeZone = timeZone }
 
+    let projectDuration = project.duration
     let request = timelineExportRequest(project: project, options: options)
+    let renderScope = project.exportSettings?.renderScope ?? .singleClip
+    let ranges = TimelineExportService.exportRanges(for: project, request: request, renderScope: renderScope)
+    guard !ranges.isEmpty else {
+        if let issue = TimelineExportService.firstPreflightIssue(
+            for: request,
+            project: project,
+            availableTelemetryAssetIDs: [],
+            validatesTimeline: false
+        ) {
+            throw CLIError.invalidValue("--timeline-project export settings", String(describing: issue))
+        }
+        throw CLIError.invalidValue("--timeline-project", "no clips in export range")
+    }
+    project = TimelineExportService.projectForExport(project, ranges: ranges, renderScope: renderScope)
+    let activityAssetIDs = Set(project.enabledClips(
+        kind: .overlay,
+        timelineStart: request.timelineStart,
+        duration: request.duration ?? 0
+    ).map(\.assetID))
 
     let parser = TelemetryFileParser(validateFITCRC: options.validateFITCRC)
     var telemetryByAssetID: [String: TelemetrySeries] = [:]
-    for index in project.assets.indices where project.assets[index].kind == .activity {
+    for index in project.assets.indices {
         let asset = project.assets[index]
+        guard asset.kind == .activity, activityAssetIDs.contains(asset.id) else { continue }
         let activity = try parser.parseActivity(url: asset.url)
         telemetryByAssetID[asset.id] = TimelineExportService.applyingWeatherRecords(asset.weatherRecords ?? [], to: activity.series)
         project.assets[index].timeZoneOffsetSeconds = activity.timeZoneOffsetSeconds
@@ -591,21 +608,13 @@ func renderTimelineProject(options: CommandLineOptions, projectURL: URL) throws 
         if case let .timeline(timelineIssue) = issue { throw timelineIssue }
         throw CLIError.invalidValue("--timeline-project export settings", String(describing: issue))
     }
-    let ranges = TimelineExportService.exportRanges(
-        for: project,
-        request: request,
-        renderScope: project.exportSettings?.renderScope ?? .singleClip
-    )
-    guard !ranges.isEmpty else {
-        throw CLIError.invalidValue("--timeline-project", "no clips in export range")
-    }
     let outputURLs = ranges.indices.map { index in
         ranges.count == 1 ? options.outputURL : TimelineExportService.segmentOutputURL(
             base: options.outputURL, index: index + 1, count: ranges.count
         )
     }
 
-    print("Timeline project: \(project.assets.count) assets, \(project.tracks.count) tracks, \(String(format: "%.2f", project.duration)) s")
+    print("Timeline project: \(project.assets.count) assets, \(project.tracks.count) tracks, \(String(format: "%.2f", projectDuration)) s")
     print("Export mode: \(options.exportMode.rawValue)")
     print("Codec: \(options.codec.rawValue)")
     print("Output: \(request.width)x\(request.height), \(String(format: "%.3f", request.framesPerSecond)) fps")

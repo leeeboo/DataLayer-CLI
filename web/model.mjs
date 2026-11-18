@@ -116,10 +116,20 @@ export function validateDocument(document) {
   const ids = new Set();
   for (const p of list) {
     object(p, 'preset'); string(p.id, 'preset.id'); string(p.name, 'preset.name');
-    if (!p.id.trim() || ids.has(p.id.trim()) || !p.name.trim()) invalid('errorIDs'); ids.add(p.id.trim());
+    const id = p.id.trim();
+    if (!id || ids.has(id) || !p.name.trim()) invalid('errorIDs');
+    ids.add(id);
     number(p.createdAt, -1e12, 1e12, 'createdAt'); number(p.updatedAt, -1e12, 1e12, 'updatedAt'); validateLayout(p.layout);
   }
-  optional(document, 'defaultPresetID', value => { if (!ids.has(value)) invalid('errorDefault'); });
+  optional(document, 'defaultPresetID', value => {
+    if (typeof value !== 'string' || !ids.has(value.trim())) invalid('errorDefault');
+  });
+  return document;
+}
+function normalizePresetIDs(document) {
+  validateDocument(document);
+  for (const preset of presets(document)) preset.id = preset.id.trim();
+  if (document.defaultPresetID != null) document.defaultPresetID = document.defaultPresetID.trim();
   return document;
 }
 export function parseJSON(text) {
@@ -131,12 +141,12 @@ export function parseJSON(text) {
 }
 export function parseDocument(text) {
   if (new TextEncoder().encode(text).length > 5 * 1024 * 1024) invalid('fileHelp');
-  return validateDocument(parseJSON(text));
+  return normalizePresetIDs(parseJSON(text));
 }
 export function exportDocument(document, presetID) {
   const copy = clone(document);
   if (Array.isArray(copy.presets)) copy.defaultPresetID = presetID;
-  return JSON.stringify(validateDocument(copy), null, 2) + '\n';
+  return JSON.stringify(normalizePresetIDs(copy), null, 2) + '\n';
 }
 export function bounds(element, width, height) {
   const g = catalog[element.kind], c = element.customization;

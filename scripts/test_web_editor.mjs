@@ -64,6 +64,25 @@ test('multi-preset library keeps other presets and metadata; selected preset is 
   assert.deepEqual(output.futureLibraryData, library.futureLibraryData); assert.equal(output.presets[1].future, 'untouched');
   assert.equal(doc.defaultPresetID, first.id, 'export must not mutate the source document');
 });
+test('preset IDs and default references use trimmed IDs without changing component IDs', () => {
+  const first = { ...createDocument('A'), id: ' layout-a ' };
+  const second = { ...createDocument('B'), id: '\tlayout-b\n', futureField: ' untouched ' };
+  second.layout.elements[0].id = ' gauge ';
+  const library = { presets: [first, second], defaultPresetID: ' layout-b ' };
+  const imported = parseDocument(JSON.stringify(library));
+  assert.equal(imported.defaultPresetID, 'layout-b');
+  assert.equal(presets(imported).find(preset => preset.id === imported.defaultPresetID).name, 'B');
+
+  const exported = JSON.parse(exportDocument(imported, imported.defaultPresetID));
+  assert.deepEqual(exported.presets.map(preset => preset.id), ['layout-a', 'layout-b']);
+  assert.equal(exported.defaultPresetID, 'layout-b');
+  assert.equal(exported.presets[1].layout.elements[0].id, ' gauge ');
+  assert.equal(exported.presets[1].futureField, ' untouched ');
+  assert.equal(parseDocument(JSON.stringify(first)).id, 'layout-a');
+  assert.throws(() => parseDocument(JSON.stringify({
+    presets: [first, { ...second, id: 'layout-a' }], defaultPresetID: 'layout-a',
+  })), { code: 'errorIDs' });
+});
 test('invalid files and known field types are rejected before replacing current work', () => {
   for (const change of [
     d => { d.layout.elements[0].kind = 'unknown'; },

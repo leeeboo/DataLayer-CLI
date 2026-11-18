@@ -588,7 +588,8 @@ public final class OverlayRenderer {
         case .cadence:
             return ("CAD", sample.cadence.map { "\($0)" } ?? "--", "SPM")
         case .calories:
-            return ("CAL", sample.totalCalories.map { "\(Int($0.rounded()))" } ?? "--", "KCAL")
+            let calories = sample.totalCalories.flatMap { Int(exactly: $0.rounded()) }
+            return ("CAL", calories.map { "\($0)" } ?? "--", "KCAL")
         case .ascent:
             return (
                 "ASC",
@@ -2274,11 +2275,14 @@ public final class OverlayRenderer {
     }
 
     private func formatWeatherTemperature(_ sample: TelemetrySample, element: OverlayElement) -> String {
+        let symbol = config.distanceUnit.temperatureSymbol
         guard let temperature = element.customization.resolvedWeatherTemperatureCelsius(
             apiValue: sample.weatherTemperatureCelsius,
             activityValue: sample.temperatureCelsius
-        ) else { return "--\(config.distanceUnit.temperatureSymbol)" }
-        return "\(Int(config.distanceUnit.temperatureValue(celsius: Double(temperature)).rounded()))\(config.distanceUnit.temperatureSymbol)"
+        ) else { return "--\(symbol)" }
+        let value = config.distanceUnit.temperatureValue(celsius: Double(temperature))
+        guard let rounded = Int(exactly: value.rounded()) else { return "--\(symbol)" }
+        return "\(rounded)\(symbol)"
     }
 
     private func formatWeatherUnit(_ sample: TelemetrySample, element: OverlayElement) -> String {

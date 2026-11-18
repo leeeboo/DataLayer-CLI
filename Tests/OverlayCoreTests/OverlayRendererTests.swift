@@ -562,6 +562,28 @@ final class OverlayRendererTests: XCTestCase {
         XCTAssertGreaterThan(try drawnPixelCount(pixelBuffer: pixelBuffer), 0)
     }
 
+    func testOutOfRangeCaloriesAndTemperatureRenderAsMissing() throws {
+        let size = CGSize(width: 640, height: 360)
+        let config = OverlayRenderConfig(
+            size: size,
+            layout: OverlayLayout(elements: [
+                metricElement(id: "calories", kind: .calories, y: 0.06),
+                metricElement(id: "weather", kind: .weather, y: 0.46)
+            ]),
+            distanceUnit: .miles
+        )
+        let outOfRange = TelemetrySeries(samples: [
+            TelemetrySample(elapsed: 0, totalCalories: 1e20, temperatureCelsius: Int.max)
+        ])
+        let missing = TelemetrySeries(samples: [TelemetrySample(elapsed: 0)])
+        try assertRenderersProduceIdenticalPixels(
+            OverlayRenderer(series: outOfRange, config: config),
+            OverlayRenderer(series: missing, config: config),
+            size: size,
+            videoTime: 0
+        )
+    }
+
     func testRendererDrawsStrydMetricGauges() throws {
         let series = TelemetrySeries(samples: [
             TelemetrySample(

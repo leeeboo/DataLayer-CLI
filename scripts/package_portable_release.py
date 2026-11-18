@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Package a native executable with its collected runtime and matching source archives."""
 import argparse
-import hashlib
 import json
 import pathlib
 import platform
@@ -69,7 +68,7 @@ def package(version, binary, output, runtime, sources):
         (stage / "SOURCE.json").write_text(json.dumps({
             "repository": "https://github.com/leeeboo/DataLayer-CLI", "revision": revision,
             "working_tree_dirty": False, "platform": system, "architecture": "x86_64",
-            "binary_sha256": hashlib.sha256(executable.read_bytes()).hexdigest(),
+            "binary_sha256": digest(executable),
             "build_binary_sha256": digest(binary),
             "native_executable": "runtime/bin/" + executable_name,
             "dependency_sources": source_archive.name,
@@ -88,8 +87,7 @@ def package(version, binary, output, runtime, sources):
         staged_archive.rename(archive)
         (pathlib.Path(temporary) / source_archive.name).rename(source_archive)
     for path in [archive, source_archive]:
-        with path.open("rb") as stream:
-            checksum = hashlib.file_digest(stream, "sha256").hexdigest()
+        checksum = digest(path)
         path.with_suffix(path.suffix + ".sha256").write_text(checksum + "  " + path.name + "\n", encoding="utf-8")
     print(archive)
     return archive

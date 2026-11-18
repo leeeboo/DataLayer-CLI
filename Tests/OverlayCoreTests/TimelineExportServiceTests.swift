@@ -126,6 +126,27 @@ final class TimelineExportServiceTests: XCTestCase {
         )
     }
 
+    func testIndividualExportKeepsOverlaysIntersectingAnyOutputAndPreservesSourceAssets() {
+        var timeline = project(twoActivities: true)
+        let endOfSecondOutput = TimelineClip(id: "late", assetID: "activity", timelineStart: 8, duration: 1)
+        let betweenOutputs = TimelineClip(id: "gap", assetID: "activity-2", timelineStart: 2, duration: 3)
+        let startOfFirstOutput = TimelineClip(id: "early", assetID: "activity", timelineStart: 0, duration: 1)
+        let disabled = TimelineClip(id: "disabled", assetID: "activity-2", timelineStart: 2, duration: 1, isEnabled: false)
+        timeline.tracks[1].clips = [endOfSecondOutput, betweenOutputs, startOfFirstOutput, disabled]
+        let ranges = [
+            TimelineExportRange(start: 6, duration: 1),
+            TimelineExportRange(start: 0, duration: 2),
+            TimelineExportRange(start: 5, duration: 4)
+        ]
+
+        let projected = TimelineExportService.projectForExport(timeline, ranges: ranges, renderScope: .individualClips)
+        XCTAssertEqual(projected.tracks[1].clips, [endOfSecondOutput, startOfFirstOutput, disabled])
+        XCTAssertEqual(projected.assets, timeline.assets)
+        XCTAssertEqual(projected.tracks[0], timeline.tracks[0])
+        XCTAssertEqual(TimelineExportService.projectForExport(timeline, ranges: ranges, renderScope: .singleClip), timeline)
+        XCTAssertEqual(TimelineExportService.projectForExport(timeline, ranges: [], renderScope: .individualClips).tracks[1].clips, [disabled])
+    }
+
     private func validRequest() -> TimelineExportRequest {
         TimelineExportRequest(
             mode: .video,

@@ -34,13 +34,17 @@ def run(*args):
     try:
         return subprocess.check_output(args, text=True, stderr=subprocess.PIPE).strip()
     except subprocess.CalledProcessError as error:
-        error.add_note(error.stderr or "")
+        if error.stderr and hasattr(error, "add_note"):
+            error.add_note(error.stderr)
         raise
 
 
 def digest(path):
+    checksum = hashlib.sha256()
     with pathlib.Path(path).open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
+        while block := stream.read(256 * 1024):
+            checksum.update(block)
+    return checksum.hexdigest()
 
 
 def download(url, path):

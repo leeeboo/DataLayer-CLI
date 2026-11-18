@@ -98,6 +98,102 @@ final class TimelineProjectExportTests: XCTestCase {
         XCTAssertThrowsError(try loadTimelineProject(from: projectURL))
     }
 
+    func testInspectSkipsOfflineActivitiesOutsideEnabledExportClips() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let media = directory.appendingPathComponent("activity.gpx")
+        try Data(gpx.utf8).write(to: media)
+        let projectURL = directory.appendingPathComponent("project.dlsproj")
+        var project = makeProject()
+        project.assets[0].url = media
+        let missingAssets = ["unused", "disabled-clip", "disabled-track", "before", "after"].map { id in
+            MediaAsset(id: id, kind: .activity, url: directory.appendingPathComponent("\(id).gpx"),
+                       displayName: id, duration: 4)
+        }
+        project.assets += missingAssets
+        project.tracks += [
+            TimelineTrack(id: "outside", kind: .overlay, name: "Outside range", clips: [
+                TimelineClip(id: "before", assetID: "before", timelineStart: 0, duration: 1),
+                TimelineClip(id: "after", assetID: "after", timelineStart: 3, duration: 1),
+                TimelineClip(id: "disabled", assetID: "disabled-clip", timelineStart: 1, duration: 2, isEnabled: false)
+            ]),
+            TimelineTrack(id: "disabled", kind: .overlay, name: "Disabled track", isEnabled: false, clips: [
+                TimelineClip(id: "ignored", assetID: "disabled-track", timelineStart: 1, duration: 2)
+            ])
+        ]
+        try JSONEncoder().encode(project).write(to: projectURL)
+        XCTAssertNoThrow(try renderTimelineProject(options: options(["--inspect"]), projectURL: projectURL))
+
+        let unusedPath = directory.appendingPathComponent("unused.gpx").path
+        XCTAssertThrowsError(try renderTimelineProject(options: options(["--output", unusedPath, "--force"]), projectURL: projectURL)) { error in
+            guard case CLIError.outputMatchesInput(unusedPath) = error else { return XCTFail("\(error)") }
+        }
+    }
+
+    func testIndividualVideoOutputsIgnoreOfflineFITBetweenSegments() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let projectURL = directory.appendingPathComponent("project.dlsproj")
+        let offlineFIT = directory.appendingPathComponent("output_02.fit")
+        let videoURL = directory.appendingPathComponent("video.mov")
+        var project = makeProject()
+        project.assets[0].url = offlineFIT
+        project.assets.append(MediaAsset(id: "video", kind: .video, url: videoURL, displayName: "Video", duration: 10))
+        project.tracks[0].clips = [TimelineClip(id: "data", assetID: "activity", timelineStart: 4, duration: 2)]
+        project.tracks.append(TimelineTrack(id: "video", kind: .video, name: "Video", clips: [
+            TimelineClip(id: "first-video", assetID: "video", timelineStart: 0, duration: 2),
+            TimelineClip(id: "second-video", assetID: "video", timelineStart: 8, duration: 2, sourceIn: 8)
+        ]))
+        project.exportSettings = TimelineProjectExportSettings(renderScope: .individualClips, exportMode: .video, codec: .h264)
+        try JSONEncoder().encode(project).write(to: projectURL)
+        XCTAssertNoThrow(try renderTimelineProject(options: options(["--inspect"]), projectURL: projectURL))
+
+        let output = directory.appendingPathComponent("output.fit")
+        XCTAssertThrowsError(try renderTimelineProject(options: options(["--output", output.path, "--force"]), projectURL: projectURL)) { error in
+            guard case CLIError.outputMatchesInput(offlineFIT.path) = error else { return XCTFail("\(error)") }
+        }
+
+        project.tracks[0].clips[0].timelineStart = 8
+        try JSONEncoder().encode(project).write(to: projectURL)
+        XCTAssertThrowsError(try renderTimelineProject(options: options(["--inspect"]), projectURL: projectURL))
+
+        project.tracks[0].clips[0].timelineStart = 4
+        project.exportSettings?.renderScope = .singleClip
+        try JSONEncoder().encode(project).write(to: projectURL)
+        XCTAssertThrowsError(try renderTimelineProject(options: options(["--inspect"]), projectURL: projectURL))
+    }
+
+    func testSingleSourceExportCannotOverwriteLayoutPresetEvenWithForce() async throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let activityURL = directory.appendingPathComponent("activity.gpx")
+        try Data(gpx.utf8).write(to: activityURL)
+        let presetURL = directory.appendingPathComponent("layout.dlspreset")
+        let date = Date(timeIntervalSince1970: 0)
+        let preset = LayoutPreset(id: "example", name: "Example", layout: .default, createdAt: date, updatedAt: date)
+        let presetData = try JSONEncoder().encode(preset)
+        try presetData.write(to: presetURL)
+        var presetPaths = [presetURL.path]
+        #if !os(Windows)
+        let symlink = directory.appendingPathComponent("layout-alias.dlspreset")
+        try FileManager.default.createSymbolicLink(at: symlink, withDestinationURL: presetURL)
+        presetPaths.append(symlink.path)
+        #endif
+
+        for path in presetPaths {
+            do {
+                try await DataLayerCLICommand.run(arguments: [
+                    "overlay", "--fit", activityURL.path, "--layout-preset", path, "--output", presetURL.path,
+                    "--width", "320", "--height", "180", "--fps", "4", "--force"
+                ])
+                XCTFail("Export must refuse to overwrite its layout preset.")
+            } catch {
+                guard case CLIError.outputMatchesInput(presetURL.path) = error else { return XCTFail("\(error)") }
+            }
+        }
+        XCTAssertEqual(try Data(contentsOf: presetURL), presetData)
+    }
+
     func testIndividualOutputsAreAllCheckedBeforeWriting() throws {
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

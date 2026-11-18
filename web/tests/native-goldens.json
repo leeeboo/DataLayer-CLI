@@ -11,7 +11,7 @@
     "Sources/OverlayCore/FIT/FITError.swift": "a96a788f43873d156c699ae49fdb0db71a9ee52bf7c4be9d36d22e4904a9c66e",
     "Sources/OverlayCore/FIT/FITFieldDecoder.swift": "3e0a5f7269365428402c69705544aa09379391af4e97cdf3351e8e17cb72179b",
     "Sources/OverlayCore/FIT/FITParser.swift": "56ca7448d15fa04f3e027a81f575ade0c248278c6481ea2c53676de571ad7111",
-    "Sources/OverlayCore/Rendering/OverlayRenderer.swift": "7d79539bd5fa1f9210c8e55a90b3206c71c51c6fc080bc0ccb13d35742e6686a",
+    "Sources/OverlayCore/Rendering/OverlayRenderer.swift": "52931004145d8e73dfff250bce7be4d2b9fd45e6cdcdcfbc6b9f7716b9eff91a",
     "Sources/OverlayCore/Rendering/OverlayRenderConfig.swift": "878aad1bed3fd6a1d0ebc240e327b3a0ae9623abffde93c73b1984d439f3e1b9",
     "Sources/OverlayCore/Rendering/OverlayLayout.swift": "61a1568d24f70af4d247f4e971d857335a88daa37e6b09f6400456b6fb4f9421"
   },

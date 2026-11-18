@@ -191,6 +191,39 @@ public enum TimelineExportService {
         ).map { TimelineExportRange(start: $0.start, duration: $0.duration) }
     }
 
+    /// Omits enabled overlays between individual outputs while retaining all source assets.
+    public static func projectForExport(
+        _ project: TimelineProject,
+        ranges: [TimelineExportRange],
+        renderScope: TimelineProjectExportSettings.RenderScope
+    ) -> TimelineProject {
+        guard renderScope == .individualClips else { return project }
+        let orderedRanges = ranges.sorted { $0.start < $1.start }
+        let overlays = project.enabledClips(kind: .overlay)
+            .filter { $0.timelineStart.isFinite && $0.timelineEnd > $0.timelineStart }
+            .sorted { $0.timelineStart < $1.timelineStart }
+        var clipIDs = Set<String>()
+        var rangeIndex = orderedRanges.startIndex
+        // Both lists are ordered by start, so a range that ended before this clip can never be used again.
+        for clip in overlays {
+            while rangeIndex < orderedRanges.endIndex {
+                let range = orderedRanges[rangeIndex]
+                if range.start + range.duration > clip.timelineStart { break }
+                rangeIndex += 1
+            }
+            if rangeIndex < orderedRanges.endIndex, orderedRanges[rangeIndex].start < clip.timelineEnd {
+                clipIDs.insert(clip.id)
+            }
+        }
+
+        var exportProject = project
+        for index in exportProject.tracks.indices {
+            guard exportProject.tracks[index].kind == .overlay, exportProject.tracks[index].isEnabled else { continue }
+            exportProject.tracks[index].clips.removeAll { $0.isEnabled && !clipIDs.contains($0.id) }
+        }
+        return exportProject
+    }
+
     private static func firstParameterIssue(
         for request: TimelineExportRequest
     ) -> TimelineExportPreflightIssue? {
