@@ -140,6 +140,140 @@ final class VideoExportOperationTests: XCTestCase {
         wait(for: [returned], timeout: 1)
     }
 
+    func testExclusiveInstallPreservesAnOutputCreatedDuringInstallation() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let completed = directory.appendingPathComponent("completed.mov")
+        let output = directory.appendingPathComponent("output.mov")
+        let renderedData = Data("completed export".utf8)
+        let concurrentData = Data("other process's output".utf8)
+        try renderedData.write(to: completed)
+
+        XCTAssertThrowsError(try VideoExportSupport.installCompletedOutput(
+            from: completed, to: output, allowingReplacement: false, cancellationHandler: nil,
+            diagnosticsHandler: { event in
+                guard event.phase == .update, event.operationStep == .outputMove else { return }
+                XCTAssertFalse(FileManager.default.fileExists(atPath: output.path))
+                do {
+                    try concurrentData.write(to: output)
+                } catch {
+                    XCTFail("Could not create the competing output: \(error)")
+                }
+            }
+        )) { error in
+            XCTAssertEqual((error as? CocoaError)?.code, .fileWriteFileExists)
+        }
+        XCTAssertEqual(try Data(contentsOf: output), concurrentData)
+        XCTAssertEqual(try Data(contentsOf: completed), renderedData)
+    }
+
+    func testExclusiveInstallPublishesACompletedExportAtAFreePath() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let completed = directory.appendingPathComponent("completed.mov")
+        let output = directory.appendingPathComponent("成片.mov")
+        let renderedData = Data("completed export".utf8)
+        try renderedData.write(to: completed)
+
+        try VideoExportSupport.installCompletedOutput(
+            from: completed, to: output, allowingReplacement: false, cancellationHandler: nil
+        )
+        XCTAssertEqual(try Data(contentsOf: output), renderedData)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: completed.path))
+    }
+
+    #if canImport(AVFoundation)
+    func testUnsupportedExclusiveRenameCopiesOnlyToAFreePath() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let completed = directory.appendingPathComponent("completed.mov")
+        let output = directory.appendingPathComponent("output.mov")
+        let rendered = Data(repeating: 42, count: 2_000_000)
+        let concurrent = Data("other process's output".utf8)
+        try rendered.write(to: completed)
+        try concurrent.write(to: output)
+
+        let unsupported: (URL, URL) throws -> Void = { _, _ in throw POSIXError(.ENOTSUP) }
+        XCTAssertThrowsError(try VideoExportSupport.installCompletedOutput(
+            from: completed, to: output, allowingReplacement: false, cancellationHandler: nil,
+            moveItemExclusively: unsupported
+        )) { error in
+            XCTAssertEqual((error as? CocoaError)?.code, .fileWriteFileExists)
+        }
+        XCTAssertEqual(try Data(contentsOf: output), concurrent)
+        XCTAssertEqual(try Data(contentsOf: completed), rendered)
+
+        try FileManager.default.removeItem(at: output)
+        try VideoExportSupport.installCompletedOutput(
+            from: completed, to: output, allowingReplacement: false, cancellationHandler: nil,
+            moveItemExclusively: unsupported
+        )
+        XCTAssertEqual(try Data(contentsOf: output), rendered)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: completed.path))
+    }
+
+    func testCancelledExclusiveCopyTruncatesItsOutputAndPreservesAReplacement() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let completed = directory.appendingPathComponent("completed.mov")
+        let rendered = Data("completed export".utf8)
+        let concurrent = Data("other process's output".utf8)
+        try rendered.write(to: completed)
+
+        for replacesOutput in [false, true] {
+            let output = directory.appendingPathComponent("output-\(replacesOutput).mov")
+            XCTAssertThrowsError(try VideoExportSupport.installCompletedOutput(
+                from: completed, to: output, allowingReplacement: false, cancellationHandler: {
+                    guard FileManager.default.fileExists(atPath: output.path) else { return false }
+                    if replacesOutput {
+                        do {
+                            try FileManager.default.moveItem(at: output, to: directory.appendingPathComponent("moved.mov"))
+                            try concurrent.write(to: output)
+                        } catch {
+                            XCTFail("Could not replace the test output: \(error)")
+                        }
+                    }
+                    return true
+                }, moveItemExclusively: { _, _ in throw POSIXError(.ENOTSUP) }
+            )) { error in
+                guard case OverlayVideoError.cancelled = error else { return XCTFail("Unexpected error: \(error)") }
+            }
+            if replacesOutput {
+                XCTAssertEqual(try Data(contentsOf: output), concurrent)
+                XCTAssertEqual(try Data(contentsOf: directory.appendingPathComponent("moved.mov")), Data())
+            } else {
+                XCTAssertEqual(try Data(contentsOf: output), Data())
+            }
+            XCTAssertEqual(try Data(contentsOf: completed), rendered)
+        }
+    }
+
+    func testFailedExclusiveCopyReportsItsEmptyPlaceholder() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let completed = directory.appendingPathComponent("completed.mov")
+        let output = directory.appendingPathComponent("output.mov")
+        try Data("completed export".utf8).write(to: completed)
+
+        XCTAssertThrowsError(try VideoExportSupport.installCompletedOutput(
+            from: completed, to: output, allowingReplacement: false, cancellationHandler: nil,
+            moveItemExclusively: { source, _ in
+                try FileManager.default.removeItem(at: source)
+                throw POSIXError(.ENOTSUP)
+            }
+        )) { error in
+            XCTAssertTrue(error.localizedDescription.contains("may have left an empty or incomplete file"))
+        }
+        XCTAssertEqual(try Data(contentsOf: output), Data())
+    }
+    #endif
+
+    private func makeTemporaryDirectory() throws -> URL {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        return directory
+    }
+
     private func releaseAndWaitForCleanup(_ release: DispatchSemaphore, finished: DispatchSemaphore) {
         release.signal()
         // Some tests call this before their defer to assert the post-cleanup state.

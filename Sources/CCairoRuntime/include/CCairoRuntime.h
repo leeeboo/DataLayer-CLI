@@ -26,6 +26,7 @@ void *dls_text_create(const char *text, const char *family, double size, int wei
 void dls_text_destroy(void *line);
 DLSFontMetrics dls_text_metrics(void *line);
 void dls_text_draw(void *context, void *line, double x, double y, double r, double g, double b, double a);
-// Atomically replace a file on the same volume; the destination survives a failed replacement.
-int dls_replace_file(const char *source, const char *destination);
+// Atomically install a completed file on the same volume.
+enum { DLS_OUTPUT_FILE_EXISTS = -2 };
+int dls_install_file(const char *source, const char *destination, int replace_existing);
 int dls_process_is_running(int32_t pid);

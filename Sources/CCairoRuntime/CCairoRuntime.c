@@ -1,3 +1,7 @@
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
+#endif
+
 #include "CCairoRuntime.h"
 #include <stdlib.h>
 #include <string.h>
@@ -37,7 +41,9 @@ static void *open_library(const char *name) {
 #define THREAD_LOCAL __declspec(thread)
 #else
 #include <dlfcn.h>
+#include <fcntl.h>
 #include <signal.h>
+#include <unistd.h>
 #define OPEN(name) dlopen(name, RTLD_NOW | RTLD_LOCAL)
 #define SYMBOL(handle, name) dlsym(handle, name)
 #define THREAD_LOCAL _Thread_local
@@ -274,7 +280,7 @@ void dls_text_draw(void *context, void *line, double x, double y, double r, doub
     cairo_new_path(cr); cairo_append_path(cr,path); cairo_path_destroy(path);
 }
 
-int dls_replace_file(const char *source, const char *destination) {
+int dls_install_file(const char *source, const char *destination, int replace_existing) {
 #ifdef _WIN32
     int source_count=MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,source,-1,NULL,0);
     int destination_count=MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,destination,-1,NULL,0);
@@ -283,10 +289,29 @@ int dls_replace_file(const char *source, const char *destination) {
     if(!s || !d){free(s);free(d);return ERROR_NOT_ENOUGH_MEMORY;}
     MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,source,-1,s,source_count);
     MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,destination,-1,d,destination_count);
-    int error=MoveFileExW(s,d,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)?0:(int)GetLastError();
-    free(s);free(d);return error;
+    DWORD flags = MOVEFILE_WRITE_THROUGH;
+    if (replace_existing) flags |= MOVEFILE_REPLACE_EXISTING;
+    int error = MoveFileExW(s, d, flags) ? 0 : (int)GetLastError();
+    free(s);
+    free(d);
+    if (!replace_existing && (error == ERROR_ALREADY_EXISTS || error == ERROR_FILE_EXISTS)) {
+        return DLS_OUTPUT_FILE_EXISTS;
+    }
+    return error;
 #else
-    return rename(source,destination)==0?0:errno;
+    if (replace_existing) return rename(source, destination) == 0 ? 0 : errno;
+#if defined(__linux__)
+    if (renameat2(AT_FDCWD, source, AT_FDCWD, destination, RENAME_NOREPLACE) == 0) return 0;
+    if (errno != ENOSYS && errno != EINVAL && errno != ENOTSUP) {
+        return errno == EEXIST ? DLS_OUTPUT_FILE_EXISTS : errno;
+    }
+#endif
+    // A hard link publishes only the completed file and fails when the pathname is occupied.
+    if (link(source, destination) == 0) {
+        unlink(source);
+        return 0;
+    }
+    return errno == EEXIST ? DLS_OUTPUT_FILE_EXISTS : errno;
 #endif
 }
 

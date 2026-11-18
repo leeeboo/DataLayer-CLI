@@ -243,12 +243,17 @@ public final class TimelineVideoWriter {
 
     @discardableResult
     public func write() throws -> VideoExportResult {
+        try write(allowingOutputReplacement: true)
+    }
+
+    @discardableResult
+    package func write(allowingOutputReplacement: Bool) throws -> VideoExportResult {
         try VideoExportCleanup.check()
         #if os(macOS)
         if let executable = VideoExportWorker.executableURL {
             return try VideoExportWorker.write(outputURL: outputURL, project: project,
                                               telemetry: telemetrySeriesByAssetID, config: config,
-                                              executableURL: executable)
+                                              executableURL: executable, allowingOutputReplacement: allowingOutputReplacement)
         }
         return try VideoExportSupport.performWriting(
             cancellationHandler: config.cancellationHandler,
@@ -262,14 +267,14 @@ public final class TimelineVideoWriter {
             config.diagnosticsHandler = control.recordDiagnostic
             return try TimelineVideoWriter(outputURL: self.outputURL, project: self.project,
                                           telemetrySeriesByAssetID: self.telemetrySeriesByAssetID,
-                                          config: config).writeUnmonitored()
+                                          config: config).writeUnmonitored(allowingOutputReplacement: allowingOutputReplacement)
         }
         #else
-        return try writeUnmonitored()
+        return try writeUnmonitored(allowingOutputReplacement: allowingOutputReplacement)
         #endif
     }
 
-    func writeUnmonitored() throws -> VideoExportResult {
+    func writeUnmonitored(allowingOutputReplacement: Bool = true) throws -> VideoExportResult {
         resetDiagnosticFailure()
         do {
             diagnosePreparation(step: .validateProject, phase: .begin)
@@ -287,9 +292,9 @@ public final class TimelineVideoWriter {
             let result: VideoExportResult
             switch config.codec.exportMode {
             case .video:
-                result = try writeCompositedVideo()
+                result = try writeCompositedVideo(allowingOutputReplacement: allowingOutputReplacement)
             case .overlay:
-                try writeTransparentOverlay()
+                try writeTransparentOverlay(allowingOutputReplacement: allowingOutputReplacement)
                 result = .success
             }
             deliverDiagnostic(.init(stage: .exportCompleted, phase: .end))
@@ -308,7 +313,7 @@ public final class TimelineVideoWriter {
         }
     }
 
-    private func writeCompositedVideo() throws -> VideoExportResult {
+    private func writeCompositedVideo(allowingOutputReplacement: Bool) throws -> VideoExportResult {
         diagnosePreparation(step: .collectVideoClips, phase: .begin)
         let videoClips: [TimelineClip]
         do {
@@ -412,10 +417,10 @@ public final class TimelineVideoWriter {
             )
         }
         diagnosePreparation(step: .createCompositedWriter, phase: .end)
-        return try writer.writeUnmonitored()
+        return try writer.writeUnmonitored(allowingOutputReplacement: allowingOutputReplacement)
     }
 
-    private func writeTransparentOverlay() throws {
+    private func writeTransparentOverlay(allowingOutputReplacement: Bool) throws {
         diagnosePreparation(step: .prepareOverlays, phase: .begin)
         let overlays: [OverlayComposition]
         do {
@@ -426,7 +431,7 @@ public final class TimelineVideoWriter {
         }
         diagnosePreparation(step: .prepareOverlays, phase: .end, sourceCount: overlays.count)
         if overlays.count != 1 || !clipCoversExportRange(overlays[0].clip) {
-            try writeMultiTransparentOverlay(overlays)
+            try writeMultiTransparentOverlay(overlays, allowingOutputReplacement: allowingOutputReplacement)
             return
         }
 
@@ -456,10 +461,10 @@ public final class TimelineVideoWriter {
                 diagnosticsHandler: deliverDiagnostic,
                 temporaryDirectory: config.temporaryDirectory
             )
-        ).writeUnmonitored()
+        ).writeUnmonitored(allowingOutputReplacement: allowingOutputReplacement)
     }
 
-    private func writeMultiTransparentOverlay(_ overlays: [OverlayComposition]) throws {
+    private func writeMultiTransparentOverlay(_ overlays: [OverlayComposition], allowingOutputReplacement: Bool) throws {
         var activeStage: VideoExportDiagnosticEvent.Stage = .prepareWriter
         var writer: AVAssetWriter?
         let temporaryOutputURL = makeTemporaryOutputURL(tag: "timeline-overlay")
@@ -732,6 +737,7 @@ public final class TimelineVideoWriter {
                 try VideoExportSupport.installCompletedOutput(
                     from: temporaryOutputURL,
                     to: outputURL,
+                    allowingReplacement: allowingOutputReplacement,
                     cancellationHandler: config.cancellationHandler,
                     diagnosticsHandler: config.diagnosticsHandler == nil ? nil : deliverDiagnostic
                 )

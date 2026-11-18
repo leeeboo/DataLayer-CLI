@@ -390,6 +390,111 @@ final class TransparentVideoWriterTests: XCTestCase {
         XCTAssertEqual(remaining, ["output.mov"], "目标目录不应残留备份等同级文件")
     }
 
+    func testReplacementDoesNotRemoveAnOutputDirectoryCreatedBeforePublication() throws {
+        let manager = FileManager.default
+        let directory = manager.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try manager.createDirectory(at: directory, withIntermediateDirectories: false)
+        defer { try? manager.removeItem(at: directory) }
+        let completed = directory.appendingPathComponent("completed.mov")
+        let output = directory.appendingPathComponent("output.mov")
+        let existing = output.appendingPathComponent("keep.txt")
+        let protected = Data("new directory's contents".utf8)
+        try Data("new video".utf8).write(to: completed)
+
+        XCTAssertThrowsError(try VideoExportSupport.installCompletedOutput(
+            from: completed, to: output, cancellationHandler: nil, diagnosticsHandler: { event in
+                guard event.phase == .update, event.operationStep == .outputMove else { return }
+                do {
+                    try manager.createDirectory(at: output, withIntermediateDirectories: false)
+                    try protected.write(to: existing)
+                } catch {
+                    XCTFail("Could not create the competing directory: \(error)")
+                }
+            }
+        )) { error in
+            XCTAssertEqual((error as? CocoaError)?.code, .fileWriteFileExists)
+        }
+        XCTAssertEqual(try Data(contentsOf: existing), protected)
+        XCTAssertTrue(manager.fileExists(atPath: completed.path))
+    }
+
+    func testReplacementDirectlyRejectsAnExistingOutputDirectory() throws {
+        let manager = FileManager.default
+        let directory = manager.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let output = directory.appendingPathComponent("output.mov", isDirectory: true)
+        try manager.createDirectory(at: output, withIntermediateDirectories: true)
+        defer { try? manager.removeItem(at: directory) }
+        let completed = directory.appendingPathComponent("completed.mov")
+        let existing = output.appendingPathComponent("keep.txt")
+        let protected = Data("existing directory's contents".utf8)
+        try Data("new video".utf8).write(to: completed)
+        try protected.write(to: existing)
+
+        XCTAssertThrowsError(try VideoExportSupport.installCompletedOutput(
+            from: completed, to: output, cancellationHandler: nil,
+            replaceItem: { _, _ in XCTFail("A directory is not a replaceable output") }
+        )) { error in
+            XCTAssertEqual((error as? POSIXError)?.code, .EISDIR)
+        }
+        XCTAssertEqual(try Data(contentsOf: existing), protected)
+        XCTAssertTrue(manager.fileExists(atPath: completed.path))
+    }
+
+    func testReplacementChecksThatTheApprovedOutputStillOccupiesThePath() throws {
+        let manager = FileManager.default
+        let directory = manager.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try manager.createDirectory(at: directory, withIntermediateDirectories: false)
+        defer { try? manager.removeItem(at: directory) }
+        let completed = directory.appendingPathComponent("completed.mov")
+        let output = directory.appendingPathComponent("output.mov")
+        let approved = directory.appendingPathComponent("previous.mov")
+        let original = Data("original output".utf8)
+        let competing = Data("other process's output".utf8)
+        try Data("completed export".utf8).write(to: completed)
+        try original.write(to: output)
+
+        XCTAssertThrowsError(try VideoExportSupport.installCompletedOutput(
+            from: completed, to: output, cancellationHandler: nil,
+            diagnosticsHandler: { event in
+                guard event.phase == .update, event.operationStep == .outputReplace else { return }
+                do {
+                    try manager.moveItem(at: output, to: approved)
+                    try competing.write(to: output)
+                } catch {
+                    XCTFail("Could not replace the test output: \(error)")
+                }
+            },
+            replaceItem: { _, _ in XCTFail("Only the original output is eligible for replacement") }
+        )) { error in
+            XCTAssertEqual((error as? CocoaError)?.code, .fileWriteFileExists)
+        }
+        XCTAssertEqual(try Data(contentsOf: output), competing)
+        XCTAssertEqual(try Data(contentsOf: approved), original)
+        XCTAssertTrue(manager.fileExists(atPath: completed.path))
+    }
+
+    func testCancellationAfterPublishingKeepsTheCompletedOutput() throws {
+        let manager = FileManager.default
+        let directory = manager.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try manager.createDirectory(at: directory, withIntermediateDirectories: false)
+        defer { try? manager.removeItem(at: directory) }
+        let completed = directory.appendingPathComponent("completed.mov")
+        let output = directory.appendingPathComponent("output.mov")
+        let video = Data("completed export".utf8)
+        try video.write(to: completed)
+        var cancelled = false
+
+        try VideoExportSupport.installCompletedOutput(
+            from: completed, to: output, cancellationHandler: { cancelled },
+            moveItemExclusively: { source, destination in
+                try manager.moveItem(at: source, to: destination)
+                cancelled = true
+            }
+        )
+        XCTAssertTrue(cancelled)
+        XCTAssertEqual(try Data(contentsOf: output), video)
+    }
+
     func testCompletedOutputInstallationThrowsWhenCancelledBeforeInstalling() throws {
         let fileManager = FileManager.default
         let outputURL = fileManager.temporaryDirectory
@@ -577,22 +682,20 @@ final class TransparentVideoWriterTests: XCTestCase {
             diagnosticsHandler: { diagnostics.append($0) }
         )) { error in
             let native = error as NSError
-            XCTAssertEqual(native.domain, NSCocoaErrorDomain)
-            let underlying = native.userInfo[NSUnderlyingErrorKey] as? NSError
-            XCTAssertEqual(underlying?.domain, NSPOSIXErrorDomain)
-            XCTAssertEqual(underlying?.code, Int(ENOENT))
+            XCTAssertEqual(native.domain, NSPOSIXErrorDomain)
+            XCTAssertEqual(native.code, Int(ENOENT))
         }
         XCTAssertEqual(try Data(contentsOf: completedURL), completed)
         XCTAssertFalse(manager.fileExists(atPath: outputURL.path))
         let failure = try XCTUnwrap(diagnostics.last)
         XCTAssertEqual(failure.phase, .failure)
-        XCTAssertEqual(failure.operationStep, .outputCreateFile)
+        XCTAssertEqual(failure.operationStep, .outputMove)
         XCTAssertEqual(failure.fileSystemHints?.sourceExists, true)
         XCTAssertEqual(failure.fileSystemHints?.parentExists, false)
         XCTAssertEqual(failure.fileSystemHints?.failurePathRole, .target)
         XCTAssertEqual(failure.fileSystemHints?.failureParentExists, false)
-        XCTAssertEqual(diagnostics.compactMap(\.operationStep),
-                       [.outputCheckCompleted, .outputMove, .outputCopy, .outputCreateFile])
+        XCTAssertEqual(diagnostics.filter { $0.phase == .update }.compactMap(\.operationStep),
+                       [.outputCheckCompleted, .outputMove])
     }
 
     func testCompletedOutputInstallationPreservesMissingSourceError() throws {

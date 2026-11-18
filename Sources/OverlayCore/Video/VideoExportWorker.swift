@@ -75,7 +75,7 @@ public enum VideoExportWorker {
 
     static func write(outputURL: URL, project: TimelineProject, telemetry: [String: TelemetrySeries],
                       config: TimelineVideoWriterConfig, executableURL: URL,
-                      stallTimeout: TimeInterval = 120) throws -> VideoExportResult {
+                      stallTimeout: TimeInterval = 120, allowingOutputReplacement: Bool = true) throws -> VideoExportResult {
         let videoIDs = config.codec.exportMode == .video
             ? Set(try project.validatedVideoClipsForExport(timelineStart: config.timelineStart,
                                                           duration: config.duration).map(\.assetID)) : []
@@ -88,6 +88,7 @@ public enum VideoExportWorker {
                 return try perform(job: .timeline(project, telemetry, attemptConfig), outputURL: outputURL,
                                    sourceURLs: sourceURLs, temporaryDirectory: config.temporaryDirectory,
                                    executableURL: executableURL, stallTimeout: stallTimeout,
+                                   allowingOutputReplacement: allowingOutputReplacement,
                                    cancellation: config.cancellationHandler, progress: config.progressHandler,
                                    diagnostics: { event in
                                        if event.stage != .exportFailed && event.stage != .exportCompleted {
@@ -128,14 +129,15 @@ public enum VideoExportWorker {
     }
 
     static func writeOverlay(outputURL: URL, series: TelemetrySeries, config: TransparentVideoWriterConfig,
-                             executableURL: URL) throws {
+                             executableURL: URL, allowingOutputReplacement: Bool = true) throws {
         _ = try perform(job: .overlay(series, config), outputURL: outputURL, sourceURLs: [], temporaryDirectory: config.temporaryDirectory,
-                        executableURL: executableURL, cancellation: config.cancellationHandler,
+                        executableURL: executableURL, allowingOutputReplacement: allowingOutputReplacement, cancellation: config.cancellationHandler,
                         progress: config.progressHandler, diagnostics: config.diagnosticsHandler)
     }
 
     private static func perform(job: Job, outputURL: URL, sourceURLs: [URL], temporaryDirectory: URL?, executableURL: URL,
-                                stallTimeout: TimeInterval = 120, cancellation: (() -> Bool)?,
+                                stallTimeout: TimeInterval = 120, allowingOutputReplacement: Bool,
+                                cancellation: (() -> Bool)?,
                                 progress: ((Int, Int) -> Void)?,
                                 diagnostics: ((VideoExportDiagnosticEvent) -> Void)?) throws -> VideoExportResult {
         try VideoExportCleanup.check()
@@ -203,7 +205,8 @@ public enum VideoExportWorker {
         try VideoExportSupport.throwIfCancelled(cancellation)
         diagnostics?(.init(stage: .installOutput, phase: .begin))
         try VideoExportSupport.installCompletedOutput(from: directory.appendingPathComponent("completed.mov"),
-                                                      to: outputURL, cancellationHandler: cancellation,
+                                                      to: outputURL, allowingReplacement: allowingOutputReplacement,
+                                                      cancellationHandler: cancellation,
                                                       diagnosticsHandler: diagnostics)
         diagnostics?(.init(stage: .exportCompleted, phase: .end))
         return VideoExportResult(warnings: messages.map(\.warning))

@@ -224,7 +224,7 @@ public final class CompositedVideoWriter {
     }
 
     @discardableResult
-    func writeUnmonitored() throws -> VideoExportResult {
+    func writeUnmonitored(allowingOutputReplacement: Bool = true) throws -> VideoExportResult {
         diagnose(
             stage: .prepareTimeline,
             phase: .begin,
@@ -259,7 +259,8 @@ public final class CompositedVideoWriter {
             try VideoExportSupport.throwIfCancelled(config.cancellationHandler)
             diagnose(stage: .installOutput, phase: .begin)
             try VideoExportSupport.installCompletedOutput(
-                from: finalURL, to: outputURL, cancellationHandler: config.cancellationHandler,
+                from: finalURL, to: outputURL, allowingReplacement: allowingOutputReplacement,
+                cancellationHandler: config.cancellationHandler,
                 diagnosticsHandler: config.diagnosticsHandler == nil ? nil : deliverDiagnostic
             )
             diagnose(stage: .installOutput, phase: .end)

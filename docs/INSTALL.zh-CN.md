@@ -75,6 +75,8 @@ cd "$cli_directory" &&
 ./overlay --fit "activity.fit" --layout-preset "layout.dlspreset" --codec prores-4444 --output "custom.mov"
 ```
 
+默认导出会保留渲染期间出现的同名目标。在 macOS 的 exFAT 等卷上，CLI 先独占创建目标文件，再复制已完成的视频。复制过程中断可能留下空文件或不完整文件。Linux 的普通导出需要支持排他重命名或硬链接的文件系统，例如 ext4。其他卷可改用支持的目标位置，或在确实允许替换时传入 `--force`。
+
 从源码构建是可选项。开发者仍需安装 Swift 工具链和媒体/图形依赖，详见[开发指南](../CONTRIBUTING.md)。
 
 如果提示缺少 DLL 或库，请重新完整解压。Windows 程序尚未签名；macOS 程序已签名并公证。Linux 二进制支持目标为 Ubuntu 24.04 x86_64。

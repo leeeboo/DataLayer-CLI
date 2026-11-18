@@ -249,11 +249,15 @@ public final class TransparentVideoWriter {
     }
 
     public func write() throws {
+        try write(allowingOutputReplacement: true)
+    }
+
+    package func write(allowingOutputReplacement: Bool) throws {
         try VideoExportCleanup.check()
         #if os(macOS)
         if let executable = VideoExportWorker.executableURL {
             try VideoExportWorker.writeOverlay(outputURL: outputURL, series: series, config: config,
-                                               executableURL: executable)
+                                               executableURL: executable, allowingOutputReplacement: allowingOutputReplacement)
             return
         }
         try VideoExportSupport.performWriting(
@@ -266,14 +270,15 @@ public final class TransparentVideoWriter {
             config.cancellationHandler = { control.isCancelled }
             config.progressHandler = control.recordProgress
             config.diagnosticsHandler = control.recordDiagnostic
-            try TransparentVideoWriter(outputURL: self.outputURL, series: self.series, config: config).writeUnmonitored()
+            try TransparentVideoWriter(outputURL: self.outputURL, series: self.series, config: config)
+                .writeUnmonitored(allowingOutputReplacement: allowingOutputReplacement)
         }
         #else
-        try writeUnmonitored()
+        try writeUnmonitored(allowingOutputReplacement: allowingOutputReplacement)
         #endif
     }
 
-    func writeUnmonitored() throws {
+    func writeUnmonitored(allowingOutputReplacement: Bool = true) throws {
         resetDiagnosticFailure()
         if config.cancellationHandler?() == true {
             let error = OverlayVideoError.cancelled
@@ -292,6 +297,7 @@ public final class TransparentVideoWriter {
                 try VideoExportSupport.installCompletedOutput(
                     from: temporaryOutputURL,
                     to: outputURL,
+                    allowingReplacement: allowingOutputReplacement,
                     cancellationHandler: config.cancellationHandler,
                     diagnosticsHandler: config.diagnosticsHandler == nil ? nil : deliverDiagnostic
                 )
@@ -1098,6 +1104,7 @@ enum VideoExportSupport {
     static func installCompletedOutput(
         from completedURL: URL,
         to outputURL: URL,
+        allowingReplacement: Bool = true,
         cancellationHandler: (() -> Bool)?,
         diagnosticsHandler: ((VideoExportDiagnosticEvent) -> Void)? = nil,
         replaceItem: (URL, URL) throws -> Void = { outputURL, completedURL in
@@ -1106,7 +1113,8 @@ enum VideoExportSupport {
                 withItemAt: completedURL,
                 backupItemName: nil
             )
-        }
+        },
+        moveItemExclusively: (URL, URL) throws -> Void = moveOutputExclusively
     ) throws {
         let fileManager = FileManager.default
         var step = VideoExportDiagnosticEvent.OperationStep.outputCheckCompleted
@@ -1115,81 +1123,107 @@ enum VideoExportSupport {
             step = value
             diagnosticsHandler?(.init(stage: .installOutput, phase: .update, operationStep: value))
         }
+        func copyNewOutput(to target: URL, exclusively: Bool = false) throws {
+            try copyFile(
+                from: completedURL, to: target, cancellationHandler: cancellationHandler,
+                requiringExclusiveDestination: exclusively,
+                failureHandler: { error, failedStep in
+                    step = failedStep
+                    failureHints = .capture(sourceURL: completedURL, targetURL: target, error: error)
+                }
+            )
+        }
+        func publishNewOutput() throws {
+            checkpoint(.outputMove)
+            try throwIfCancelled(cancellationHandler)
+            do {
+                try moveItemExclusively(completedURL, outputURL)
+            } catch let error as POSIXError where error.code == .EXDEV {
+                // Stage the completed movie on the destination volume before publishing it.
+                checkpoint(.outputCopy)
+                let directory: URL
+                do {
+                    directory = try fileManager.url(for: .itemReplacementDirectory, in: .userDomainMask,
+                                                    appropriateFor: outputURL, create: true)
+                } catch let error as NSError where allowingReplacement && error.domain == NSCocoaErrorDomain
+                    && error.code == CocoaError.fileWriteNoPermission.rawValue {
+                    // A save panel may authorize the selected file but deny staging elsewhere on its volume.
+                    try throwIfCancelled(cancellationHandler)
+                    try copyNewOutput(to: outputURL, exclusively: true)
+                    return
+                }
+                defer { try? fileManager.removeItem(at: directory) }
+                // An empty probe avoids copying the full movie twice on filesystems such as exFAT.
+                let probe = directory.appendingPathComponent("probe")
+                try Data().write(to: probe, options: .withoutOverwriting)
+                try moveItemExclusively(probe, directory.appendingPathComponent("published-probe"))
+                let staged = directory.appendingPathComponent("completed.mov")
+                try copyNewOutput(to: staged)
+                checkpoint(.outputMove)
+                try throwIfCancelled(cancellationHandler)
+                try moveItemExclusively(staged, outputURL)
+            }
+        }
         do {
             try throwIfCancelled(cancellationHandler)
             checkpoint(.outputCheckCompleted)
             try FileHandle(forReadingFrom: completedURL).close()
 
-            if fileManager.fileExists(atPath: outputURL.path) {
+            let existingFile = allowingReplacement ? try regularOutputFile(at: outputURL) : nil
+            guard let existingFile else {
+                do {
+                    try publishNewOutput()
+                } catch let error as POSIXError where error.code == .ENOTSUP {
+                    // On volumes without exclusive renames or hard links, claim the name
+                    // atomically and stream into that open file.
+                    checkpoint(.outputCopy)
+                    try throwIfCancelled(cancellationHandler)
+                    try copyNewOutput(to: outputURL, exclusively: true)
+                }
+                try? fileManager.removeItem(at: completedURL)
+                return
+            }
+
+            func replaceExistingOutput(with source: URL) throws {
+                checkpoint(.outputReplace)
+                try throwIfCancelled(cancellationHandler)
+                guard let current = try regularOutputFile(at: outputURL),
+                      current.st_dev == existingFile.st_dev, current.st_ino == existingFile.st_ino else {
+                    throw outputError(EEXIST, at: outputURL)
+                }
+                try replaceItem(outputURL, source)
+            }
+            do {
                 // 沙盒下 NSSavePanel 只授权用户选中的文件本身，不授权它所在的目录。
                 // 传 backupItemName 会让 FileManager 在目标目录新建一个同级备份文件，
                 // 越权触发 NSFileWriteNoPermission；而替换此时已经完成，表现为
                 // "文件已正确替换但报导出失败"。backupItemName 为 nil 时原件暂存在
                 // FileManager 自己的临时目录，同样是原子替换，且不碰用户目录。
-                do {
-                    checkpoint(.outputReplace)
-                    try replaceItem(outputURL, completedURL)
-                    return
-                } catch {
-                    // 替换若已经生效（源文件被消费），即使随后抛错也不应判为失败。
-                    if !fileManager.fileExists(atPath: completedURL.path) {
-                        return
-                    }
-                    let native = error as NSError
-                    let posix = native.domain == NSPOSIXErrorDomain ? native : native.userInfo[NSUnderlyingErrorKey] as? NSError
-                    guard posix?.domain == NSPOSIXErrorDomain, posix?.code == Int(EXDEV) else { throw error }
-
-                    // 原子替换要求同卷；系统替换目录不需要在用户目标目录创建同级文件。
-                    checkpoint(.outputCopy)
-                    let directory = try fileManager.url(for: .itemReplacementDirectory, in: .userDomainMask,
-                                                        appropriateFor: outputURL, create: true)
-                    defer { try? fileManager.removeItem(at: directory) }
-                    let replacementURL = directory.appendingPathComponent(completedURL.lastPathComponent)
-                    try copyFile(
-                        from: completedURL, to: replacementURL, cancellationHandler: cancellationHandler,
-                        failureHandler: { error, failedStep in
-                            step = failedStep
-                            failureHints = .capture(sourceURL: completedURL, targetURL: replacementURL, error: error)
-                        }
-                    )
-                    try throwIfCancelled(cancellationHandler)
-                    checkpoint(.outputReplace)
-                    do {
-                        try replaceItem(outputURL, replacementURL)
-                    } catch {
-                        if fileManager.fileExists(atPath: replacementURL.path) {
-                            failureHints = .capture(sourceURL: replacementURL, targetURL: outputURL, error: error)
-                            throw error
-                        }
-                    }
-                    try? fileManager.removeItem(at: completedURL)
-                    return
-                }
-            }
-
-            do {
-                checkpoint(.outputMove)
-                try fileManager.moveItem(at: completedURL, to: outputURL)
-                do {
-                    try throwIfCancelled(cancellationHandler)
-                } catch {
-                    try? fileManager.removeItem(at: outputURL)
-                    throw error
-                }
-            } catch OverlayVideoError.cancelled {
-                throw OverlayVideoError.cancelled
+                try replaceExistingOutput(with: completedURL)
             } catch {
-                try? fileManager.removeItem(at: outputURL)
+                // 替换若已经生效（源文件被消费），即使随后抛错也不应判为失败。
+                if !fileManager.fileExists(atPath: completedURL.path) {
+                    return
+                }
+                let native = error as NSError
+                let posix = native.domain == NSPOSIXErrorDomain ? native : native.userInfo[NSUnderlyingErrorKey] as? NSError
+                guard posix?.domain == NSPOSIXErrorDomain, posix?.code == Int(EXDEV) else { throw error }
+
+                // 原子替换要求同卷；系统替换目录不需要在用户目标目录创建同级文件。
                 checkpoint(.outputCopy)
-                try copyFile(
-                    from: completedURL,
-                    to: outputURL,
-                    cancellationHandler: cancellationHandler,
-                    failureHandler: { error, failedStep in
-                        step = failedStep
-                        failureHints = .capture(sourceURL: completedURL, targetURL: outputURL, error: error)
+                let directory = try fileManager.url(for: .itemReplacementDirectory, in: .userDomainMask,
+                                                    appropriateFor: outputURL, create: true)
+                defer { try? fileManager.removeItem(at: directory) }
+                let replacementURL = directory.appendingPathComponent(completedURL.lastPathComponent)
+                try copyNewOutput(to: replacementURL)
+                do {
+                    try replaceExistingOutput(with: replacementURL)
+                } catch {
+                    if fileManager.fileExists(atPath: replacementURL.path) {
+                        failureHints = .capture(sourceURL: replacementURL, targetURL: outputURL, error: error)
+                        throw error
                     }
-                )
+                }
                 try? fileManager.removeItem(at: completedURL)
             }
         } catch OverlayVideoError.cancelled {
@@ -1205,27 +1239,69 @@ enum VideoExportSupport {
         }
     }
 
+    private static func moveOutputExclusively(from sourceURL: URL, to destinationURL: URL) throws {
+        let status = sourceURL.withUnsafeFileSystemRepresentation { source in
+            destinationURL.withUnsafeFileSystemRepresentation { destination in
+                guard let source, let destination else { return EINVAL }
+                if renamex_np(source, destination, UInt32(RENAME_EXCL)) == 0 { return 0 }
+                guard errno == ENOTSUP else { return errno }
+                // Linking a completed file is also atomic and fails if the destination exists.
+                guard link(source, destination) == 0 else { return errno }
+                _ = unlink(source)
+                return 0
+            }
+        }
+        if status != 0 { throw outputError(status, at: destinationURL) }
+    }
+
+    private static func regularOutputFile(at url: URL) throws -> stat? {
+        try url.withUnsafeFileSystemRepresentation { path -> stat? in
+            guard let path else { throw outputError(EINVAL, at: url) }
+            var file = stat()
+            if lstat(path, &file) != 0 {
+                let status = errno
+                if status == ENOENT { return nil }
+                throw outputError(status, at: url)
+            }
+            let type = file.st_mode & S_IFMT
+            if type == S_IFDIR { throw outputError(EISDIR, at: url) }
+            guard type == S_IFREG else { throw outputError(EEXIST, at: url) }
+            return file
+        }
+    }
+
+    private static func outputError(_ status: Int32, at url: URL) -> Error {
+        let details = [NSFilePathErrorKey: url.path]
+        if status == EEXIST { return CocoaError(.fileWriteFileExists, userInfo: details) }
+        return POSIXError(POSIXErrorCode(rawValue: status) ?? .EIO, userInfo: details)
+    }
+
     private static func copyFile(
         from sourceURL: URL,
         to destinationURL: URL,
         cancellationHandler: (() -> Bool)?,
+        requiringExclusiveDestination: Bool = false,
         failureHandler: ((Error, VideoExportDiagnosticEvent.OperationStep) -> Void)? = nil
     ) throws {
         let fileManager = FileManager.default
-        try? fileManager.removeItem(at: destinationURL)
+        if !requiringExclusiveDestination { try? fileManager.removeItem(at: destinationURL) }
         var step = VideoExportDiagnosticEvent.OperationStep.outputCreateFile
         var createdDestination = false
+        var exclusiveDestination: FileHandle?
+        defer { try? exclusiveDestination?.close() }
         do {
-            try Data().write(to: destinationURL, options: .withoutOverwriting)
+            if requiringExclusiveDestination {
+                exclusiveDestination = try createExclusiveOutput(at: destinationURL)
+            } else {
+                try Data().write(to: destinationURL, options: .withoutOverwriting)
+            }
             createdDestination = true
             step = .outputOpenSource
             let source = try FileHandle(forReadingFrom: sourceURL)
+            defer { try? source.close() }
             step = .outputOpenTarget
-            let destination = try FileHandle(forWritingTo: destinationURL)
-            defer {
-                try? source.close()
-                try? destination.close()
-            }
+            let destination = try exclusiveDestination ?? FileHandle(forWritingTo: destinationURL)
+            defer { if !requiringExclusiveDestination { try? destination.close() } }
 
             while true {
                 try throwIfCancelled(cancellationHandler)
@@ -1240,11 +1316,37 @@ enum VideoExportSupport {
             try destination.synchronize()
             try throwIfCancelled(cancellationHandler)
         } catch {
-            failureHandler?(error, step)
-            if createdDestination { try? fileManager.removeItem(at: destinationURL) }
-            throw error
+            var reportedError = error
+            if let exclusiveDestination {
+                // The output path may now belong to another writer. Clean up only through our file handle.
+                try? exclusiveDestination.truncate(atOffset: 0)
+                switch error {
+                case OverlayVideoError.cancelled: break
+                default:
+                    let native = error as NSError
+                    var details = native.userInfo
+                    details[NSLocalizedDescriptionKey] = native.localizedDescription
+                        + " The failed export may have left an empty or incomplete file at the destination."
+                    reportedError = NSError(domain: native.domain, code: native.code, userInfo: details)
+                }
+            }
+            failureHandler?(reportedError, step)
+            if createdDestination && !requiringExclusiveDestination {
+                try? fileManager.removeItem(at: destinationURL)
+            }
+            throw reportedError
         }
     }
+
+    private static func createExclusiveOutput(at url: URL) throws -> FileHandle {
+        try url.withUnsafeFileSystemRepresentation { path in
+            guard let path else { throw outputError(EINVAL, at: url) }
+            let descriptor = open(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, mode_t(0o666))
+            if descriptor >= 0 { return FileHandle(fileDescriptor: descriptor, closeOnDealloc: true) }
+            throw outputError(errno, at: url)
+        }
+    }
+
 }
 
 #endif

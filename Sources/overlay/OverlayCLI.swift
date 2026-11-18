@@ -479,7 +479,7 @@ func run(arguments: [String] = CommandLine.arguments) async throws {
     var exportWarnings: [VideoExportWarning] = []
     switch options.exportMode {
     case .overlay:
-        try TransparentVideoWriter(
+        let writer = TransparentVideoWriter(
             outputURL: options.outputURL,
             series: series,
             config: TransparentVideoWriterConfig(
@@ -498,7 +498,10 @@ func run(arguments: [String] = CommandLine.arguments) async throws {
                 activityTrim: options.activityTrim,
                 progressHandler: progressHandler
             )
-        ).write()
+        )
+        try reportOutputConflict(at: options.outputURL) {
+            try writer.write(allowingOutputReplacement: options.forceOverwrite)
+        }
     case .video:
         let activityAsset = MediaAsset(
             id: fitURL.path,
@@ -535,7 +538,7 @@ func run(arguments: [String] = CommandLine.arguments) async throws {
             layout: resolvedLayout.layout
         )
         project.timeZone = options.timeZoneOverride ?? .activity
-        exportWarnings = try TimelineVideoWriter(
+        let writer = TimelineVideoWriter(
             outputURL: options.outputURL,
             project: project,
             telemetrySeriesByAssetID: [activityAsset.id: series],
@@ -549,7 +552,10 @@ func run(arguments: [String] = CommandLine.arguments) async throws {
                 activityTrim: options.activityTrim,
                 progressHandler: progressHandler
             )
-        ).write().warnings
+        )
+        exportWarnings = try reportOutputConflict(at: options.outputURL) {
+            try writer.write(allowingOutputReplacement: options.forceOverwrite)
+        }.warnings
     }
     print("Wrote \(options.outputURL.path)")
     printExportWarnings(exportWarnings)
@@ -643,7 +649,7 @@ func renderTimelineProject(options: CommandLineOptions, projectURL: URL) throws 
     }
 
     for (range, outputURL) in zip(ranges, outputURLs) {
-        let result = try TimelineVideoWriter(
+        let writer = TimelineVideoWriter(
             outputURL: outputURL,
             project: project,
             telemetrySeriesByAssetID: telemetryByAssetID,
@@ -658,9 +664,20 @@ func renderTimelineProject(options: CommandLineOptions, projectURL: URL) throws 
                 activityTrim: options.activityTrim,
                 progressHandler: progressHandler
             )
-        ).write()
+        )
+        let result = try reportOutputConflict(at: outputURL) {
+            try writer.write(allowingOutputReplacement: options.forceOverwrite)
+        }
         print("Wrote \(outputURL.path)")
         printExportWarnings(result.warnings)
+    }
+}
+
+private func reportOutputConflict<Result>(at outputURL: URL, export: () throws -> Result) throws -> Result {
+    do {
+        return try export()
+    } catch let error as CocoaError where error.code == .fileWriteFileExists {
+        throw CLIError.outputAlreadyExists(outputURL.path)
     }
 }
 

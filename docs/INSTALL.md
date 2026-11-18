@@ -75,6 +75,8 @@ In the extracted folder, create a transparent overlay. Replace the filenames wit
 ./overlay --fit "activity.fit" --layout-preset "layout.dlspreset" --codec prores-4444 --output "custom.mov"
 ```
 
+By default, an export preserves a destination file that appears while rendering. On macOS volumes such as exFAT, the CLI claims the filename exclusively before copying the completed movie. An interrupted copy can leave an empty or incomplete file. On Linux, use a filesystem that supports exclusive rename or hard links, such as ext4. On volumes without either capability, choose another destination or use `--force` if you intend to allow replacement.
+
 Building from source is optional. Developers still need the Swift toolchain and media/graphics dependencies; see [CONTRIBUTING](../CONTRIBUTING.md).
 
 If a DLL or library is missing, extract the full archive again. Windows binaries are unsigned; macOS binaries are signed and notarized. Ubuntu 24.04 x86_64 is the supported Linux binary target.

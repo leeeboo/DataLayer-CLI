@@ -7,25 +7,31 @@ enum VideoExportSupport {
     static func throwIfCancelled(_ handler: (() -> Bool)?) throws {
         if handler?() == true { throw OverlayVideoError.cancelled }
     }
-    static func installCompletedOutput(from completedURL: URL, to outputURL: URL,
-        cancellationHandler: (() -> Bool)?, diagnosticsHandler: ((VideoExportDiagnosticEvent) -> Void)? = nil,
-        replaceItem: (URL, URL) throws -> Void = { output, completed in
-            let status = completed.withUnsafeFileSystemRepresentation { source in
-                output.withUnsafeFileSystemRepresentation { target in
-                    guard let source, let target else { return Int32(-1) }
-                    return dls_replace_file(source, target)
-                }
-            }
-            guard status == 0 else {
-                throw NSError(domain: "run.libo.datalayer-studio.atomic-output", code: Int(status), userInfo: [NSLocalizedDescriptionKey: "Could not atomically install the export. The existing output was preserved."])
-            }
-        }
+    static func installCompletedOutput(
+        from completedURL: URL,
+        to outputURL: URL,
+        allowingReplacement: Bool = true,
+        cancellationHandler: (() -> Bool)?,
+        diagnosticsHandler: ((VideoExportDiagnosticEvent) -> Void)? = nil
     ) throws {
         try throwIfCancelled(cancellationHandler)
         diagnosticsHandler?(.init(stage: .installOutput, phase: .update, operationStep: .outputCheckCompleted))
         try FileHandle(forReadingFrom: completedURL).close()
-        diagnosticsHandler?(.init(stage: .installOutput, phase: .update, operationStep: .outputReplace))
-        try replaceItem(outputURL, completedURL)
+        diagnosticsHandler?(.init(stage: .installOutput, phase: .update,
+                                  operationStep: allowingReplacement ? .outputReplace : .outputMove))
+        try throwIfCancelled(cancellationHandler)
+        let status = completedURL.withUnsafeFileSystemRepresentation { source in
+            outputURL.withUnsafeFileSystemRepresentation { target in
+                guard let source, let target else { return Int32(-1) }
+                return dls_install_file(source, target, allowingReplacement ? 1 : 0)
+            }
+        }
+        if status == DLS_OUTPUT_FILE_EXISTS { throw CocoaError(.fileWriteFileExists) }
+        if status != 0 {
+            throw NSError(domain: "run.libo.datalayer-studio.atomic-output", code: Int(status), userInfo: [
+                NSLocalizedDescriptionKey: "Could not atomically install the export. The existing output was preserved."
+            ])
+        }
     }
 }
 
@@ -219,6 +225,9 @@ public final class TransparentVideoWriter {
         self.outputURL = outputURL; self.series = series; self.config = config
     }
     public func write() throws {
+        try write(allowingOutputReplacement: true)
+    }
+    package func write(allowingOutputReplacement: Bool) throws {
         let settings = TimelineVideoWriterConfig(width: config.width, height: config.height, framesPerSecond: config.framesPerSecond,
                                                 timelineStart: config.startTime, duration: config.duration, averageBitRate: config.averageBitRate,
                                                 codec: config.codec, activityTrim: config.activityTrim, progressHandler: config.progressHandler,
@@ -227,7 +236,8 @@ public final class TransparentVideoWriter {
         let renderer = OverlayRenderer(series: series, config: OverlayRenderConfig(size: CGSize(width: config.width, height: config.height),
             timeSync: config.timeSync, activityOffsetMilliseconds: config.activityOffsetMilliseconds, fitClockOffsetMilliseconds: config.fitClockOffsetMilliseconds,
             layout: config.overlayLayout, distanceUnit: config.distanceUnit, timeZone: config.timeZone ?? .current, activityTrim: config.activityTrim))
-        try PortableVideoExport.write(outputURL: outputURL, project: nil, config: settings) { time, buffer in
+        try PortableVideoExport.write(outputURL: outputURL, project: nil, config: settings,
+                                      allowingOutputReplacement: allowingOutputReplacement) { time, buffer in
             try renderer.render(videoTime: time, into: buffer)
         }
     }
@@ -262,6 +272,9 @@ public final class TimelineVideoWriter {
         self.outputURL = outputURL; self.project = project; telemetry = telemetrySeriesByAssetID; self.config = config
     }
     public func write() throws -> VideoExportResult {
+        try write(allowingOutputReplacement: true)
+    }
+    package func write(allowingOutputReplacement: Bool) throws -> VideoExportResult {
         let request = TimelineExportRequest(mode: config.codec.exportMode, codec: config.codec, width: config.width, height: config.height,
             framesPerSecond: config.framesPerSecond, timelineStart: config.timelineStart, duration: config.duration, bitRateKbps: config.averageBitRate / 1000)
         if let issue = TimelineExportService.firstPreflightIssue(for: request, project: project, availableTelemetryAssetIDs: Set(telemetry.keys)) {
@@ -281,7 +294,8 @@ public final class TimelineVideoWriter {
         }
         let index = TimelineOverlayTimeIndex(project: project)
         let layer = CVPixelBuffer(width: config.width, height: config.height)
-        try PortableVideoExport.write(outputURL: outputURL, project: project, config: config) { time, buffer in
+        try PortableVideoExport.write(outputURL: outputURL, project: project, config: config,
+                                      allowingOutputReplacement: allowingOutputReplacement) { time, buffer in
             buffer.clear()
             for id in index.activeClipIDs(atTimelineTime: time) {
                 guard let renderer = renderers[id] else { continue }
@@ -300,6 +314,7 @@ enum PortableVideoExport {
     }
 
     static func write(outputURL: URL, project: TimelineProject?, config: TimelineVideoWriterConfig,
+                      allowingOutputReplacement: Bool = true,
                       render: (TimeInterval, CVPixelBuffer) throws -> Void) throws {
         let request = TimelineExportRequest(mode: config.codec.exportMode, codec: config.codec, width: config.width, height: config.height,
             framesPerSecond: config.framesPerSecond, timelineStart: config.timelineStart, duration: config.duration, bitRateKbps: config.averageBitRate / 1000)
@@ -418,7 +433,10 @@ enum PortableVideoExport {
             if process.terminationStatus != 0, !(error is OverlayVideoError) { throw PortableMedia.error(process, log: log) }
             throw error
         }
-        try VideoExportSupport.installCompletedOutput(from: temp, to: outputURL, cancellationHandler: config.cancellationHandler, diagnosticsHandler: config.diagnosticsHandler)
+        try VideoExportSupport.installCompletedOutput(
+            from: temp, to: outputURL, allowingReplacement: allowingOutputReplacement,
+            cancellationHandler: config.cancellationHandler, diagnosticsHandler: config.diagnosticsHandler
+        )
     }
 
     private static func rgbLUT(_ expression: String) -> String { "lutrgb=r='\(expression)':g='\(expression)':b='\(expression)'" }
