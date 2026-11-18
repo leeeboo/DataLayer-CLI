@@ -2,7 +2,7 @@ import {clone} from '../model.mjs?v=20261025-weather';
 import {previewAt} from '../telemetry.mjs?v=20261025-weather';
 import {translate} from './i18n.mjs?v=20261026-trim1';
 import {exportConfig} from './config.mjs?v=20261026-trim1';
-import {paint,encodeOverlay,exportFilename} from './encoder-client.mjs?v=20261026-integrated1';
+import {paint,encodeOverlay,exportFilename} from './encoder-client.mjs?v=20261118-geometry';
 import {cleanupExports} from './storage.mjs?v=20261026-full1';
 
 export function createEditorExport({language,source,beforeOpen,report,canEncode}) {

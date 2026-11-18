@@ -3,6 +3,11 @@ const clamp = (value, lower, upper) => Math.min(upper, Math.max(lower, value));
 const finite = Number.isFinite;
 const rounded = value => value < 0 ? -Math.round(-value) : Math.round(value);
 const polyline = points => points.map((p, i) => `${i ? 'L' : 'M'} ${p.x} ${p.y}`).join(' ');
+const lat = point => point.latitude ?? point.lat;
+const lon = point => point.longitude ?? point.lon;
+// An activity replacement supplies a new sample array. The cached geometry does not depend on canvas size or playback position.
+const routeGeometryCache = new WeakMap();
+const altitudeGeometryCache = new WeakMap();
 
 function includePoints(env, points, stroke = 0) {
   if (!points.length) return;
@@ -56,21 +61,33 @@ function drawSpeed(e, env) {
   return out;
 }
 
-function drawRoute(e, env) {
-  const { r, s, c, C, sample, series, text, panel, measure, path, circle, override, withAlpha } = env;
-  let points = series.samples.filter(p => finite(p.latitude ?? p.lat) && finite(p.longitude ?? p.lon));
-  if (points.length < 2) return '';
-  const lat = p => p.latitude ?? p.lat, lon = p => p.longitude ?? p.lon;
+function buildRouteGeometry(samples, limit) {
+  let points = samples.filter(point => finite(lat(point)) && finite(lon(point)));
+  if (points.length < 2) return null;
   let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
   for (const p of points) { minLat = Math.min(minLat, lat(p)); maxLat = Math.max(maxLat, lat(p)); minLon = Math.min(minLon, lon(p)); maxLon = Math.max(maxLon, lon(p)); }
   const latSpan = Math.max(maxLat - minLat, 0.000001), lonSpan = Math.max(maxLon - minLon, 0.000001);
-  const limit = env.routePointLimit ?? 900;
-  if (limit <= 0) return '';
   if (points.length > limit) {
     const source = points;
-    points = limit === 1 ? [source[0]] : Array.from({ length: limit }, (_, i) => source[Math.round(i * (source.length - 1) / (limit - 1))]);
+    points = Array.from({ length: limit }, (_, i) => source[Math.round(i * (source.length - 1) / (limit - 1))]);
   }
-  if (points.length < 2) return '';
+  return points.length < 2 ? null : { points, minLat, minLon, latSpan, lonSpan };
+}
+
+function routeGeometry(samples, limit) {
+  if (limit <= 1) return null;
+  const cached = routeGeometryCache.get(samples);
+  if (cached?.limit === limit) return cached.geometry;
+  const geometry = buildRouteGeometry(samples, limit);
+  routeGeometryCache.set(samples, { limit, geometry });
+  return geometry;
+}
+
+function drawRoute(e, env) {
+  const { r, s, c, C, sample, series, text, panel, measure, path, circle, override, withAlpha } = env;
+  const geometry = routeGeometry(series.samples, env.routePointLimit ?? 900);
+  if (!geometry) return '';
+  const { points, minLat, minLon, latSpan, lonSpan } = geometry;
   const map = { x: r.x + 26 * s, y: r.y + 34 * s, width: r.width - 52 * s, height: r.height - 68 * s };
   const aspect = lonSpan / latSpan;
   if (aspect > map.width / map.height) {
@@ -132,7 +149,7 @@ function drawRoute(e, env) {
   return out;
 }
 
-function altitudeGeometry(series) {
+function buildAltitudeGeometry(series) {
   if (series.samples.length < 2 || !finite(series.totalDistanceMeters) || series.totalDistanceMeters < 0) return null;
   let vertices = [];
   for (const sample of series.samples) {
@@ -167,6 +184,15 @@ function altitudeGeometry(series) {
     return a.altitudeMeters + (b.altitudeMeters - a.altitudeMeters) * fraction;
   };
   return { vertices, total, minimum, maximum, altitudeAt };
+}
+
+function altitudeGeometry(series) {
+  const { samples, totalDistanceMeters } = series;
+  const cached = altitudeGeometryCache.get(samples);
+  if (cached && Object.is(cached.totalDistanceMeters, totalDistanceMeters)) return cached.geometry;
+  const geometry = buildAltitudeGeometry(series);
+  altitudeGeometryCache.set(samples, { totalDistanceMeters, geometry });
+  return geometry;
 }
 
 function drawAltitude(e, env) {

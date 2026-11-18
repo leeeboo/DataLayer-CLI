@@ -428,6 +428,30 @@ test('route and altitude without usable source data draw no synthetic map or pro
   }
 });
 
+test('route and altitude reuse source geometry across frames and invalidate it for replacement data', () => {
+  const elements = [createElement('route'), createElement('altitudeProfile')];
+  const source = { ...series, samples: [...series.samples] };
+  let firstSampleReads = 0;
+  Object.defineProperty(source.samples, 0, { get: () => {
+    firstSampleReads++;
+    return series.samples[0];
+  } });
+  const initial = rendered(elements, { sample, series: source });
+  assert.ok(firstSampleReads > 0);
+  const coldReads = firstSampleReads;
+  const nextSample = { ...sample, elapsed: 2900, distanceMeters: 14000 };
+  const resized = rendered(elements, { sample: nextSample, series: source }, 1080, 1920);
+  assert.equal(firstSampleReads, coldReads);
+  assert.deepEqual(resized, rendered(elements, { sample: nextSample, series: { ...series, samples: [...series.samples] } }, 1080, 1920));
+
+  source.totalDistanceMeters = 22000;
+  const extended = rendered(elements, { sample, series: source });
+  assert.equal(extended[0].svg, initial[0].svg);
+  assert.ok(texts(extended[1].svg).some(text => text.value === '22.0 KM'));
+  source.samples = [];
+  assert.deepEqual(rendered(elements, { sample, series: source }).map(item => item.svg), ['<g></g>', '<g></g>']);
+});
+
 test('weather includes temperature unit, automatic cloud icon and humidity', () => {
   const values = texts(svg(createElement('weather'))).map(t => t.value);
   assert.ok(values.includes('21℃'), 'temperature includes its native unit');

@@ -1,4 +1,4 @@
-import {fontsReady,renderLayout,svgDefinitions} from '../render.mjs?v=20261025-weather';
+import {fontsReady,renderLayout,svgDefinitions} from '../render.mjs?v=20261118-geometry';
 import {previewAt} from '../telemetry.mjs?v=20261025-weather';
 import {reserveExport} from './storage.mjs?v=20261026-full1';
 export async function paint(canvas,layout,width,height,frame) {

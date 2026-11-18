@@ -1,10 +1,10 @@
 import { accents, fonts, gauges, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, History } from './model.mjs?v=20261025-weather';
 import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261026-trim1';
 import { genericRGBToSRGB, sRGBToGenericRGB } from './render-color.mjs?v=20261025-weather';
-import { escapeXML, renderLayout, svgDefinitions, fontsReady } from './render.mjs?v=20261025-weather';
+import { escapeXML, renderLayout, svgDefinitions, fontsReady } from './render.mjs?v=20261118-geometry';
 import { createPreview } from './preview.mjs?v=20261026-trim1';
 import {prepareIsolation} from './export/isolation.mjs?v=20261026-singleworker1';
-import {createEditorExport} from './export/editor.mjs?v=20261026-trim1';
+import {createEditorExport} from './export/editor.mjs?v=20261118-geometry';
 import { defaultPreset } from './default-preset.mjs?v=20261025-default-layout';
 const canEncode=await prepareIsolation(new URL('./isolation-worker.mjs?v=20261026-singleworker1',import.meta.url));
 
@@ -22,15 +22,29 @@ function snapshot() { return { data, activeID, selectedID }; }
 function restore(value) { ({ data, activeID, selectedID } = clone(value)); }
 const preset = () => presets(data).find(p => p.id === activeID) ?? presets(data)[0];
 const selected = () => preset().layout.elements.find(e => e.id === selectedID);
-const draftKey = () => `${activeID}/${selectedID}`;
+const draftKey = (presetID, elementID) => JSON.stringify([presetID, elementID]);
 const dirty = () => drafts.size > 0 || exportDocument(data, activeID) !== saved;
+function discardUnreachableDrafts() {
+  if (!drafts.size) return;
+  const unreachable = new Set(drafts.keys());
+  for (let index = history.entries.length - 1; index >= 0; index--) {
+    for (const item of presets(history.entries[index].data)) {
+      for (const element of item.layout.elements) unreachable.delete(draftKey(item.id, element.id));
+    }
+    if (!unreachable.size) return;
+  }
+  for (const key of unreachable) drafts.delete(key);
+}
 function status(message, error = false) { $('status').textContent = message; $('status').classList.toggle('error', error); }
 function title(element) { return t(`gauge.${element.kind}`); }
 function mutate(action) {
   const previous = clone(snapshot());
   try {
     const before = JSON.stringify(data); action(); validateDocument(data);
-    if (before !== JSON.stringify(data)) { preset().updatedAt = swiftDate(); history.push(snapshot()); }
+    if (before !== JSON.stringify(data)) {
+      preset().updatedAt = swiftDate();
+      if (history.push(snapshot())) discardUnreachableDrafts();
+    }
     render(); status(dirty() ? t('changed') : t('ready'));
     return true;
   } catch (error) { restore(previous); render(); status(errorMessage(error, language), true); return false; }
@@ -123,21 +137,22 @@ function renderInspector() {
   }
   button(appearance, 'resetColor', () => mutate(() => { for (const key of ['valueColor', 'labelColor', 'unitColor']) delete c[key]; }), 'text-button');
   const advanced = element('details'); advanced.id = 'advanced'; advanced.append(element('summary', '', t('advanced')), element('p', 'hint', t('advancedHelp')));
-  const json = element('textarea'); json.id = 'custom-json'; json.setAttribute('aria-label', t('advanced')); json.spellcheck = false; json.value = drafts.get(draftKey()) ?? JSON.stringify(c, null, 2);
-  json.oninput = () => { drafts.set(draftKey(), json.value); };
+  const key = draftKey(preset().id, e.id);
+  const json = element('textarea'); json.id = 'custom-json'; json.setAttribute('aria-label', t('advanced')); json.spellcheck = false; json.value = drafts.get(key) ?? JSON.stringify(c, null, 2);
+  json.oninput = () => { drafts.set(key, json.value); };
   advanced.append(json);
   button(advanced, 'apply', () => {
     try {
       const next = parseJSON(json.value);
-      validateCustomization(next); const key = draftKey();
+      validateCustomization(next);
       if (mutate(() => { e.customization = next; })) { drafts.delete(key); render(); }
     } catch (error) { status(`${t('jsonError')}: ${errorMessage(error, language)}`, true); }
   });
-  if (drafts.has(draftKey())) button(advanced, 'undo', () => { drafts.delete(draftKey()); render(); });
+  if (drafts.has(key)) button(advanced, 'undo', () => { drafts.delete(key); render(); });
   container.append(advanced);
   const actions = element('div', 'inspector-actions');
   button(actions, 'duplicate', () => mutate(() => { const copy = clone(e); copy.id = uid(); copy.frame.x = Math.min(2, copy.frame.x + 0.02); copy.frame.y = Math.min(2, copy.frame.y + 0.02); preset().layout.elements.push(copy); selectedID = copy.id; }));
-  button(actions, 'delete', () => mutate(() => { drafts.delete(draftKey()); preset().layout.elements = preset().layout.elements.filter(item => item.id !== e.id); selectedID = preset().layout.elements.at(-1)?.id ?? null; }), 'danger');
+  button(actions, 'delete', () => mutate(() => { preset().layout.elements = preset().layout.elements.filter(item => item.id !== e.id); selectedID = preset().layout.elements.at(-1)?.id ?? null; }), 'danger');
   const index = preset().layout.elements.indexOf(e);
   for (const [key, delta] of [['backward', -1], ['forward', 1]]) {
     const b = button(actions, key, () => mutate(() => { const items = preset().layout.elements; items.splice(index, 1); items.splice(index + delta, 0, e); }));
@@ -214,7 +229,10 @@ $('file').onchange = async () => { await importFile($('file').files[0]); $('file
 function validateExportEdits() {
   const invalid = document.querySelector('.sidebar input:invalid, .inspector input:invalid');
   if (invalid) { invalid.reportValidity(); status(`${t('errorInput')}: ${invalid.getAttribute('aria-label')}`, true); return false; }
-  if (drafts.size) { status(t('advancedHelp') + ' — ' + t('apply') + ' / ' + t('undo'), true); return false; }
+  if (drafts.size && presets(data).some(item => item.layout.elements.some(element => drafts.has(draftKey(item.id, element.id))))) {
+    status(t('advancedHelp') + ' — ' + t('apply') + ' / ' + t('undo'), true);
+    return false;
+  }
   return true;
 }
 $('download').onclick = () => {

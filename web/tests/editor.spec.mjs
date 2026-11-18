@@ -103,6 +103,50 @@ test('invalid customization and invalid files do not replace edited work', async
   expect(await download(page)).toEqual(source);
 });
 
+test('JSON drafts are restored by history and only block export while their component exists', async ({ page }) => {
+  await openEditor(page, './?lang=en');
+  await upload(page, createDocument('Draft recovery', true));
+  await expect(page.locator('#layout-name')).toHaveValue('Draft recovery');
+  await page.locator('#add').click();
+  await page.locator('#advanced summary').click();
+  const input = page.locator('#custom-json');
+  const blocked = `${translations.en.advancedHelp} — ${translations.en.apply} / ${translations.en.undo}`;
+  await input.fill('{');
+  await page.locator('#download').click();
+  await expect(page.locator('#status')).toHaveText(blocked);
+
+  await page.locator('#undo').click();
+  expect((await download(page)).layout.elements).toEqual([]);
+  await page.locator('#redo').click();
+  await page.locator('#advanced summary').click();
+  await expect(input).toHaveValue('{');
+  await page.locator('#download').click();
+  await expect(page.locator('#status')).toHaveText(blocked);
+
+  await page.locator('.inspector-actions .danger').click();
+  expect((await download(page)).layout.elements).toEqual([]);
+  await page.locator('#undo').click();
+  await page.locator('#advanced summary').click();
+  await expect(input).toHaveValue('{');
+
+  await page.locator('#undo').click();
+  await page.locator('#layout-name').fill('Branched template');
+  await page.locator('#layout-name').press('Tab');
+  await expect(page.locator('#redo')).toBeDisabled();
+  const output = await download(page);
+  expect(output.name).toBe('Branched template');
+  expect(output.layout.elements).toEqual([]);
+
+  const dialogs = [];
+  page.on('dialog', async dialog => {
+    dialogs.push(dialog.message());
+    await dialog.dismiss();
+  });
+  await page.locator('#new').click();
+  await expect(page.locator('#layout-name')).toHaveValue(translations.en.newName);
+  expect(dialogs).toEqual([]);
+});
+
 test('fresh editor starts with the supplied 703 layout, preserves it on export and keeps new templates blank', async ({ page }) => {
   await openEditor(page,'./?lang=en');
   await expect(page.locator('#layout-name')).toHaveValue('703');
