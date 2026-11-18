@@ -2,6 +2,11 @@ import { defaultPreset } from '../default-preset.mjs';
 import { renderLayout, svgDefinitions, fontsReady } from '../render.mjs';
 import { parseTelemetryFile, previewAt } from '../telemetry.mjs';
 
+if (window.self !== window.top && navigator.maxTouchPoints > 0 &&
+    CSS.supports('-webkit-touch-callout', 'none')) {
+  document.documentElement.classList.add('ios-toy-frame');
+}
+
 const get = id => document.getElementById(id);
 const fitInput = get('fit-file');
 const videoInput = get('video-file');

@@ -16,6 +16,11 @@ main {
   padding: clamp(0.875rem, 4vw, 2rem);
 }
 
+/* The iOS Toy host places its status bar and controls over the preview. */
+.ios-toy-frame main {
+  padding-block-start: max(4.5rem, calc(env(safe-area-inset-top, 0px) + 1rem));
+}
+
 h1 { margin: 0; font-size: clamp(1.4rem, 4.6vw, 2rem); line-height: 1.2; }
 p { margin: 0; color: var(--muted); font-size: 0.875rem; line-height: 1.45; }
 header p { margin-top: 0.45rem; }
@@ -62,6 +67,12 @@ label { display: block; margin-bottom: 0.35rem; font-weight: 650; }
   margin-inline: auto;
   border-radius: 0.7rem;
   background: #070b0c;
+}
+
+/* Leave room for the alignment controls below tall videos in the iOS Toy host. */
+.ios-toy-frame .stage {
+  max-height: 42vh;
+  max-height: 42svh;
 }
 
 .stage video, .stage svg {
