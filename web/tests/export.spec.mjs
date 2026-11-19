@@ -31,8 +31,10 @@ async function activity(page){
   await expect(page.locator('#export-encode'),JSON.stringify(capabilities)).toBeEnabled();
 }
 // The export range is the editor's trim selection; the dialog only chooses output format.
+// A finished export leaves its progress panel open over the dialog until the user goes back.
+async function finish(page){if(await page.locator('#export-progress').isVisible())await page.locator('#export-progress-close').click();}
 async function trim(page,start,end){
-  if(await page.locator('#export-dialog').isVisible())await page.locator('#export-close').click();
+  await finish(page);if(await page.locator('#export-dialog').isVisible())await page.locator('#export-close').click();
   if(await page.locator('#trim-reset').isEnabled())await page.locator('#trim-reset').click();
   await page.locator('#trim-start').fill(start);await page.locator('#trim-start').press('Tab');await page.locator('#trim-end').fill(end);await page.locator('#trim-end').press('Tab');
 }
@@ -43,7 +45,7 @@ async function configure(page,{duration='.2',bitrate='8',size='1280x720',start='
 async function encode(page){
   await page.locator('#export-encode').click();await expect(page.locator('#export-download')).toBeVisible({timeout:30000});
   const next=page.waitForEvent('download');await page.locator('#export-download').click();const result=await next;
-  expect(result.suggestedFilename()).toBe('703-hevc-alpha.mp4');return readFile(await result.path());
+  expect(result.suggestedFilename()).toBe('703-hevc-alpha.mp4');await finish(page);return readFile(await result.path());
 }
 function boxes(data,start=0,end=data.length){const all=[];for(let p=start;p<end;){const extended=data.readUInt32BE(p)===1,size=extended?Number(data.readBigUInt64BE(p+8)):data.readUInt32BE(p),head=extended?16:8;expect(size).toBeGreaterThanOrEqual(head);expect(p+size).toBeLessThanOrEqual(end);all.push({type:data.toString('ascii',p+4,p+8),start:p+head,end:p+size});p+=size;}return all;}
 function child(data,parent,type){const box=boxes(data,parent.start,parent.end).find(b=>b.type===type);expect(box).toBeTruthy();return box;}
@@ -116,6 +118,30 @@ test('start export is disabled with a reason while settings are invalid',async({
   await page.locator('#export-bitrate').fill('');await expect(page.locator('#export-encode')).toBeDisabled();await expect(page.locator('#export-encode')).toHaveAttribute('title',translations.en.exportInvalid);
   await page.locator('#export-bitrate').fill('101');await expect(page.locator('#export-encode')).toBeDisabled();
   await page.locator('#export-bitrate').fill('8');await expect(page.locator('#export-encode')).toBeEnabled();await expect(page.locator('#export-close')).toHaveAttribute('title',translations.en.exportClose);
+});
+
+test('export shows a fixed full-page progress panel with an optional tip without blocking the encode',async({page})=>{
+  const result=health(page);await open(page);await activity(page);await configure(page,{duration:'.2'});
+  const {translations:common}=await import('../i18n.mjs');
+  await page.evaluate(()=>{const Base=Worker;window.Worker=class extends Base{postMessage(data,...args){if(data.type==='frame'&&data.index===2&&!window.release){window.release=()=>super.postMessage(data,...args);return;}return super.postMessage(data,...args);}};});
+  await page.locator('#export-encode').click();await page.waitForFunction(()=>window.release);
+  const panel=page.locator('#export-progress');await expect(panel).toBeVisible();
+  expect(await panel.evaluate(n=>({modal:n.matches(':modal'),position:getComputedStyle(n).position}))).toEqual({modal:true,position:'fixed'});
+  await expect(page.locator('#export-progress-title')).toHaveText(translations.en.exportProgressTitle);
+  await expect(page.locator('#export-progress-text')).toContainText('/6');await expect(page.locator('#export-progress-text')).toContainText('%');
+  expect(await page.locator('#export-progress-bar').evaluate(n=>n.value)).toBeGreaterThan(0);
+  await expect(page.locator('#export-cancel')).toBeVisible();await expect(page.locator('#export-download')).toBeHidden();await expect(page.locator('#export-progress-note')).toHaveText(translations.en.exportKeepOpen);
+  await expect(page.locator('#export-support-prompt')).toHaveText(translations.en.exportSupportPrompt);
+  await expect(panel.locator('a.support-coffee')).toHaveAttribute('href','https://buymeacoffee.com/leeeboo');await expect(panel.locator('a.support-coffee')).toHaveAttribute('target','_blank');
+  await expect.poll(()=>page.locator('#export-support-wechat').evaluate(img=>img.complete&&img.naturalWidth)).toBe(640);
+  await expect(page.locator('#export-support-wechat')).toHaveAttribute('alt',common.en.supportWeChat);
+  await page.evaluate(()=>window.release());
+  await expect(page.locator('#export-progress-title')).toHaveText(translations.en.exportDoneTitle,{timeout:30000});
+  expect(await page.locator('#export-progress-bar').evaluate(n=>n.value)).toBe(1);
+  await expect(page.locator('#export-cancel')).toBeHidden();await expect(page.locator('#export-progress-note')).toBeHidden();await expect(page.locator('#export-download')).toBeVisible();await expect(page.locator('#export-support-prompt')).toHaveText(translations.en.exportSupportDone);
+  await expect(page.locator('#export-progress-text')).toContainText('6 frames');
+  await page.locator('#export-progress-close').click();await expect(panel).toBeHidden();await expect(page.locator('#export-download-again')).toBeVisible();await expect(page.locator('#export-encode')).toBeFocused();
+  expect(result.errors).toEqual([]);expect(result.requests).toEqual([]);
 });
 
 test('legacy export URLs open the integrated editor without loading WASM eagerly',async({page})=>{
@@ -226,7 +252,7 @@ test('editor exports the current edited layout and loaded FIT in place without n
     const alpha=await page.evaluate(async bytes=>{const video=document.createElement('video'),url=URL.createObjectURL(new Blob([new Uint8Array(bytes)],{type:'video/mp4'}));video.muted=true;video.src=url;await new Promise((resolve,reject)=>{video.onloadeddata=resolve;video.onerror=reject;});const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;const ctx=canvas.getContext('2d');ctx.drawImage(video,0,0);const pixels=ctx.getImageData(0,0,canvas.width,canvas.height).data;let max=0;for(let i=3;i<pixels.length;i+=4)max=Math.max(max,pixels[i]);video.removeAttribute('src');video.load();URL.revokeObjectURL(url);return max;},Array.from(bytes));
     expect(alpha).toBe(0);
   }
-  await page.locator('#export-close').click();await expect(page.locator('#export-dialog')).not.toBeVisible();
+  await finish(page);await page.locator('#export-close').click();await expect(page.locator('#export-dialog')).not.toBeVisible();
   await page.locator('#add-kind').selectOption('heartRate');await page.locator('#add').click();await expect(page.locator('#canvas [data-index]')).toHaveCount(1);
   await configure(page,{duration:'.1',size:'1920x1080'});await page.locator('#export-encode').click();await expect(page.locator('#export-download')).toBeVisible({timeout:30000});
   await expect(page.locator('#activity-name')).toContainText('activity.fit');expect(page.url()).toBe(url);expect(context.pages()).toHaveLength(pages);

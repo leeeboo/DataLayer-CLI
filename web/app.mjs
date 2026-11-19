@@ -1,10 +1,10 @@
 import { accents, fonts, gauges, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, History } from './model.mjs?v=20261025-weather';
-import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261119-tips';
+import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261119-progress';
 import { genericRGBToSRGB, sRGBToGenericRGB } from './render-color.mjs?v=20261025-weather';
 import { escapeXML, renderLayout, svgDefinitions, fontsReady } from './render.mjs?v=20261118-geometry';
 import { createPreview, available } from './preview.mjs?v=20261119-tips';
 import {prepareIsolation} from './export/isolation.mjs?v=20261026-singleworker1';
-import {createEditorExport} from './export/editor.mjs?v=20261119-tips';
+import {createEditorExport} from './export/editor.mjs?v=20261119-progress';
 import { defaultPreset } from './default-preset.mjs?v=20261025-default-layout';
 const canEncode=await prepareIsolation(new URL('./isolation-worker.mjs?v=20261026-singleworker1',import.meta.url));
 
@@ -197,7 +197,7 @@ function render() {
   document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
   document.querySelectorAll('[data-t]').forEach(node => { node.textContent = t(node.dataset.t); });
   document.querySelectorAll('[data-t-aria]').forEach(node => { node.setAttribute('aria-label', t(node.dataset.tAria)); });
-  $('support-wechat').alt = t('supportWeChat');
+  $('support-wechat').alt = $('export-support-wechat').alt = t('supportWeChat');
   $('language').replaceChildren(...Object.entries(languages).map(([code, name]) => { const option = element('option', '', name); option.value = code; return option; }));
   $('language').value = language; $('layout-name').value = preset().name;
   $('preset-picker').hidden = presets(data).length < 2;

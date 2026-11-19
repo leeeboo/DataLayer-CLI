@@ -7,8 +7,8 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; style-src-attr 'unsafe-hashes' 'sha256-3oFxofzq3N//6J8H86e9ul4WT2OkJrtonB66gn/TLJw='; img-src 'self' data:; media-src blob:; connect-src 'self' https://api.openweathermap.org; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Data Overlay Editor · DataLayer Studio</title>
   <link rel="icon" href="./mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=20261119-tips">
-  <script type="module" src="./app.mjs?v=20261119-tips"></script>
+  <link rel="stylesheet" href="./style.css?v=20261119-progress">
+  <script type="module" src="./app.mjs?v=20261119-progress"></script>
 </head>
 <body>
   <header class="app-header">
@@ -131,7 +131,7 @@
       <p id="export-bitrate-auto" class="hint" data-export-t="exportBitrateAuto"></p>
       <div class="export-cta">
         <p id="export-summary" dir="auto"></p>
-        <div class="export-actions"><button id="export-encode" type="submit" class="primary export-go" data-export-t="exportStartButton"></button><button id="export-cancel" type="button" class="export-go" data-export-t="exportCancel" hidden></button><a id="export-download" class="export-go" data-export-t="exportDownload" hidden></a></div>
+        <div class="export-actions"><button id="export-encode" type="submit" class="primary export-go" data-export-t="exportStartButton"></button><a id="export-download-again" class="export-go" data-export-t="exportDownload" hidden></a></div>
       </div>
     </form>
     <p id="export-status" class="status" role="status" aria-live="polite"></p><p id="export-result" role="status"></p>
@@ -139,6 +139,20 @@
     <p class="hint" data-export-t="exportPlayback"></p>
     <p class="hint" data-export-t="exportBitrateHelp"></p>
     <p class="hint"><span data-export-t="exportLicense"></span> <a href="./export/encoder/README.md">x265 WASM</a> · <a href="./export/encoder/COPYING">GPL</a> · <a href="./export/encoder/x265_4.1.tar.gz" download>Source</a></p>
+  </dialog>
+  <dialog id="export-progress" class="export-progress" aria-labelledby="export-progress-title" aria-describedby="export-progress-text">
+    <h2 id="export-progress-title"></h2>
+    <progress id="export-progress-bar" max="1" value="0"></progress>
+    <p id="export-progress-text" class="export-progress-text" role="status" aria-live="polite" dir="auto"></p>
+    <p id="export-progress-note" class="hint" data-export-t="exportKeepOpen"></p>
+    <div class="export-progress-actions"><button id="export-cancel" type="button" class="export-go" data-export-t="exportCancel"></button><a id="export-download" class="export-go" data-export-t="exportDownload" hidden></a><button id="export-progress-close" type="button" class="export-go" data-export-t="exportBack" hidden></button></div>
+    <section class="export-support" aria-labelledby="export-support-prompt">
+      <p id="export-support-prompt" data-export-t="exportSupportPrompt"></p>
+      <div class="export-support-row">
+        <a class="support-coffee" href="https://buymeacoffee.com/leeeboo" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">☕</span> <span data-t="supportCoffee">Buy me a coffee</span></a>
+        <figure><img id="export-support-wechat" src="./support-wechat.jpg" width="150" height="150" loading="lazy" alt="WeChat reward code"><figcaption data-t="supportWeChat">WeChat reward code</figcaption></figure>
+      </div>
+    </section>
   </dialog>
 </body>
 </html>
