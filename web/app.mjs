@@ -1,10 +1,10 @@
 import { accents, fonts, gauges, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, History } from './model.mjs?v=20261025-weather';
-import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261119-timeline';
+import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261119-support';
 import { genericRGBToSRGB, sRGBToGenericRGB } from './render-color.mjs?v=20261025-weather';
 import { escapeXML, renderLayout, svgDefinitions, fontsReady } from './render.mjs?v=20261118-geometry';
 import { createPreview } from './preview.mjs?v=20261119-timeline';
 import {prepareIsolation} from './export/isolation.mjs?v=20261026-singleworker1';
-import {createEditorExport} from './export/editor.mjs?v=20261119-timeline';
+import {createEditorExport} from './export/editor.mjs?v=20261119-support';
 import { defaultPreset } from './default-preset.mjs?v=20261025-default-layout';
 const canEncode=await prepareIsolation(new URL('./isolation-worker.mjs?v=20261026-singleworker1',import.meta.url));
 
@@ -192,6 +192,7 @@ function render() {
   document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
   document.querySelectorAll('[data-t]').forEach(node => { node.textContent = t(node.dataset.t); });
   document.querySelectorAll('[data-t-aria]').forEach(node => { node.setAttribute('aria-label', t(node.dataset.tAria)); });
+  $('support-wechat').alt = t('supportWeChat');
   $('language').replaceChildren(...Object.entries(languages).map(([code, name]) => { const option = element('option', '', name); option.value = code; return option; }));
   $('language').value = language; $('layout-name').value = preset().name;
   $('preset-picker').hidden = presets(data).length < 2;
@@ -292,8 +293,12 @@ $('canvas').onkeydown = event => {
   const target = event.target.closest('[data-index]');
   if (target && ['Enter', ' '].includes(event.key)) { event.preventDefault(); selectedID = preset().layout.elements[Number(target.dataset.index)].id; render(); $('canvas').focus(); }
 };
+$('support').onclick = () => $('support-dialog').showModal();
+$('support-close').onclick = () => $('support-dialog').close();
+// Clicking the backdrop closes the optional support dialog.
+$('support-dialog').addEventListener('click', event => { if (event.target === $('support-dialog')) $('support-dialog').close(); });
 document.addEventListener('keydown', event => {
-  if ($('export-dialog').open) return;
+  if ($('export-dialog').open || $('support-dialog').open) return;
   if (event.target.matches('input,textarea,select') || event.target.isContentEditable) return;
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); (event.shiftKey ? $('redo') : $('undo')).click(); return; }
   // Safari can deliver activity-control arrow keys to the page body instead of the slider.
@@ -308,7 +313,7 @@ document.addEventListener('dragover', event => { if ([...event.dataTransfer.type
 document.addEventListener('dragleave', event => { if (!event.relatedTarget) $('canvas-wrap').classList.remove('drop-active'); });
 document.addEventListener('drop', async event => {
   event.preventDefault(); $('canvas-wrap').classList.remove('drop-active');
-  if ($('export-dialog').open) return;
+  if ($('export-dialog').open || $('support-dialog').open) return;
   for (const file of event.dataTransfer.files) {
     if (/\.(fit|gpx)$/i.test(file.name)) await localPreview.loadActivity(file);
     else await importFile(file);

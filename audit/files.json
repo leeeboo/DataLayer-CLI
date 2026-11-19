@@ -181,6 +181,7 @@
   "web/render-special.mjs",
   "web/render.mjs",
   "web/style.css",
+  "web/support-wechat.jpg",
   "web/telemetry-altitude.mjs",
   "web/telemetry-series.mjs",
   "web/telemetry.mjs",

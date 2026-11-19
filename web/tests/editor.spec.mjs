@@ -163,3 +163,28 @@ test('fresh editor starts with the supplied 703 layout, preserves it on export a
   await page.locator('#new').click();
   await expect(page.locator('#canvas [data-index]')).toHaveCount(0);
 });
+
+test('support dialog offers Buy Me a Coffee and the WeChat code in all twelve languages and fits mobile', async ({ page, baseURL }) => {
+  // The dialog must not contact Buy Me a Coffee or any other host until the visitor follows the link.
+  const requests = []; page.on('request', r => { if (/^https?:/.test(r.url()) && new URL(r.url()).origin !== new URL(baseURL).origin) requests.push(r.url()); });
+  await openEditor(page);
+  for (const language of Object.keys(languages)) {
+    await page.locator('#language').selectOption(language);
+    await expect(page.locator('#support')).toContainText(translations[language].support);
+    await page.locator('#support').click(); await expect(page.locator('#support-dialog')).toBeVisible();
+    await expect(page.locator('#support-title')).toHaveText(translations[language].supportTitle);
+    await expect(page.locator('#support-coffee')).toContainText(translations[language].supportCoffee);
+    await expect(page.locator('#support-wechat')).toHaveAttribute('alt', translations[language].supportWeChat);
+    await expect(page.locator('#support-close')).toHaveAttribute('aria-label', translations[language].supportClose);
+    await page.locator('#support-close').click(); await expect(page.locator('#support-dialog')).not.toBeVisible();
+  }
+  await page.locator('#language').selectOption('en');
+  await page.setViewportSize({ width: 390, height: 844 }); await page.locator('#support').click();
+  const link = page.locator('#support-coffee');
+  await expect(link).toHaveAttribute('href', 'https://buymeacoffee.com/leeeboo'); await expect(link).toHaveAttribute('target', '_blank'); await expect(link).toHaveAttribute('rel', /noopener/);
+  await expect.poll(() => page.locator('#support-wechat').evaluate(img => img.complete && img.naturalWidth)).toBe(640);
+  expect(await page.locator('#support-dialog').evaluate(n => n.scrollWidth <= n.clientWidth)).toBe(true);
+  await page.keyboard.press('Escape'); await expect(page.locator('#support-dialog')).not.toBeVisible();
+  await page.locator('#support').click(); await page.mouse.click(5, 5); await expect(page.locator('#support-dialog')).not.toBeVisible();
+  expect(requests).toEqual([]);
+});
