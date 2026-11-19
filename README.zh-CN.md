@@ -4,7 +4,7 @@
 
 将 FIT/GPX 运动数据导出为透明数据浮层或合成视频，也可在终端直接导出 DataLayer Studio 的 `.dlsproj` 工程。命令名为 `overlay`。
 
-**[打开 GAUGE 布局编辑器](https://leeeboo.github.io/DataLayer-CLI/?lang=zh-CN)** — 在浏览器中新建、导入和编辑布局，下载 布局模板 `.dlspreset` 后通过 `--layout-preset` 使用。文件仅在浏览器本地处理。
+**[打开数据浮层编辑器](https://leeeboo.github.io/DataLayer-CLI/?lang=zh-CN)** — 在浏览器中新建、导入和编辑布局，下载 布局模板 `.dlspreset` 后通过 `--layout-preset` 使用。文件仅在浏览器本地处理。
 
 ## 安装
 

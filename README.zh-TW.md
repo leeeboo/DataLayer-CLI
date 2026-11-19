@@ -4,7 +4,7 @@
 
 將 FIT/GPX 運動資料匯出為透明資料圖層或合成影片，也可在終端機直接匯出 DataLayer Studio 的 `.dlsproj` 專案。指令名稱為 `overlay`。
 
-**[開啟 GAUGE 布局編輯器](https://leeeboo.github.io/DataLayer-CLI/?lang=zh-TW)** — 在瀏覽器新增、匯入及編輯布局，下載 布局範本 `.dlspreset` 後透過 `--layout-preset` 使用。檔案僅在瀏覽器本機處理。
+**[開啟資料圖層編輯器](https://leeeboo.github.io/DataLayer-CLI/?lang=zh-TW)** — 在瀏覽器新增、匯入及編輯布局，下載 布局範本 `.dlspreset` 後透過 `--layout-preset` 使用。檔案僅在瀏覽器本機處理。
 
 ## 安裝
 

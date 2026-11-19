@@ -4,7 +4,7 @@
 
 FIT/GPX のアクティビティデータから、透明なテレメトリーオーバーレイや合成動画を作成します。DataLayer Studio の `.dlsproj` プロジェクトもターミナルから書き出せます。コマンド名は `overlay` です。
 
-**[ゲージ配置エディターを開く](https://leeeboo.github.io/DataLayer-CLI/?lang=ja)** — ブラウザーで配置を新規作成・読み込み・編集し、レイアウトプリセット `.dlspreset` をダウンロードして `--layout-preset` で使用できます。ファイルはブラウザー内でのみ処理します。
+**[データオーバーレイエディターを開く](https://leeeboo.github.io/DataLayer-CLI/?lang=ja)** — ブラウザーで配置を新規作成・読み込み・編集し、レイアウトプリセット `.dlspreset` をダウンロードして `--layout-preset` で使用できます。ファイルはブラウザー内でのみ処理します。
 
 ## インストール
 

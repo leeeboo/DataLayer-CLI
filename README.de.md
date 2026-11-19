@@ -4,7 +4,7 @@
 
 Erstelle aus FIT/GPX-Aktivitäten transparente Telemetrie-Overlays oder fertige Videos. Exportiere DataLayer-Studio-Projekte im Format `.dlsproj` direkt im Terminal. Der Befehl heißt `overlay`.
 
-**[Gauge-Layout-Editor öffnen](https://leeeboo.github.io/DataLayer-CLI/?lang=de)** — Layouts im Browser erstellen, importieren und bearbeiten; anschließend Layoutvorlage `.dlspreset` für `--layout-preset` herunterladen. Die Dateien bleiben in deinem Browser.
+**[Daten-Overlay-Editor öffnen](https://leeeboo.github.io/DataLayer-CLI/?lang=de)** — Layouts im Browser erstellen, importieren und bearbeiten; anschließend Layoutvorlage `.dlspreset` für `--layout-preset` herunterladen. Die Dateien bleiben in deinem Browser.
 
 ## Installation
 

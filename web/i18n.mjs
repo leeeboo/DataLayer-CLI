@@ -15,7 +15,7 @@ export const languages = {
 
 export const translations = {
   "en": {
-    "title": "Gauge Layout Editor",
+    "title": "Data Overlay Editor",
     "import": "Import template",
     "download": "Download template",
     "new": "New layout template",
@@ -206,7 +206,7 @@ export const translations = {
     "exportPrototype": "Transparent H.265 prototype"
   },
   "zh-CN": {
-    "title": "GAUGE 布局编辑器",
+    "title": "数据浮层编辑器",
     "import": "导入模板",
     "download": "下载模板",
     "new": "新建布局模板",
@@ -397,7 +397,7 @@ export const translations = {
     "exportPrototype": "透明 H.265 导出原型"
   },
   "zh-TW": {
-    "title": "GAUGE 布局編輯器",
+    "title": "資料圖層編輯器",
     "import": "匯入範本",
     "download": "下載範本",
     "new": "新增配置範本",
@@ -588,7 +588,7 @@ export const translations = {
     "exportPrototype": "透明 H.265 匯出原型"
   },
   "ja": {
-    "title": "ゲージ配置エディター",
+    "title": "データオーバーレイエディター",
     "import": "テンプレートを読み込む",
     "download": "テンプレートをダウンロード",
     "new": "新規レイアウトテンプレート",
@@ -779,7 +779,7 @@ export const translations = {
     "exportPrototype": "透過 H.265 書き出しプロトタイプ"
   },
   "ko": {
-    "title": "게이지 레이아웃 편집기",
+    "title": "데이터 오버레이 편집기",
     "import": "템플릿 가져오기",
     "download": "템플릿 다운로드",
     "new": "새 레이아웃 템플릿",
@@ -970,7 +970,7 @@ export const translations = {
     "exportPrototype": "투명 H.265 내보내기 프로토타입"
   },
   "es": {
-    "title": "Editor de diseño de indicadores",
+    "title": "Editor de superposiciones de datos",
     "import": "Importar plantilla",
     "download": "Descargar plantilla",
     "new": "Nueva plantilla de diseño",
@@ -1161,7 +1161,7 @@ export const translations = {
     "exportPrototype": "Prototipo de H.265 transparente"
   },
   "fr": {
-    "title": "Éditeur de disposition des jauges",
+    "title": "Éditeur d’incrustations de données",
     "import": "Importer un modèle",
     "download": "Télécharger le modèle",
     "new": "Nouveau modèle de disposition",
@@ -1352,7 +1352,7 @@ export const translations = {
     "exportPrototype": "Prototype H.265 transparent"
   },
   "de": {
-    "title": "Gauge-Layout-Editor",
+    "title": "Daten-Overlay-Editor",
     "import": "Vorlage importieren",
     "download": "Vorlage herunterladen",
     "new": "Neue Layoutvorlage",
@@ -1543,7 +1543,7 @@ export const translations = {
     "exportPrototype": "Transparenter H.265-Prototyp"
   },
   "pt-BR": {
-    "title": "Editor de layout de indicadores",
+    "title": "Editor de sobreposições de dados",
     "import": "Importar modelo",
     "download": "Baixar modelo",
     "new": "Novo modelo de layout",
@@ -1734,7 +1734,7 @@ export const translations = {
     "exportPrototype": "Protótipo de H.265 transparente"
   },
   "ru": {
-    "title": "Редактор макета индикаторов",
+    "title": "Редактор слоёв данных",
     "import": "Импорт шаблона",
     "download": "Скачать шаблон",
     "new": "Новый шаблон расположения",
@@ -1925,7 +1925,7 @@ export const translations = {
     "exportPrototype": "Прототип прозрачного H.265"
   },
   "ar": {
-    "title": "محرر تخطيط المؤشرات",
+    "title": "محرر طبقات البيانات",
     "import": "استيراد قالب",
     "download": "تنزيل القالب",
     "new": "قالب تخطيط جديد",
@@ -2116,7 +2116,7 @@ export const translations = {
     "exportPrototype": "نموذج تصدير H.265 شفاف"
   },
   "hi": {
-    "title": "गेज लेआउट एडिटर",
+    "title": "डेटा ओवरले एडिटर",
     "import": "टेम्पलेट इंपोर्ट करें",
     "download": "टेम्पलेट डाउनलोड करें",
     "new": "नया लेआउट टेम्पलेट",
