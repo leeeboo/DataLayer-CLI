@@ -7,8 +7,8 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; style-src-attr 'unsafe-hashes' 'sha256-3oFxofzq3N//6J8H86e9ul4WT2OkJrtonB66gn/TLJw='; img-src 'self' data:; media-src blob:; connect-src 'self' https://api.openweathermap.org; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Gauge Layout Editor · DataLayer Studio</title>
   <link rel="icon" href="./mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=20261026-trim1">
-  <script type="module" src="./app.mjs?v=20261118-drafts"></script>
+  <link rel="stylesheet" href="./style.css?v=20261119-4k">
+  <script type="module" src="./app.mjs?v=20261119-4k"></script>
 </head>
 <body>
   <header class="app-header">
@@ -88,16 +88,23 @@
     <div class="export-heading"><h2 id="export-title" data-export-t="exportVideo">Export transparent video</h2><button id="export-close" type="button" aria-label="Close">×</button></div>
     <p class="hint" data-export-t="exportHelp"></p>
     <div class="export-source"><bdi id="export-layout"></bdi><bdi id="export-activity"></bdi></div>
-    <p id="export-range" class="hint"></p>
+    <p id="export-range" class="export-range"></p>
+    <p class="hint" data-export-t="exportTrimHint"></p>
     <form id="export-form">
       <div class="export-fields">
-        <label><span data-export-t="exportSize"></span><select id="export-size"><option value="1920x1080">1920 × 1080</option><option value="1280x720">1280 × 720</option><option value="1080x1920">1080 × 1920</option><option value="1080x1080">1080 × 1080</option></select></label>
-        <label><span data-export-t="exportFPS"></span><select id="export-fps"><option value="30">30</option><option value="15">15</option></select></label>
-        <label><span data-export-t="exportStart"></span><input id="export-start" type="number" min="0" step="any" value="0" required></label>
-        <label><span data-export-t="exportDuration"></span><input id="export-duration" type="number" min="0.1" step="any" value="3" required></label>
-        <label><span data-export-t="exportBitrate"></span><input id="export-bitrate" type="number" min="0.1" max="100" step="any" value="8" required></label>
+        <label><span data-export-t="exportSize"></span><select id="export-size" dir="ltr">
+          <optgroup data-export-label="exportLandscape" label="Landscape"><option value="3840x2160">3840 × 2160 · 4K</option><option value="2560x1440">2560 × 1440 · 1440p</option><option value="1920x1080" selected>1920 × 1080 · 1080p</option><option value="1280x720">1280 × 720 · 720p</option></optgroup>
+          <optgroup data-export-label="exportPortrait" label="Portrait"><option value="2160x3840">2160 × 3840 · 4K</option><option value="1440x2560">1440 × 2560 · 1440p</option><option value="1080x1920">1080 × 1920 · 1080p</option><option value="720x1280">720 × 1280 · 720p</option></optgroup>
+          <optgroup data-export-label="exportSquare" label="Square"><option value="2160x2160">2160 × 2160</option><option value="1080x1080">1080 × 1080</option></optgroup>
+        </select></label>
+        <label><span data-export-t="exportFPS"></span><select id="export-fps" dir="ltr"><option value="23.976">23.976</option><option value="24">24</option><option value="25">25</option><option value="29.97">29.97</option><option value="30" selected>30</option><option value="50">50</option><option value="59.94">59.94</option><option value="60">60</option></select></label>
+        <label><span data-export-t="exportBitrate"></span><input id="export-bitrate" type="number" min="0.1" max="100" step="any" value="8" required dir="ltr" aria-describedby="export-bitrate-auto"></label>
       </div>
-      <div class="export-actions"><button id="export-encode" type="submit" class="primary" data-export-t="exportStartButton"></button><button id="export-full" type="button" data-export-t="exportFullActivity"></button><button id="export-cancel" type="button" data-export-t="exportCancel" hidden></button><a id="export-download" data-export-t="exportDownload" hidden></a></div>
+      <p id="export-bitrate-auto" class="hint" data-export-t="exportBitrateAuto"></p>
+      <div class="export-cta">
+        <p id="export-summary" dir="auto"></p>
+        <div class="export-actions"><button id="export-encode" type="submit" class="primary export-go" data-export-t="exportStartButton"></button><button id="export-cancel" type="button" class="export-go" data-export-t="exportCancel" hidden></button><a id="export-download" class="export-go" data-export-t="exportDownload" hidden></a></div>
+      </div>
     </form>
     <p id="export-status" class="status" role="status" aria-live="polite"></p><p id="export-result" role="status"></p>
     <div class="canvas-wrap checker export-canvas"><canvas id="export-preview" width="1920" height="1080"></canvas></div>

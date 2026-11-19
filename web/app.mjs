@@ -4,7 +4,7 @@ import { genericRGBToSRGB, sRGBToGenericRGB } from './render-color.mjs?v=2026102
 import { escapeXML, renderLayout, svgDefinitions, fontsReady } from './render.mjs?v=20261118-geometry';
 import { createPreview } from './preview.mjs?v=20261026-trim1';
 import {prepareIsolation} from './export/isolation.mjs?v=20261026-singleworker1';
-import {createEditorExport} from './export/editor.mjs?v=20261118-geometry';
+import {createEditorExport} from './export/editor.mjs?v=20261119-4k';
 import { defaultPreset } from './default-preset.mjs?v=20261025-default-layout';
 const canEncode=await prepareIsolation(new URL('./isolation-worker.mjs?v=20261026-singleworker1',import.meta.url));
 

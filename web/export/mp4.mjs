@@ -36,9 +36,10 @@ function config(headers) {
   // MP4 sample timing is authoritative; hvcC's optional rate is in frames/256s.
   return box('hvcC',new Uint8Array([1]),new Uint8Array(rbsp.slice(1,13)),u16(0xf000),new Uint8Array([0xfc,0xfd,0xf8,0xf8]),u16(0),new Uint8Array([15,arrays.length]),...arrays);
 }
-export function createAlphaMP4({headers,width,height,fps,frames}) {
-  if(!Number.isInteger(width)||!Number.isInteger(height)||width<64||height<64||width%2||height%2||width>1920||height>1920||width*height>2073600||!Number.isInteger(fps)||fps<1||fps>30||!Number.isSafeInteger(frames)||frames<1||frames>0xffffffff)throw Error('invalidExport');
-  const sizes=[],sync=[],duration=frames;
+export function createAlphaMP4({headers,width,height,fpsNum,fpsDen=1,frames}) {
+  if(!Number.isInteger(width)||!Number.isInteger(height)||width<64||height<64||width%2||height%2||width>3840||height>3840||width*height>8294400||!Number.isInteger(fpsNum)||!Number.isInteger(fpsDen)||fpsDen<1||fpsNum<fpsDen||fpsNum>60*fpsDen||!Number.isSafeInteger(frames)||frames<1||frames*fpsDen>0xffffffff)throw Error('invalidExport');
+  // Timescale is the rate numerator; each sample lasts the denominator (1001 for NTSC rates).
+  const sizes=[],sync=[],duration=frames*fpsDen;
   let size=0,finished=false;
   const ftyp=box('ftyp','isom',u32(512),'isom','iso6','mp41','muxa');
   // A 64-bit mdat size supports long activities beyond 4 GiB.
@@ -55,10 +56,10 @@ export function createAlphaMP4({headers,width,height,fps,frames}) {
   if(finished||sizes.length!==frames)throw Error('incompleteExport');finished=true;
   new DataView(header.buffer).setBigUint64(ftyp.length+8,BigInt(size+16));
   const hvc1=box('hvc1',zeros(6),u16(1),zeros(16),u16(width),u16(height),u32(0x480000),u32(0x480000),u32(0),u16(1),zeros(32),u16(24),u16(65535),hvcc,box('colr','nclx',u16(1),u16(1),u16(1),zeros(1)));
-  const stbl=box('stbl',full('stsd',0,u32(1),hvc1),full('stts',0,u32(1),u32(duration),u32(1)),full('stsc',0,u32(1),u32(1),u32(duration),u32(1)),full('stsz',0,u32(0),u32(duration),packed32(sizes)),full('stco',0,u32(1),u32(header.length)),full('stss',0,u32(sync.length),packed32(sync)));
-  const mdia=box('mdia',full('mdhd',0,zeros(8),u32(fps),u32(duration),u16(0x55c4),u16(0)),full('hdlr',0,u32(0),'vide',zeros(12),'DataLayer Alpha\0'),box('minf',full('vmhd',1,zeros(8)),box('dinf',full('dref',0,u32(1),full('url ',1))),stbl));
+  const stbl=box('stbl',full('stsd',0,u32(1),hvc1),full('stts',0,u32(1),u32(frames),u32(fpsDen)),full('stsc',0,u32(1),u32(1),u32(frames),u32(1)),full('stsz',0,u32(0),u32(frames),packed32(sizes)),full('stco',0,u32(1),u32(header.length)),full('stss',0,u32(sync.length),packed32(sync)));
+  const mdia=box('mdia',full('mdhd',0,zeros(8),u32(fpsNum),u32(duration),u16(0x55c4),u16(0)),full('hdlr',0,u32(0),'vide',zeros(12),'DataLayer Alpha\0'),box('minf',full('vmhd',1,zeros(8)),box('dinf',full('dref',0,u32(1),full('url ',1))),stbl));
   const trak=box('trak',full('tkhd',7,zeros(8),u32(1),u32(0),u32(duration),zeros(16),matrix,u32(width*65536),u32(height*65536)),mdia);
-  const moov=box('moov',full('mvhd',0,zeros(8),u32(fps),u32(duration),u32(65536),u16(256),zeros(10),matrix,zeros(24),u32(2)),trak);
+  const moov=box('moov',full('mvhd',0,zeros(8),u32(fpsNum),u32(duration),u32(65536),u16(256),zeros(10),matrix,zeros(24),u32(2)),trak);
   sizes.length=sync.length=0;return moov;
   }
   return {header,add,finish};

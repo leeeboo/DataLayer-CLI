@@ -767,3 +767,14 @@ textarea {
 .export-dialog{width:min(900px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;margin:auto;padding:24px;color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:14px}
 .export-dialog::backdrop{background:#000a}.export-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.export-heading h2{margin:0;font-size:20px}.export-heading button{font-size:22px;padding:4px 12px}.export-source{display:flex;gap:16px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.export-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:18px 0}.export-fields label{display:grid;gap:8px}.export-fields input,.export-fields select{width:100%;min-width:0}.export-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.export-canvas{overflow:hidden;border:1px solid var(--line);border-radius:8px}.export-canvas canvas{display:block;width:100%;height:auto}.export-dialog .hint{line-height:1.5}.export-dialog a{overflow-wrap:anywhere}#export-result{font-variant-numeric:tabular-nums}
 @media(max-width:600px){.export-dialog{padding:16px}.export-heading h2{font-size:17px}.export-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.header-actions{flex-wrap:wrap}}
+.export-range{margin:12px 0 4px;font-weight:600;font-variant-numeric:tabular-nums}
+.export-dialog #export-bitrate-auto{margin:-6px 0 0}
+.export-cta{position:sticky;bottom:-24px;z-index:1;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 20px;margin:18px -24px 0;padding:16px 24px;background:var(--surface);border-top:1px solid var(--line)}
+#export-summary{flex:1 1 260px;margin:0;color:var(--text);font-variant-numeric:tabular-nums}
+.export-go{min-height:48px;padding:12px 32px;font-size:16px;font-weight:700}
+.export-dialog a.export-go{display:inline-flex;align-items:center;border:1px solid var(--accent);border-radius:7px;background:var(--accent);color:#082416}
+.export-dialog a.export-go:hover{background:#9bffb1}
+@media(max-width:600px){.export-cta{bottom:-16px;margin:16px -16px 0;padding:14px 16px}.export-actions,.export-go{width:100%}.export-go{justify-content:center}}
+.export-fields input,.export-fields select{min-height:40px}
+.export-canvas canvas{width:auto;max-width:100%;max-height:min(60vh,720px);margin:auto}
+.export-dialog .export-canvas{width:fit-content;max-width:100%;margin:0 auto}

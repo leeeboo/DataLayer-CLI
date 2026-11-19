@@ -11,7 +11,7 @@ export async function paint(canvas,layout,width,height,frame) {
   context.clearRect(0,0,width,height);context.drawImage(image,0,0);return context;
 }
 function encoderClient(signal) {
-  const worker=new Worker(new URL('./encode-worker.mjs?v=20261026-full1',import.meta.url),{type:'module'});
+  const worker=new Worker(new URL('./encode-worker.mjs?v=20261119-4k',import.meta.url),{type:'module'});
   let nextID=0,pending,abortTimer;
   const fail=()=>{clearTimeout(abortTimer);if(pending){pending.reject(signal.aborted?new DOMException('Cancelled','AbortError'):Error('encoderFailed'));pending=undefined;}};
   worker.onerror=fail;
@@ -27,7 +27,7 @@ export async function encodeOverlay({layout,activity,settings,signal,onProgress}
   try {
     file=await reserveExport();client=encoderClient(signal);
     await client.request('open',{config:settings,fileName:file.name});
-    const render=async index=>(await paint(canvas,layout,settings.width,settings.height,previewAt(activity,settings.start+index/settings.fps))).getImageData(0,0,settings.width,settings.height).data.buffer;
+    const render=async index=>(await paint(canvas,layout,settings.width,settings.height,previewAt(activity,settings.start+index*settings.fpsDen/settings.fpsNum))).getImageData(0,0,settings.width,settings.height).data.buffer;
     let pixels=await render(0),lastPreview=0;
     for(let i=0;i<settings.frames;i++) {
       if(signal.aborted)throw new DOMException('Cancelled','AbortError');

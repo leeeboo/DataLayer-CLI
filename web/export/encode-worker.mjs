@@ -1,5 +1,5 @@
-import createAlphaEncoder from './encoder/x265.mjs?v=20261026-full1';
-import {createAlphaMP4,writeAll} from './mp4.mjs?v=20261026-full1';
+import createAlphaEncoder from './encoder/x265.mjs?v=20261119-4k';
+import {createAlphaMP4,writeAll} from './mp4.mjs?v=20261119-4k';
 import {exportDirectory} from './storage.mjs?v=20261026-full1';
 let encoder,memory,mux,handle,fileHandle,offset=0;
 // Pthreads can grow shared memory without refreshing the exported HEAPU8 view.
@@ -11,10 +11,10 @@ self.onmessage = async ({data}) => {
     let result={};
     if(type==='open') {
       if(encoder)throw Error('encoderBusy');
-      memory=new WebAssembly.Memory({initial:1024,maximum:8192,shared:true});
-      const moduleURL=new URL('./encoder/x265.mjs?v=20261026-full1',import.meta.url);
-      encoder=await createAlphaEncoder({wasmMemory:memory,mainScriptUrlOrBlob:moduleURL.href,locateFile:path=>new URL(`${path}?v=20261026-full1`,moduleURL).href,printErr:()=>{}});
-      if(encoder._open_encoder(config.width,config.height,config.fps,config.kbps)!==0)throw Error('encoderOpen');
+      memory=new WebAssembly.Memory({initial:1024,maximum:24576,shared:true});
+      const moduleURL=new URL('./encoder/x265.mjs?v=20261119-4k',import.meta.url);
+      encoder=await createAlphaEncoder({wasmMemory:memory,mainScriptUrlOrBlob:moduleURL.href,locateFile:path=>new URL(`${path}?v=20261119-4k`,moduleURL).href,printErr:()=>{}});
+      if(encoder._open_encoder(config.width,config.height,config.fpsNum,config.fpsDen,config.kbps)!==0)throw Error('encoderOpen');
       if(!fileName){result.bytes=read();}else{
         if(!/^[a-f0-9-]{36}\.mp4$/.test(fileName))throw Error('invalidFile');
         fileHandle=await(await exportDirectory()).getFileHandle(fileName,{create:true});

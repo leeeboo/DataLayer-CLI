@@ -30,8 +30,15 @@ async function activity(page){
   });
   await expect(page.locator('#export-encode'),JSON.stringify(capabilities)).toBeEnabled();
 }
-async function configure(page,{duration='.2',bitrate='8',size='1280x720',start='0'}={}){
-  await page.locator('#export-size').selectOption(size);await page.locator('#export-duration').fill(duration);await page.locator('#export-start').fill(start);await page.locator('#export-bitrate').fill(bitrate);await page.locator('#export-bitrate').press('Tab');
+// The export range is the editor's trim selection; the dialog only chooses output format.
+async function trim(page,start,end){
+  if(await page.locator('#export-dialog').isVisible())await page.locator('#export-close').click();
+  await page.locator('#trim-reset').click();
+  await page.locator('#trim-start').fill(start);await page.locator('#trim-start').press('Tab');await page.locator('#trim-end').fill(end);await page.locator('#trim-end').press('Tab');
+}
+async function configure(page,{duration='.2',bitrate='8',size='1280x720',start='0',fps}={}){
+  await trim(page,start,String(Number((Number(start)+Number(duration)).toFixed(9))));await page.locator('#web-export').click();
+  await page.locator('#export-size').selectOption(size);if(fps)await page.locator('#export-fps').selectOption(fps);await page.locator('#export-bitrate').fill(bitrate);await page.locator('#export-bitrate').press('Tab');
 }
 async function encode(page){
   await page.locator('#export-encode').click();await expect(page.locator('#export-download')).toBeVisible({timeout:30000});
@@ -40,11 +47,11 @@ async function encode(page){
 }
 function boxes(data,start=0,end=data.length){const all=[];for(let p=start;p<end;){const extended=data.readUInt32BE(p)===1,size=extended?Number(data.readBigUInt64BE(p+8)):data.readUInt32BE(p),head=extended?16:8;expect(size).toBeGreaterThanOrEqual(head);expect(p+size).toBeLessThanOrEqual(end);all.push({type:data.toString('ascii',p+4,p+8),start:p+head,end:p+size});p+=size;}return all;}
 function child(data,parent,type){const box=boxes(data,parent.start,parent.end).find(b=>b.type===type);expect(box).toBeTruthy();return box;}
-function inspect(data,frames,fps){
+function inspect(data,frames,fps,den=1){
   const top=boxes(data),moov=top.find(b=>b.type==='moov'),mdat=top.find(b=>b.type==='mdat');
   expect(data.includes(Buffer.from('muxa'))).toBe(true);
   const mdia=child(data,child(data,moov,'trak'),'mdia'),mdhd=child(data,mdia,'mdhd');
-  expect(data.readUInt32BE(mdhd.start+12)).toBe(fps);expect(data.readUInt32BE(mdhd.start+16)).toBe(frames);
+  expect(data.readUInt32BE(mdhd.start+12)).toBe(fps);expect(data.readUInt32BE(mdhd.start+16)).toBe(frames*den);
   const stbl=child(data,child(data,mdia,'minf'),'stbl'),stsz=child(data,stbl,'stsz');expect(data.readUInt32BE(stsz.start+8)).toBe(frames);
   let position=mdat.start;
   for(let i=0;i<frames;i++){
@@ -84,15 +91,23 @@ test('703 FIT export preserves both layers, exact frame duration and bitrate sel
   expect(result.errors).toEqual([]);expect(result.requests).toEqual([]);
 });
 
-test('trimmed 703 FIT export matches the same original interval, including Alpha and fractional frames',async({page})=>{
-  const result=health(page);await open(page);await activity(page);await configure(page,{start:'1.25',duration:'.23334',size:'1920x1080'});
-  const reference=await encode(page);inspect(reference,8,30);await page.locator('#export-close').click();
-  await page.locator('#trim-start').fill('1.25');await page.locator('#trim-start').press('Tab');await page.locator('#trim-end').fill('1.48334');await page.locator('#trim-end').press('Tab');
-  await page.locator('#web-export').click();await expect(page.locator('#export-start')).toHaveValue('1.25');await expect(page.locator('#export-duration')).toHaveValue('0.23334');await expect(page.locator('#export-full')).toHaveText('Selected range');
-  // Exercise the JavaScript boundary as well as the browser's numeric constraints.
-  await page.locator('#export-start').fill('0');await page.locator('#export-form').dispatchEvent('submit');await expect(page.locator('#export-status')).toHaveText(translations.en.exportInvalid);await expect(page.locator('#export-download')).toBeHidden();
-  await page.locator('#export-full').click();const trimmed=await encode(page);inspect(trimmed,8,30);expect(trimmed.equals(reference)).toBe(true);
-  await page.locator('#export-close').click();await page.locator('#trim-reset').click();await page.locator('#web-export').click();await expect(page.locator('#export-start')).toHaveValue('0');await expect(page.locator('#export-duration')).toHaveValue('4');await expect(page.locator('#export-full')).toHaveText(translations.en.exportFullActivity);
+test('trimmed 703 FIT export uses the editor trim range, common frame rates and 4K in both orientations',async({page})=>{
+  test.setTimeout(90000);const result=health(page);await open(page);await activity(page);
+  for(const id of ['start','duration','full'])await expect(page.locator(`#export-${id}`)).toHaveCount(0);
+  await expect(page.locator('#export-fps option')).toHaveText(['23.976','24','25','29.97','30','50','59.94','60']);
+  for(const size of ['3840x2160','2160x3840','1920x1080','1080x1920'])await expect(page.locator(`#export-size option[value="${size}"]`)).toHaveCount(1);
+  await expect(page.locator('#export-bitrate')).toHaveValue('8');
+  await page.locator('#export-fps').selectOption('59.94');await expect(page.locator('#export-bitrate')).toHaveValue('12');
+  await page.locator('#export-size').selectOption('3840x2160');await expect(page.locator('#export-bitrate')).toHaveValue('34');
+  await page.locator('#export-size').selectOption('1280x720');await page.locator('#export-fps').selectOption('24');await expect(page.locator('#export-bitrate')).toHaveValue('4');
+  await expect(page.locator('#export-summary')).toContainText('96 frames');await expect(page.locator('#export-encode')).toHaveText(translations.en.exportStartButton);
+  await page.locator('#export-close').click();
+  await trim(page,'1.25','1.48334');await page.locator('#web-export').click();await expect(page.locator('#export-range')).toContainText('1.25');await expect(page.locator('#export-summary')).toContainText('6 frames');
+  await page.locator('#export-size').selectOption('1920x1080');await page.locator('#export-fps').selectOption('30');await page.locator('#export-bitrate').fill('8');await page.locator('#export-bitrate').press('Tab');
+  await expect(page.locator('#export-summary')).toContainText('8 frames');inspect(await encode(page),8,30);
+  await configure(page,{duration:'.1',size:'1920x1080',fps:'59.94'});inspect(await encode(page),6,60000,1001);
+  for(const size of ['3840x2160','2160x3840']){await configure(page,{duration:'.1',size,fps:'29.97',bitrate:'20'});inspect(await encode(page),3,30000,1001);}
+  await page.locator('#export-close').click();await page.locator('#trim-reset').click();await page.locator('#web-export').click();await expect(page.locator('#export-summary')).toContainText(`${Math.ceil(4*30000/1001)} frames`);
   expect(result.errors).toEqual([]);expect(result.requests).toEqual([]);
 });
 
@@ -105,8 +120,6 @@ test('legacy export URLs open the integrated editor without loading WASM eagerly
 
 test('full activity selection crosses keyframes and memory growth without retaining compressed samples',async({page})=>{
   test.setTimeout(60000);const result=health(page);await open(page);await activity(page);
-  await configure(page,{duration:'.1',start:'1'});await page.locator('#export-full').click();
-  await expect(page.locator('#export-start')).toHaveValue('0');await expect(page.locator('#export-duration')).not.toHaveValue('.1');
   await page.evaluate(()=>{window.heaps=[];const Base=Worker;window.Worker=class extends Base{constructor(...args){super(...args);this.addEventListener('message',({data})=>{if(data.heapBytes)heaps.push(data.heapBytes);if(data.bytes)throw Error('compressed samples escaped streaming worker');});}};});
   await configure(page,{size:'1920x1080',duration:'3'});inspect(await encode(page),90,30);
   expect((await page.evaluate(()=>heaps)).length).toBe(90);
@@ -168,7 +181,7 @@ test('WASM Alpha keeps full-range 0, 64, 128, 192 and 255 levels rather than vid
     const worker=new Worker(new URL('./export/encode-worker.mjs',location.href),{type:'module'});let id=0;
     const request=(type,data={},transfer=[])=>new Promise((resolve,reject)=>{worker.onmessage=({data:reply})=>reply.error?reject(Error('encoder failed')):resolve(reply.bytes);worker.onerror=reject;worker.postMessage({id:++id,type,...data},transfer);});
     try{
-      const config={width:320,height:64,fps:30,kbps:8000},headers=await request('open',{config}),samples=[];
+      const config={width:320,height:64,fps:30,fpsNum:30,fpsDen:1,kbps:8000},headers=await request('open',{config}),samples=[];
       const levels=[0,64,128,192,255];
       for(let index=0;index<3;index++){
         const rgba=new Uint8Array(320*64*4);
@@ -198,7 +211,7 @@ test('editor exports the current edited layout and loaded FIT in place without n
   const url=page.url(),pages=context.pages().length;
   await page.locator('#web-export').click();await expect(page.locator('#export-dialog')).toBeVisible();
   await expect(page.locator('#export-layout')).toHaveText('Edited in the editor');await expect(page.locator('#export-activity')).toContainText('activity.fit');
-  await page.locator('#export-duration').fill('.1');await page.locator('#export-bitrate').fill('8');await page.locator('#export-bitrate').press('Tab');
+  await configure(page,{duration:'.1',size:'1920x1080'});
   await page.locator('#export-encode').click();await expect(page.locator('#export-download')).toBeVisible({timeout:30000});
   const next=page.waitForEvent('download');await page.locator('#export-download').click();const file=await next;
   expect(file.suggestedFilename()).toBe('Edited in the editor-hevc-alpha.mp4');const bytes=await readFile(await file.path());inspect(bytes,3,30);
@@ -208,7 +221,7 @@ test('editor exports the current edited layout and loaded FIT in place without n
   }
   await page.locator('#export-close').click();await expect(page.locator('#export-dialog')).not.toBeVisible();
   await page.locator('#add-kind').selectOption('heartRate');await page.locator('#add').click();await expect(page.locator('#canvas [data-index]')).toHaveCount(1);
-  await page.locator('#web-export').click();await page.locator('#export-duration').fill('.1');await page.locator('#export-bitrate').press('Tab');await page.locator('#export-encode').click();await expect(page.locator('#export-download')).toBeVisible({timeout:30000});
+  await configure(page,{duration:'.1',size:'1920x1080'});await page.locator('#export-encode').click();await expect(page.locator('#export-download')).toBeVisible({timeout:30000});
   await expect(page.locator('#activity-name')).toContainText('activity.fit');expect(page.url()).toBe(url);expect(context.pages()).toHaveLength(pages);
   expect(result.errors).toEqual([]);expect(result.requests).toEqual([]);
 });
@@ -230,7 +243,7 @@ test('editor export requires real activity and preserves draft validation and ke
   await open(page);await page.locator('#web-export').click();await expect(page.locator('#export-dialog')).not.toBeVisible();await expect(page.locator('#status')).toHaveText(translations.en.exportNeedsActivity);
   await activity(page);
   await page.evaluate(()=>{const Base=Worker;window.Worker=class extends Base{postMessage(data,...args){if(data.type==='frame'&&!window.editorFrameHeld){window.editorFrameHeld=true;return;}return super.postMessage(data,...args);}};});
-  await page.locator('#export-duration').fill('1');await page.locator('#export-bitrate').press('Tab');await page.locator('#export-encode').click();await page.waitForFunction(()=>window.editorFrameHeld);
+  await configure(page,{duration:'1'});await page.locator('#export-encode').click();await page.waitForFunction(()=>window.editorFrameHeld);
   await expect(page.locator('#export-close')).toBeDisabled();await page.keyboard.press('Escape');await expect(page.locator('#export-cancel')).toBeHidden();await expect(page.locator('#export-status')).toHaveText(translations.en.exportCancelled);
   await expect(page.locator('#export-dialog')).toBeVisible();await configure(page,{duration:'.1'});inspect(await encode(page),3,30);
   await page.locator('#export-close').click();await expect(page.locator('#canvas [data-index]')).toHaveCount(8);
@@ -250,8 +263,8 @@ test('editor exports weather already loaded in its preview without another API r
   await mockWeather(page,async route=>{requests++;await route.fulfill({headers:{'access-control-allow-origin':'*','content-type':'application/json'},body:JSON.stringify({data:[{dt:Date.parse('2026-01-01T00:00:00Z')/1000,temp:28.6,humidity:65,weather:[{main:'Rain'}]}]})});});
   await page.locator('.weather-settings summary').click();await page.locator('#weather-key').fill('TEST_KEY_NOT_A_REAL_CREDENTIAL');await page.locator('#load-weather').click();await expect(page.locator('#weather-status')).toHaveText((await import('../i18n.mjs')).translations.en.weatherLoaded);
   await page.locator('#web-export').click();await expect.poll(alpha).not.toBe(before);const expected=await alpha();
-  await expect(page.locator('#export-start')).toHaveValue('1');await expect(page.locator('#export-duration')).toHaveValue('2');await expect(page.locator('#trim-end')).toHaveValue('3');
+  await expect(page.locator('#export-range')).toContainText('1–3');await expect(page.locator('#trim-end')).toHaveValue('3');
   await page.evaluate(()=>{const Base=Worker;window.Worker=class extends Base{postMessage(data,...args){if(data.type==='frame'&&data.index===0){const p=new Uint8Array(data.pixels),a=new Uint8Array(p.length/4);for(let i=0;i<a.length;i++)a[i]=p[i*4+3];window.exportedAlpha=crypto.subtle.digest('SHA-256',a).then(hash=>Array.from(new Uint8Array(hash)).join(','));}return super.postMessage(data,...args);}};});
-  await page.locator('#export-duration').fill('.1');await page.locator('#export-bitrate').press('Tab');await page.locator('#export-encode').click();await expect(page.locator('#export-download')).toBeVisible({timeout:30000});
+  await configure(page,{start:'1',duration:'.1',size:'1920x1080'});await page.locator('#export-encode').click();await expect(page.locator('#export-download')).toBeVisible({timeout:30000});
   expect(await page.evaluate(()=>window.exportedAlpha)).toBe(expected);expect(requests).toBe(1);await expect(page.locator('#weather-key')).toHaveValue('TEST_KEY_NOT_A_REAL_CREDENTIAL');
 });

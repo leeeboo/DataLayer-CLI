@@ -4,25 +4,28 @@ import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {exportConfig} from '../export/config.mjs';
+import {exportConfig,recommendedBitrate} from '../export/config.mjs';
 import {alphaMP4,createAlphaMP4,writeAll,nals,nalType,nalLayer} from '../export/mp4.mjs';
 import {languages,translations} from '../export/i18n.mjs';
-const valid={size:'1920x1080',fps:30,start:60,duration:3,bitrate:8};
-test('export validates source range, dimensions, bitrate and frame-accurate duration',()=>{
-  assert.deepEqual(exportConfig(valid,100),{width:1920,height:1080,fps:30,start:60,frames:90,kbps:8000});
-  assert.equal(exportConfig({...valid,duration:.101},100).frames,4);
-  assert.equal(exportConfig({...valid,duration:1.001,fps:15,bitrate:.1},100).kbps,100);
-  assert.equal(exportConfig({...valid,start:0,duration:6325.217},6325.217).frames,189757);
-  for(const change of [{size:'3840x2160'},{size:'1919x1080'},{size:'1920x1920'},{size:'1x1'},{size:'bad'},{fps:29.97},{fps:0},{fps:31},{start:-1},{start:99},{duration:0},{duration:101},{bitrate:0},{bitrate:101},{bitrate:Infinity},{start:NaN}])assert.throws(()=>exportConfig({...valid,...change},100));
-  assert.throws(()=>exportConfig({...valid,start:0,duration:2**32},2**32));
+const valid={size:'1920x1080',fps:'30',bitrate:8},range={start:60,end:63};
+test('export validates resolution, frame rate, bitrate and frame-accurate trimmed duration',()=>{
+  assert.deepEqual(exportConfig(valid,100,range),{width:1920,height:1080,fps:30,fpsNum:30,fpsDen:1,start:60,frames:90,kbps:8000});
+  assert.equal(exportConfig(valid,100,{start:60,end:60.101}).frames,4);
+  assert.equal(exportConfig({...valid,fps:'25',bitrate:.1},100,{start:0,end:1.001}).kbps,100);
+  assert.equal(exportConfig(valid,6325.217).frames,189757);
+  for(const size of ['3840x2160','2160x3840','2560x1440','1440x2560','720x1280','2160x2160'])assert.doesNotThrow(()=>exportConfig({...valid,size},100,range));
+  for(const [fps,num,den,frames] of [['23.976',24000,1001,72],['24',24,1,72],['25',25,1,75],['29.97',30000,1001,90],['50',50,1,150],['59.94',60000,1001,180],['60',60,1,180]]){
+    const config=exportConfig({...valid,fps},100,range);assert.deepEqual([config.fpsNum,config.fpsDen,config.frames],[num,den,frames]);assert(config.start+(config.frames-1)*den/num<range.end);
+  }
+  for(const change of [{size:'3842x2160'},{size:'3840x3840'},{size:'1919x1080'},{size:'1x1'},{size:'bad'},{fps:'29.970001'},{fps:'0'},{fps:'61'},{fps:'toString'},{bitrate:0},{bitrate:101},{bitrate:Infinity},{bitrate:''}])assert.throws(()=>exportConfig({...valid,...change},100,range));
+  for(const invalid of [{start:-1,end:90},{start:60,end:101},{start:61,end:60},{start:60,end:60.05},{start:NaN,end:90},{start:0,end:Infinity}])assert.throws(()=>exportConfig(valid,100,invalid));
+  assert.throws(()=>exportConfig({...valid,fps:'59.94'},2**32));
 });
-test('trimmed exports keep original timestamps and reject content outside the selected range',()=>{
-  const range={start:60.25,end:63.253},config=exportConfig({...valid,start:range.start,duration:3.003},100,range);
-  assert.equal(config.start,60.25);assert.equal(config.frames,91);
-  assert(config.start+(config.frames-1)/config.fps<range.end);
-  assert.equal(exportConfig({...valid,start:63.153,duration:.1},100,range).frames,3);
-  for(const change of [{start:60},{start:63,duration:1},{start:0,duration:3}])assert.throws(()=>exportConfig({...valid,...change},100,range));
-  for(const invalid of [{start:-1,end:90},{start:60,end:101},{start:61,end:60},{start:60,end:60},{start:NaN,end:90},{start:0,end:Infinity}])assert.throws(()=>exportConfig(valid,100,invalid));
+test('recommended bitrate scales with resolution and frame rate',()=>{
+  const at=(w,h,fps)=>recommendedBitrate(w,h,fps);
+  assert.equal(at(1920,1080,30),8);assert.equal(at(1080,1920,30),8);
+  assert(at(1280,720,30)<at(1920,1080,30));assert(at(1920,1080,30)<at(1920,1080,60));assert(at(1920,1080,60)<at(3840,2160,30));assert(at(3840,2160,30)<at(3840,2160,60000/1001));
+  for(const [w,h] of [[1280,720],[3840,2160],[2160,2160]])for(const fps of [24000/1001,24,25,30000/1001,30,50,60000/1001,60]){const value=at(w,h,fps);assert(Number.isInteger(value)&&value>=2&&value<=100);}
 });
 test('all twelve export locales provide every key and preserve progress placeholders',()=>{
   assert.deepEqual(Object.keys(translations).sort(),Object.keys(languages).sort());
@@ -50,7 +53,7 @@ test('shipped WASM encodes both layers for every frame; MP4 retains headers, Alp
   for(const [type,layer] of [[32,0],[33,0],[33,1],[34,0],[34,1],[39,0]])assert(units.some(n=>nalType(n)===type&&nalLayer(n)===layer));
   const sei=units.find(n=>nalType(n)===39);assert.equal(sei[2],165); // HEVC alpha_channel_info SEI payload type.
   for(const sample of samples)for(const layer of [0,1])assert(nals(sample).some(n=>nalType(n)<32&&nalLayer(n)===layer));
-  const blob=alphaMP4({headers,samples,width:64,height:64,fps:30}),data=Buffer.from(await blob.arrayBuffer()),top=boxes(data);
+  const blob=alphaMP4({headers,samples,width:64,height:64,fpsNum:30}),data=Buffer.from(await blob.arrayBuffer()),top=boxes(data);
   assert.equal(blob.type,'video/mp4');assert.equal(data.toString('ascii',8,12),'isom');assert(data.includes(Buffer.from('muxa')));
   const mdat=top.find(b=>b.type==='mdat');assert.deepEqual(data.subarray(mdat.start,mdat.end),Buffer.concat(samples));
   const moov=top.find(b=>b.type==='moov'),mdia=child(data,child(data,moov,'trak'),'mdia'),mdhd=child(data,mdia,'mdhd');
@@ -59,12 +62,12 @@ test('shipped WASM encodes both layers for every frame; MP4 retains headers, Alp
   assert.equal(data.readUInt32BE(stsz.start+8),3);assert.deepEqual(samples.map((_,i)=>data.readUInt32BE(stsz.start+12+i*4)),samples.map(b=>b.length));
   const stsd=child(data,stbl,'stsd'),hvc1=boxes(data,stsd.start+8,stsd.end)[0];assert.equal(hvc1.type,'hvc1');
   const hvcc=boxes(data,hvc1.start+78,hvc1.end).find(b=>b.type==='hvcC');assert(hvcc);assert.equal(data[hvcc.start],1);assert.equal(data[hvcc.start+22],4);assert.equal(data.readUInt16BE(hvcc.start+19),0);
-  assert.throws(()=>alphaMP4({headers,samples:[],width:64,height:64,fps:30}));
-  assert.throws(()=>alphaMP4({headers:new Uint8Array(),samples,width:64,height:64,fps:30}));
+  assert.throws(()=>alphaMP4({headers,samples:[],width:64,height:64,fpsNum:30}));
+  assert.throws(()=>alphaMP4({headers:new Uint8Array(),samples,width:64,height:64,fpsNum:30}));
   const baseOnly=Buffer.from([0,0,0,3,2,1,128]);
-  assert.throws(()=>alphaMP4({headers,samples:[baseOnly],width:64,height:64,fps:30}));
+  assert.throws(()=>alphaMP4({headers,samples:[baseOnly],width:64,height:64,fpsNum:30}));
   for(const bad of [new Uint8Array([0]),new Uint8Array([0,0,0,20,1,1]),new Uint8Array([0,0,0,0])])assert.throws(()=>nals(bad));
-  const long=createAlphaMP4({headers,width:1920,height:1080,fps:30,frames:70000}),sample=new Uint8Array(65536),view=new DataView(sample.buffer);
+  const long=createAlphaMP4({headers,width:1920,height:1080,fpsNum:30,frames:70000}),sample=new Uint8Array(65536),view=new DataView(sample.buffer);
   for(const at of [0,32768]){view.setUint32(at,32764);sample[at+4]=2;sample[at+5]=at?9:1;}
   assert.throws(()=>long.finish());
   for(let i=0;i<70000;i++)long.add(sample);
@@ -75,6 +78,12 @@ test('shipped WASM encodes both layers for every frame; MP4 retains headers, Alp
   assert.equal(tail.readUInt32BE(child(tail,longStbl,'stsz').start+8),70000);
   assert.equal(tail.readUInt32BE(child(tail,longMdia,'mdhd').start+16),70000);
   assert.throws(()=>long.add(sample));assert.throws(()=>long.finish());
+  // NTSC rates keep exact sample durations; 4K portrait is accepted, larger frames are not.
+  const ntsc=alphaMP4({headers,samples,width:2160,height:3840,fpsNum:60000,fpsDen:1001}),ntscData=Buffer.from(await ntsc.arrayBuffer());
+  const ntscMdia=child(ntscData,child(ntscData,boxes(ntscData).find(b=>b.type==='moov'),'trak'),'mdia'),ntscMdhd=child(ntscData,ntscMdia,'mdhd'),stts=child(ntscData,child(ntscData,child(ntscData,ntscMdia,'minf'),'stbl'),'stts');
+  assert.deepEqual([ntscData.readUInt32BE(ntscMdhd.start+12),ntscData.readUInt32BE(ntscMdhd.start+16)],[60000,3*1001]);
+  assert.deepEqual([ntscData.readUInt32BE(stts.start+4),ntscData.readUInt32BE(stts.start+8),ntscData.readUInt32BE(stts.start+12)],[1,3,1001]);
+  for(const bad of [{width:3842,height:2160},{width:3840,height:3840},{fpsNum:61},{fpsNum:60061,fpsDen:1001},{fpsNum:30,fpsDen:0}])assert.throws(()=>alphaMP4({headers,samples,width:64,height:64,fpsNum:30,...bad}));
 });
 
 test('disk writes handle partial writes and reject short or failed output',()=>{

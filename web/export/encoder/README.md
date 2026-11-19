@@ -33,7 +33,7 @@ while preserving limited-range color in the base SPS, as required by the Apple
 HEVC Alpha interoperability profile. Without this fix, native decoding expands
 Alpha as video-range values and changes translucent opacity. `bridge.cpp` contains the RGBA-to-YUVA420 conversion and streaming
 x265 API calls. It uses Main, BT.709 limited-range color, straight full-range
-Alpha, ABR bitrate, no B-frames, one encoder frame thread per layer, four WPP workers, 64-pixel CTUs and 32-pixel minimum CUs and a short motion search for sparse overlays. The runtime starts with a 64 MiB shared heap, grows only as needed, and caps it at 512 MiB. The Worker refreshes its byte view from the shared memory before every access, including growth triggered by a pthread.
+Alpha, ABR bitrate, no B-frames, one encoder frame thread per layer, four WPP workers, 64-pixel CTUs and 32-pixel minimum CUs and a short motion search for sparse overlays. The runtime starts with a 64 MiB shared heap, grows only as needed, and caps it at 1.5 GiB (UHD 4K peaks near 900 MiB). The Worker refreshes its byte view from the shared memory before every access, including growth triggered by a pthread.
 Build output is `x265.mjs` and `x265.wasm`. There is no remote encoder or upload.
 
 ## Browser hosting
@@ -47,11 +47,14 @@ The service worker does not cache files or proxy external hosts. A dedicated Wor
 workers, and is terminated on completion, error, cancellation or page exit.
 
 The editor accepts a `.dlspreset` and local FIT/GPX, with the 703 default layout.
-The entire activity is selected on import; the Full activity button restores that range. You can also choose a shorter start/duration, resolution, frame rate and target Mbps. Download
+The export range is the editor's Trim activity selection (the entire activity on import). The dialog chooses
+resolution (landscape, portrait or square, up to UHD 4K), frame rate and target Mbps; changing resolution or frame
+rate fills a recommended bitrate that remains editable. Download
 is an MP4 `hvc1` track containing both base and Alpha layers and the `muxa` brand.
 The output contains only gauge graphics and transparency.
 
-The pixel and rate limits remain 2,073,600 pixels, 30 fps and 0.1–100 Mbps. The
+Limits are 3840 pixels per side and 8,294,400 pixels, 23.976/24/25/29.97/30/50/59.94/60 fps (NTSC rates use
+an exact 1001 denominator in x265 and MP4 timing), and 0.1–100 Mbps. The
 60-second and 128 MiB output limits have been removed. Duration rounds up to the
 next frame and is reported after encoding. MP4 uses a 64-bit `mdat` length, supports
 files over 4 GiB, and retains one small size/index entry per encoded frame.

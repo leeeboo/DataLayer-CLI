@@ -33,7 +33,7 @@ em++ "$encoder_dir/bridge.cpp" "$build_dir/build/libx265.a" \
   "-ffile-prefix-map=$encoder_dir=." -O3 -msimd128 -pthread \
   -sMODULARIZE=1 -sEXPORT_ES6=1 -sEXPORT_NAME=createAlphaEncoder \
   -sENVIRONMENT=web,worker,node -sPTHREAD_POOL_SIZE=10 -sALLOW_MEMORY_GROWTH=1 \
-  -sINITIAL_MEMORY=67108864 -sMAXIMUM_MEMORY=536870912 -sSTACK_SIZE=2097152 \
+  -sINITIAL_MEMORY=67108864 -sMAXIMUM_MEMORY=1610612736 -sSTACK_SIZE=2097152 \
   -sEXPORTED_RUNTIME_METHODS='["HEAPU8"]' \
   -sEXPORTED_FUNCTIONS='["_open_encoder","_close_encoder","_input_pointer","_output_pointer","_output_size","_encode_frame"]' \
   -o "$encoder_dir/x265.mjs"

@@ -21,12 +21,13 @@ void close_encoder() {
     rgba.clear(); planar.clear(); output.clear();
     x265_cleanup();
 }
-int open_encoder(int width, int height, int fps, int kbps) {
-    if (encoder || width < 64 || height < 64 || width > 1920 || height > 1920 || width % 2 || height % 2 || width * height > 2073600 || fps < 1 || fps > 30 || kbps < 100 || kbps > 100000) return -1;
+int open_encoder(int width, int height, int fpsNum, int fpsDen, int kbps) {
+    // Up to UHD 4K in either orientation; 1-60 fps including NTSC 1001 rates.
+    if (encoder || width < 64 || height < 64 || width > 3840 || height > 3840 || width % 2 || height % 2 || width * height > 3840 * 2160 || fpsDen < 1 || fpsNum < fpsDen || fpsNum > 60 * fpsDen || kbps < 100 || kbps > 100000) return -1;
     param = x265_param_alloc();
     if (!param || x265_param_default_preset(param, "ultrafast", "zerolatency") < 0) { close_encoder(); return -2; }
     param->sourceWidth = width; param->sourceHeight = height;
-    param->fpsNum = fps; param->fpsDenom = 1;
+    param->fpsNum = fpsNum; param->fpsDenom = fpsDen;
     param->internalCsp = X265_CSP_I420; param->internalBitDepth = 8;
     param->bEnableAlpha = 1; param->numScalableLayers = 2; param->numLayers = 2;
     param->frameNumThreads = 1; x265_param_parse(param, "pools", "4");
@@ -35,7 +36,7 @@ int open_encoder(int width, int height, int fps, int kbps) {
     param->maxCUSize = 64; param->minCUSize = 32; param->searchRange = 16;
     param->bCopyPicToFrame = 1; param->bAnnexB = 0; param->bRepeatHeaders = 0; param->bEmitInfoSEI = 0;
     param->rc.rateControlMode = X265_RC_ABR; param->rc.bitrate = kbps;
-    param->keyframeMax = fps * 2; param->bOpenGOP = 0;
+    param->keyframeMax = std::max(1, (2 * fpsNum + fpsDen / 2) / fpsDen); param->bOpenGOP = 0;
     param->vui.bEnableVideoSignalTypePresentFlag = 1;
     param->vui.bEnableColorDescriptionPresentFlag = 1;
     param->vui.colorPrimaries = 1; param->vui.transferCharacteristics = 1; param->vui.matrixCoeffs = 1;
