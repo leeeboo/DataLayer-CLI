@@ -7,8 +7,8 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; style-src-attr 'unsafe-hashes' 'sha256-3oFxofzq3N//6J8H86e9ul4WT2OkJrtonB66gn/TLJw='; img-src 'self' data:; media-src blob:; connect-src 'self' https://api.openweathermap.org; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Data Overlay Editor · DataLayer Studio</title>
   <link rel="icon" href="./mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=20261119-progress">
-  <script type="module" src="./app.mjs?v=20261119-relative"></script>
+  <link rel="stylesheet" href="./style.css?v=20261119-weatherkey">
+  <script type="module" src="./app.mjs?v=20261119-weatherkey"></script>
 </head>
 <body>
   <header class="app-header">
@@ -49,11 +49,12 @@
         </div>
         <p class="hint" data-t="localPreviewHelp">Files stay in this browser and are not saved in the template.</p>
         <details class="weather-settings">
-          <summary data-t="weatherSettings">Weather API (optional)</summary>
-          <p id="weather-help" class="hint" data-t="weatherHelp">Requires OpenWeather One Call 4.0. Clicking Load sends the activity’s start coordinates, time and Key to OpenWeather and uses your API quota. The Key stays on this page and is never saved in the template.</p>
+          <summary><span data-t="weatherSettings">Weather API (optional)</span> <span id="weather-saved" class="weather-saved" data-t="weatherSaved" hidden>Key saved</span></summary>
+          <p id="weather-help" class="hint" data-t="weatherHelp">Requires OpenWeather One Call 4.0. Clicking Load sends the activity’s start coordinates, time and Key to OpenWeather and uses your API quota. The Key is never saved in templates; turn on Remember to keep it in this browser’s local storage, and Clear removes it.</p>
           <a href="https://home.openweathermap.org/api_keys" target="_blank" rel="noopener noreferrer" data-t="weatherGetKey">Get an API Key</a>
           <label for="weather-key" data-t="weatherKey">OpenWeather API Key</label>
           <div class="weather-controls"><input id="weather-key" type="password" autocomplete="off" spellcheck="false" maxlength="256" dir="ltr" aria-describedby="weather-help"><button id="load-weather" type="button" data-t="weatherLoad" disabled>Load weather</button><button id="clear-weather" type="button" data-t="weatherClear">Clear weather &amp; Key</button></div>
+          <label class="toggle weather-remember"><input id="weather-remember" type="checkbox" aria-describedby="weather-help"><span data-t="weatherRemember">Remember Key in this browser</span></label>
           <p id="weather-status" class="status" role="status" aria-live="polite"></p>
         </details>
         <input id="activity-file" type="file" accept=".fit,.gpx" hidden>

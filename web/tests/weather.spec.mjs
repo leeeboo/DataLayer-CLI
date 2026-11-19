@@ -39,7 +39,7 @@ test('weather controls, help and disabled state work in all twelve languages on 
     await openEditor(page,`./?lang=${language}`);
     const words = translations[language];
     await page.locator('.weather-settings summary').click();
-    await expect(page.locator('.weather-settings summary')).toHaveText(words.weatherSettings);
+    await expect(page.locator('.weather-settings summary [data-t="weatherSettings"]')).toHaveText(words.weatherSettings);
     await expect(page.locator('#weather-help')).toHaveText(words.weatherHelp);
     await expect(page.locator('#weather-key')).toHaveAccessibleName(words.weatherKey);
     await expect(page.locator('#weather-key')).toHaveAttribute('type', 'password');
@@ -159,4 +159,27 @@ test('weather connections are restricted to the official API host', async ({ pag
     try { await fetch('https://untrusted.invalid/not-a-real-key'); return false; } catch { return true; }
   });
   expect(blocked).toBe(true); expect(disallowedRequest).toBe(false);
+});
+
+test('the OpenWeather Key is remembered in this browser only after opting in and is removed by Clear', async ({ page }) => {
+  const key = 'TEST_KEY_NOT_A_REAL_CREDENTIAL_SAVED';
+  await openEditor(page, './?lang=zh-CN'); await page.locator('.weather-settings summary').click();
+  await expect(page.locator('#weather-remember')).not.toBeChecked(); await expect(page.locator('#weather-saved')).toBeHidden();
+  await expect(page.locator('label.weather-remember')).toHaveText(translations['zh-CN'].weatherRemember);
+  await page.locator('#weather-key').fill(key);
+  expect(await page.evaluate(() => JSON.stringify({ ...localStorage }))).not.toContain(key);
+  await page.locator('#weather-remember').check(); await expect(page.locator('#weather-saved')).toBeVisible(); await expect(page.locator('#weather-saved')).toHaveText(translations['zh-CN'].weatherSaved);
+  expect(await page.evaluate(() => localStorage.getItem('dls-openweather-key'))).toBe(key);
+  await page.reload(); await expect(page.locator('#weather-saved')).toBeVisible(); await page.locator('.weather-settings summary').click();
+  await expect(page.locator('#weather-key')).toHaveValue(key); await expect(page.locator('#weather-remember')).toBeChecked();
+  await page.locator('#weather-key').fill(key + '_2'); expect(await page.evaluate(() => localStorage.getItem('dls-openweather-key'))).toBe(key + '_2');
+  // Templates never carry the Key.
+  const pending = page.waitForEvent('download'); await page.locator('#download').click(); const file = await pending;
+  expect(await readFile(await file.path(), 'utf8')).not.toContain(key);
+  await page.locator('#weather-remember').uncheck(); expect(await page.evaluate(() => localStorage.getItem('dls-openweather-key'))).toBeNull(); await expect(page.locator('#weather-saved')).toBeHidden();
+  await expect(page.locator('#weather-key')).toHaveValue(key + '_2');
+  await page.locator('#weather-remember').check(); await page.locator('#clear-weather').click();
+  await expect(page.locator('#weather-key')).toHaveValue(''); await expect(page.locator('#weather-remember')).not.toBeChecked();
+  expect(await page.evaluate(() => localStorage.getItem('dls-openweather-key'))).toBeNull();
+  await page.reload(); await page.locator('.weather-settings summary').click(); await expect(page.locator('#weather-key')).toHaveValue('');
 });

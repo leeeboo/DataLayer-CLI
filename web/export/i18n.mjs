@@ -1,4 +1,4 @@
-import {languages,languageFrom,translate as common} from '../i18n.mjs?v=20261119-progress';
+import {languages,languageFrom,translate as common} from '../i18n.mjs?v=20261119-weatherkey';
 export {languages,languageFrom};
 const keys=["exportTitle","exportHelp","exportSize","exportFPS","exportBitrate","exportStartButton","exportCancel","exportDownload","exportPlayback","exportBitrateHelp","exportWeather","exportLicense","exportReady","exportIsolation","exportNeedsActivity","exportInvalid","exportError","exportCancelled","exportProgress","exportDone","exportUnsupported","exportStorageError","exportLandscape","exportPortrait","exportSquare","exportSummary","exportTrimHint","exportBitrateAuto","exportProgressTitle","exportDoneTitle","exportStarting","exportProgressDetail","exportKeepOpen","exportBack","exportSupportPrompt","exportSupportDone"];
 const values={

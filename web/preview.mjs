@@ -18,7 +18,12 @@ export function createPreview({ t, redraw, changed }) {
   let playing = false, raf = 0, lastDraw = 0, playStart = 0, playTime = 0, activityGeneration = 0;
   let activityLoading = false, message;
   let baseActivity, weatherRequest, weatherMessage;
-  $('weather-key').value = '';
+  // The Key is kept only when the visitor opts in, and only in this browser's local storage (never in templates).
+  const savedKey = 'dls-openweather-key';
+  const storage = { get() { try { return localStorage.getItem(savedKey) ?? ''; } catch { return ''; } }, set(value) { try { if (value) localStorage.setItem(savedKey, value); else localStorage.removeItem(savedKey); } catch {} } };
+  const remembered = storage.get();
+  $('weather-key').value = remembered; $('weather-remember').checked = !!remembered;
+  function persistKey() { storage.set($('weather-remember').checked ? $('weather-key').value.trim() : ''); $('weather-saved').hidden = !storage.get(); }
   const currentTime = () => time;
   const rangeLabel = () => t('trimSummary', { start:trimStart, end:trimEnd, duration:Number((trimEnd-trimStart).toFixed(3)) });
   const frame = () => activity ? previewAt(activity, currentTime()) : undefined;
@@ -154,7 +159,8 @@ export function createPreview({ t, redraw, changed }) {
   $('import-activity').onclick = () => $('activity-file').click();
   $('activity-file').onchange = () => { loadActivity($('activity-file').files[0]); $('activity-file').value = ''; };
   $('remove-activity').onclick = () => { ++activityGeneration; cancelWeather(); weatherMessage = undefined; activityLoading = false; pause(); activity = baseActivity = undefined; activityName = ''; message = undefined; resetTime(); update(); };
-  $('weather-key').oninput = () => { cancelWeather(); weatherMessage = undefined; refresh(); };
+  $('weather-key').oninput = () => { cancelWeather(); weatherMessage = undefined; persistKey(); refresh(); };
+  $('weather-remember').onchange = () => { persistKey(); refresh(); };
   $('load-weather').onclick = async () => {
     if (!baseActivity || !weatherAnchor(baseActivity)) { weatherMessage = { key: 'weatherNeedsLocation', error: true }; refresh(); return; }
     cancelWeather();
@@ -170,7 +176,7 @@ export function createPreview({ t, redraw, changed }) {
     } finally { if (weatherRequest === controller) { weatherRequest = undefined; update(); } }
   };
   $('clear-weather').onclick = () => {
-    cancelWeather(); clearWeatherCache(); $('weather-key').value = ''; activity = baseActivity;
+    cancelWeather(); clearWeatherCache(); $('weather-key').value = ''; $('weather-remember').checked = false; persistKey(); activity = baseActivity;
     weatherMessage = { key: 'weatherCleared' }; update();
   };
   $('play').onclick = () => {
@@ -179,7 +185,7 @@ export function createPreview({ t, redraw, changed }) {
     playStart = performance.now(); playTime = time; startTicks();
   };
   $('seek').oninput = () => seek(Number($('seek').value));
-  window.addEventListener('pagehide', event => { if (!event.persisted) { cancelWeather(); $('weather-key').value = ''; clearWeatherCache(); stop(); } });
-  refresh();
+  window.addEventListener('pagehide', event => { if (!event.persisted) { cancelWeather(); $('weather-key').value = $('weather-remember').checked ? storage.get() : ''; clearWeatherCache(); stop(); } });
+  persistKey(); refresh();
   return { frame, renderLabels:refresh, pause, loadActivity, exportSource:()=>({activity,loading:activityLoading,activityLabel:$('activity-name').textContent,range:{start:trimStart,end:trimEnd},rangeLabel:rangeLabel()}) };
 }
