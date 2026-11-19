@@ -49,6 +49,8 @@ test('timeline handles trim by drag and keyboard, and clicking moves the playhea
   await drag('#timeline-start',1);await expect(page.locator('#trim-start')).toHaveValue('1');await expect(page.locator('#seek')).toHaveValue('1');
   await drag('#timeline-end',3);await expect(page.locator('#trim-end')).toHaveValue('3');await expect(page.locator('#seek')).toHaveValue('3');
   await expect(page.locator('#trim-summary')).toHaveText('Selected: 1–3 s · 2 s');await expect(page.locator('#timeline-selection')).toHaveText('00:01 – 00:03');
+  // The playback bar restarts at zero for the trimmed range while the timeline keeps original activity times.
+  await expect(page.locator('#preview-time')).toHaveText('00:02 / 00:02');await expect(page.locator('#seek')).toHaveAttribute('aria-valuetext','00:02 / 00:02');
   await expect(page.locator('#timeline-start')).toHaveAttribute('aria-valuetext','00:01');await expect(page.locator('#timeline-end')).toHaveAttribute('aria-valuemin','1');
   await drag('#timeline-start',3.6);await expect(page.locator('#trim-start')).toHaveValue('2.9');await expect(page.locator('#trim-end')).toHaveValue('3');
   const start=page.locator('#timeline-start');await start.press('ArrowLeft');await expect(page.locator('#trim-start')).toHaveValue('1.9');
@@ -56,7 +58,7 @@ test('timeline handles trim by drag and keyboard, and clicking moves the playhea
   await page.locator('#timeline-end').press('ArrowRight');await expect(page.locator('#trim-end')).toHaveValue('4');
   await page.locator('#trim-start').fill('1');await page.locator('#trim-start').press('Tab');await page.locator('#trim-end').fill('3');await page.locator('#trim-end').press('Tab');
   await measure();await page.mouse.click(x(3.8),y);await expect(page.locator('#seek')).toHaveValue('3');
-  await page.mouse.click(x(2),y);await expect(page.locator('#seek')).toHaveValue('2');await expect(page.locator('#trim-start')).toHaveValue('1');await expect(page.locator('#trim-end')).toHaveValue('3');
+  await page.mouse.click(x(2),y);await expect(page.locator('#seek')).toHaveValue('2');await expect(page.locator('#preview-time')).toHaveText('00:01 / 00:02');await expect(page.locator('#trim-start')).toHaveValue('1');await expect(page.locator('#trim-end')).toHaveValue('3');
   await expect(page.locator('#canvas text').filter({hasText:/^120$/})).toHaveCount(1);await expect(page.locator('#media-status')).toHaveText('');
   expect(await download(page)).toEqual(source);
 });
@@ -66,7 +68,7 @@ test('trim limits seeking and playback, keeps original values and restores the f
   await seek(page,2);await page.locator('#trim-set-start').click();await expect(page.locator('#trim-start')).toHaveValue('2');
   await seek(page,3);await page.locator('#trim-set-end').click();await expect(page.locator('#trim-end')).toHaveValue('3');
   await expect(page.locator('#seek')).toHaveAttribute('min','2');await expect(page.locator('#seek')).toHaveAttribute('max','3');
-  await seek(page,0);await expect(page.locator('#seek')).toHaveValue('2');await expect(page.locator('#canvas text').filter({hasText:/^120$/})).toHaveCount(1);
+  await seek(page,0);await expect(page.locator('#seek')).toHaveValue('2');await expect(page.locator('#preview-time')).toHaveText('00:00 / 00:01');await expect(page.locator('#canvas text').filter({hasText:/^120$/})).toHaveCount(1);
   await seek(page,4);await expect(page.locator('#seek')).toHaveValue('3');await page.locator('#play').click();
   await expect.poll(async()=>Number(await page.locator('#seek').inputValue())).toBeLessThan(3);
   await expect(page.locator('#play')).toHaveText(translations.en.play);await expect(page.locator('#seek')).toHaveValue('3');

@@ -30,7 +30,9 @@ export function createPreview({ t, redraw, changed }) {
     const busy = activityLoading ? t('whyActivityLoading') : !activity ? t('whyNeedsActivity') : '';
     $('play').textContent = t(playing ? 'pause' : 'play'); available($('play'), end > 0 ? '' : busy || t('whyNeedsActivity'));
     $('seek').disabled = !(end > 0); $('seek').min = String(trimStart); $('seek').max = String(end); $('seek').value = String(current);
-    $('preview-time').textContent = `${formatTime(current)} / ${formatTime(end)}`;
+    // The playback bar counts from the start of the trimmed range; the timeline keeps original activity times.
+    const elapsed = formatTime(Math.max(0, current - trimStart) + 1e-6), total = formatTime(Math.max(0, end - trimStart) + 1e-6);
+    $('preview-time').textContent = `${elapsed} / ${total}`; $('seek').setAttribute('aria-valuetext', `${elapsed} / ${total}`);
     $('preview-note').textContent = t(activity ? 'previewReal' : 'preview');
     $('activity-trim').hidden = !activity;
     $('trim-summary').textContent = rangeLabel();
