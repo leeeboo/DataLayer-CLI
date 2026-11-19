@@ -13,6 +13,7 @@ export function weatherAnchor(activity) {
     && Number.isFinite(sample.longitude) && Math.abs(sample.longitude) <= 180);
 }
 export function clearWeatherCache() { cache.clear(); }
+export const hasWeatherCache = () => cache.size > 0;
 
 export async function loadWeatherRecords(activity, apiKey, language, signal) {
   const anchor = weatherAnchor(activity);

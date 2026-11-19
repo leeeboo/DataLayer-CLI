@@ -1,10 +1,10 @@
 import { accents, fonts, gauges, clone, createElement, createDocument, presets, parseJSON, parseDocument, validateDocument, validateCustomization, exportDocument, swiftDate, uid, History } from './model.mjs?v=20261025-weather';
-import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261119-rename';
+import { languages, translate, errorMessage, languageFrom } from './i18n.mjs?v=20261119-tips';
 import { genericRGBToSRGB, sRGBToGenericRGB } from './render-color.mjs?v=20261025-weather';
 import { escapeXML, renderLayout, svgDefinitions, fontsReady } from './render.mjs?v=20261118-geometry';
-import { createPreview } from './preview.mjs?v=20261119-timeline';
+import { createPreview, available } from './preview.mjs?v=20261119-tips';
 import {prepareIsolation} from './export/isolation.mjs?v=20261026-singleworker1';
-import {createEditorExport} from './export/editor.mjs?v=20261119-rename';
+import {createEditorExport} from './export/editor.mjs?v=20261119-tips';
 import { defaultPreset } from './default-preset.mjs?v=20261025-default-layout';
 const canEncode=await prepareIsolation(new URL('./isolation-worker.mjs?v=20261026-singleworker1',import.meta.url));
 
@@ -16,8 +16,9 @@ let activeID = data.id, selectedID = data.layout.elements[0]?.id ?? null;
 let history = new History(snapshot()), saved = exportDocument(data, activeID), drag = null;
 const drafts = new Map();
 let width = 1920, height = 1080, canvasScene = [];
-const localPreview = createPreview({ t, redraw:renderCanvas });
-const videoExport=createEditorExport({language:()=>language,source:()=>({preset:preset(),...localPreview.exportSource(),width,height}),canEncode,report:status,beforeOpen:()=>{if(!validateExportEdits())return false;localPreview.pause();return true;}});
+let videoExport;
+const localPreview = createPreview({ t, redraw:renderCanvas, changed:()=>videoExport?.syncAvailability() });
+videoExport=createEditorExport({language:()=>language,source:()=>({preset:preset(),...localPreview.exportSource(),width,height}),canEncode,report:status,beforeOpen:()=>{if(!validateExportEdits())return false;localPreview.pause();return true;}});
 function snapshot() { return { data, activeID, selectedID }; }
 function restore(value) { ({ data, activeID, selectedID } = clone(value)); }
 const preset = () => presets(data).find(p => p.id === activeID) ?? presets(data)[0];
@@ -135,19 +136,23 @@ function renderInspector() {
     const value = '#' + ['red','green','blue'].map(channel => Math.round(displayed[channel]*255).toString(16).padStart(2,'0')).join('');
     control(colorFields, key, { type:'color', value, change:v => change(key, sRGBToGenericRGB({red:parseInt(v.slice(1,3),16)/255,green:parseInt(v.slice(3,5),16)/255,blue:parseInt(v.slice(5,7),16)/255,alpha:source.alpha})) });
   }
-  button(appearance, 'resetColor', () => mutate(() => { for (const key of ['valueColor', 'labelColor', 'unitColor']) delete c[key]; }), 'text-button');
+  const resetColor = button(appearance, 'resetColor', () => mutate(() => { for (const key of ['valueColor', 'labelColor', 'unitColor']) delete c[key]; }), 'text-button');
+  available(resetColor, ['valueColor', 'labelColor', 'unitColor'].some(key => key in c) ? '' : t('whyDefaultColors'));
   const advanced = element('details'); advanced.id = 'advanced'; advanced.append(element('summary', '', t('advanced')), element('p', 'hint', t('advancedHelp')));
   const key = draftKey(preset().id, e.id);
   const json = element('textarea'); json.id = 'custom-json'; json.setAttribute('aria-label', t('advanced')); json.spellcheck = false; json.value = drafts.get(key) ?? JSON.stringify(c, null, 2);
-  json.oninput = () => { drafts.set(key, json.value); };
   advanced.append(json);
-  button(advanced, 'apply', () => {
+  const apply = button(advanced, 'apply', () => {
     try {
       const next = parseJSON(json.value);
       validateCustomization(next);
       if (mutate(() => { e.customization = next; })) { drafts.delete(key); render(); }
     } catch (error) { status(`${t('jsonError')}: ${errorMessage(error, language)}`, true); }
   });
+  const unchanged = () => !drafts.has(key) || drafts.get(key) === JSON.stringify(c, null, 2);
+  // Text restored to the current properties is not a draft, so it no longer blocks download or export.
+  json.oninput = () => { if (json.value === JSON.stringify(c, null, 2)) drafts.delete(key); else drafts.set(key, json.value); available(apply, unchanged() ? t('whyNoJSONChanges') : ''); };
+  available(apply, unchanged() ? t('whyNoJSONChanges') : '');
   if (drafts.has(key)) button(advanced, 'undo', () => { drafts.delete(key); render(); });
   container.append(advanced);
   const actions = element('div', 'inspector-actions');
@@ -156,7 +161,7 @@ function renderInspector() {
   const index = preset().layout.elements.indexOf(e);
   for (const [key, delta] of [['backward', -1], ['forward', 1]]) {
     const b = button(actions, key, () => mutate(() => { const items = preset().layout.elements; items.splice(index, 1); items.splice(index + delta, 0, e); }));
-    b.disabled = index + delta < 0 || index + delta >= preset().layout.elements.length;
+    available(b, index + delta < 0 ? t('whyBack') : index + delta >= preset().layout.elements.length ? t('whyFront') : '');
   }
   container.append(actions);
 }
@@ -210,7 +215,9 @@ function render() {
   });
   renderGlobal(); renderInspector(); renderCanvas();
   localPreview.renderLabels();videoExport.renderLabels();
-  $('undo').disabled = history.index === 0; $('redo').disabled = history.index >= history.entries.length - 1;
+  available($('undo'), history.index === 0 ? t('whyUndo') : ''); available($('redo'), history.index >= history.entries.length - 1 ? t('whyRedo') : '');
+  // Remaining buttons are always usable; their hover text repeats the (possibly icon-only) name.
+  for (const b of document.querySelectorAll('button:not(:disabled)')) b.title = b.getAttribute('aria-label') || b.textContent.trim();
   $('command').textContent = `overlay --fit "activity.fit" --layout-preset "layout.dlspreset" --width ${width} --height ${height} --codec prores-4444 --output "overlay.mov"`;
   for (const id of open) if ($(id)) $(id).open = true;
   if (focus && $(focus)) { $(focus).focus({ preventScroll: true }); if (typeof selection === 'number' && ['text', 'textarea'].includes($(focus).type)) $(focus).setSelectionRange(selection, selection); }

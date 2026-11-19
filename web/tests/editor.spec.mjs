@@ -97,7 +97,8 @@ test('invalid customization and invalid files do not replace edited work', async
   const original = await page.locator('#custom-json').inputValue();
   await page.locator('#custom-json').fill('{'); await page.locator('#advanced button').first().click();
   await expect(page.locator('#status')).toHaveText(`${translations.fr.jsonError}: ${translations.fr.errorJSON}`);
-  await page.locator('#custom-json').fill(original); await page.locator('#advanced button').first().click();
+  await page.locator('#custom-json').fill(original); await expect(page.locator('#advanced button').first()).toBeDisabled();
+  await expect(page.locator('#advanced button').first()).toHaveAttribute('title', translations.fr.whyNoJSONChanges);
   await upload(page, { presets: [] });
   await expect(page.locator('#layout-name')).toHaveValue('Editable preset');
   expect(await download(page)).toEqual(source);
@@ -187,4 +188,39 @@ test('support dialog offers Buy Me a Coffee and the WeChat code in all twelve la
   await page.keyboard.press('Escape'); await expect(page.locator('#support-dialog')).not.toBeVisible();
   await page.locator('#support').click(); await page.mouse.click(5, 5); await expect(page.locator('#support-dialog')).not.toBeVisible();
   expect(requests).toEqual([]);
+});
+
+test('buttons are disabled when they cannot act and every button explains itself on hover', async ({ page }) => {
+  const en = translations.en, tip = (id, text) => expect(page.locator(id)).toHaveAttribute('title', text);
+  await openEditor(page, './?lang=en');
+  for (const [id, text] of [['#undo', en.whyUndo], ['#redo', en.whyRedo], ['#play', en.whyNeedsActivity], ['#web-export', en.exportNeedsActivity], ['#load-weather', en.whyNeedsActivity], ['#clear-weather', en.whyNothingToClear]]) {
+    await expect(page.locator(id)).toBeDisabled(); await tip(id, text);
+  }
+  // Every visible, enabled button has a hover title; icon-only buttons use their accessible name.
+  expect(await page.evaluate(() => [...document.querySelectorAll('button')].filter(b => b.offsetParent && !b.title.trim()).map(b => b.id || b.className))).toEqual([]);
+  await tip('#support', `☕ ${en.support}`); await tip('#remove-activity', en.removeActivity);
+  await page.locator('#layers .layer-name').first().click();
+  await expect(page.locator('.inspector-actions button', { hasText: en.backward })).toBeDisabled(); await tip(`.inspector-actions button:has-text("${en.backward}")`, en.whyBack);
+  await expect(page.locator('.inspector-actions button', { hasText: en.forward })).toBeEnabled(); await tip(`.inspector-actions button:has-text("${en.forward}")`, en.forward);
+  await page.locator('#layers .layer-name').last().click(); await tip(`.inspector-actions button:has-text("${en.forward}")`, en.whyFront);
+  await expect(page.locator('#inspector button', { hasText: en.resetColor })).toBeDisabled(); await tip(`#inspector button:has-text("${en.resetColor}")`, en.whyDefaultColors);
+  await page.locator('#advanced').evaluate(node => { node.open = true; });
+  const apply = page.locator('#advanced button', { hasText: en.apply }); await expect(apply).toBeDisabled(); await expect(apply).toHaveAttribute('title', en.whyNoJSONChanges);
+  await page.locator('#custom-json').press('End'); await page.locator('#custom-json').type(' '); await expect(apply).toBeEnabled(); await expect(apply).toHaveAttribute('title', en.apply);
+  await apply.click(); await expect(apply).toBeDisabled(); await expect(apply).toHaveAttribute('title', en.whyNoJSONChanges);
+  await page.locator('#field-inspector-x').fill('0.3'); await page.locator('#field-inspector-x').press('Tab');
+  await expect(page.locator('#undo')).toBeEnabled(); await tip('#undo', en.undo); await expect(page.locator('#redo')).toBeDisabled();
+  await page.locator('#activity-file').setInputFiles({ name: 'activity.gpx', mimeType: 'application/gpx+xml', buffer: Buffer.from(`<gpx><trk><trkseg>${[0,2,4].map(n => `<trkpt lat="0" lon="0"><time>2026-01-01T00:00:0${n}Z</time></trkpt>`).join('')}</trkseg></trk></gpx>`) });
+  await expect(page.locator('#activity-name')).toContainText('activity.gpx');
+  await expect(page.locator('#play')).toBeEnabled(); await expect(page.locator('#web-export')).toBeEnabled();
+  await expect(page.locator('#trim-set-start')).toBeDisabled(); await tip('#trim-set-start', en.whyAtStart);
+  await expect(page.locator('#trim-reset')).toBeDisabled(); await tip('#trim-reset', en.whyFullActivity);
+  await tip('#load-weather', en.whyWeatherKey);
+  await page.locator('.weather-settings summary').click(); await page.locator('#weather-key').fill('TEST_KEY_NOT_A_REAL_CREDENTIAL');
+  await expect(page.locator('#load-weather')).toBeEnabled(); await expect(page.locator('#clear-weather')).toBeEnabled();
+  await page.locator('#clear-weather').click(); await expect(page.locator('#clear-weather')).toBeDisabled();
+  await page.locator('#seek').evaluate(node => { node.value = '3.95'; node.dispatchEvent(new Event('input', { bubbles: true })); });
+  await tip('#trim-set-start', en.whyTrimShort); await expect(page.locator('#trim-set-end')).toBeEnabled();
+  await page.locator('#seek').evaluate(node => { node.value = '2'; node.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.locator('#trim-set-start').click(); await expect(page.locator('#trim-reset')).toBeEnabled(); await tip('#trim-set-start', en.whyAtStart);
 });

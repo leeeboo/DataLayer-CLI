@@ -1,8 +1,10 @@
 import { parseTelemetryFile, previewAt, applyingWeatherRecords } from './telemetry.mjs?v=20261025-weather';
-import { weatherAnchor, loadWeatherRecords, clearWeatherCache, WeatherError } from './weather.mjs?v=20261025-weather';
+import { weatherAnchor, loadWeatherRecords, clearWeatherCache, hasWeatherCache, WeatherError } from './weather.mjs?v=20261119-tips';
 
 const $ = id => document.getElementById(id);
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+// Disable unusable buttons and explain why on hover; usable buttons show their name.
+export function available(node, reason = '') { node.disabled = !!reason; node.title = reason || node.getAttribute('aria-label') || node.textContent.trim(); }
 const activityErrors = { unsupportedFormat:'activityUnsupported', fileTooLarge:'activityTooLarge', tooManySamples:'activityTooManySamples', crcMismatch:'activityCRC', missingTime:'activityMissingTime', noSamples:'activityNoSamples', invalidFIT:'activityMalformed', truncatedFIT:'activityMalformed', invalidGPX:'activityMalformed', invalidTime:'activityMalformed' };
 export function formatTime(seconds) {
   seconds = Math.max(0, Math.floor(seconds || 0));
@@ -10,7 +12,7 @@ export function formatTime(seconds) {
   return parts[0] === '00' ? parts.slice(1).join(':') : parts.join(':');
 }
 
-export function createPreview({ t, redraw }) {
+export function createPreview({ t, redraw, changed }) {
   let activity, activityName = '', time = 0;
   let trimStart = 0, trimEnd = 0;
   let playing = false, raf = 0, lastDraw = 0, playStart = 0, playTime = 0, activityGeneration = 0;
@@ -25,20 +27,29 @@ export function createPreview({ t, redraw }) {
     const end = trimEnd, current = currentTime();
     $('activity-name').textContent = activityLoading ? t('activityLoading') : activity ? t('activityLoaded', {name:activityName,count:activity.samples.length,duration:formatTime(activity.duration)}) : t('activityEmpty');
     $('remove-activity').hidden = !activity;
-    $('play').textContent = t(playing ? 'pause' : 'play'); $('play').disabled = !(end > 0);
+    const busy = activityLoading ? t('whyActivityLoading') : !activity ? t('whyNeedsActivity') : '';
+    $('play').textContent = t(playing ? 'pause' : 'play'); available($('play'), end > 0 ? '' : busy || t('whyNeedsActivity'));
     $('seek').disabled = !(end > 0); $('seek').min = String(trimStart); $('seek').max = String(end); $('seek').value = String(current);
     $('preview-time').textContent = `${formatTime(current)} / ${formatTime(end)}`;
     $('preview-note').textContent = t(activity ? 'previewReal' : 'preview');
     $('activity-trim').hidden = !activity;
     $('trim-summary').textContent = rangeLabel();
     renderTimeline(current);
-    for (const id of ['trim-start','trim-end','trim-set-start','trim-set-end','trim-reset']) $(id).disabled = !activity || activityLoading;
+    for (const id of ['trim-start','trim-end']) $(id).disabled = !!busy;
+    // Match the rounding used by "Start here" / "End here" so the reason reflects what a click would do.
+    const at = clamp(Number(current.toFixed(2)), trimStart, trimEnd);
+    available($('trim-set-start'), busy || (at === trimStart ? t('whyAtStart') : trimEnd - at < .1 - 1e-8 ? t('whyTrimShort') : ''));
+    available($('trim-set-end'), busy || (at === trimEnd ? t('whyAtEnd') : at - trimStart < .1 - 1e-8 ? t('whyTrimShort') : ''));
+    available($('trim-reset'), busy || (trimStart === 0 && trimEnd === activity.duration ? t('whyFullActivity') : ''));
+    available($('import-activity')); available($('remove-activity'));
     $('media-status').textContent = message ? t(message.key) : '';
     $('media-status').classList.toggle('error', !!message?.error);
-    $('load-weather').disabled = !!weatherRequest || activityLoading || !weatherAnchor(baseActivity) || !$('weather-key').value.trim();
     $('load-weather').textContent = t(weatherRequest ? 'weatherLoading' : 'weatherLoad');
+    available($('load-weather'), weatherRequest ? t('weatherLoading') : busy || (!weatherAnchor(baseActivity) ? t('weatherNeedsLocation') : !$('weather-key').value.trim() ? t('whyWeatherKey') : ''));
+    available($('clear-weather'), weatherRequest || $('weather-key').value || activity !== baseActivity || hasWeatherCache() ? '' : t('whyNothingToClear'));
     $('weather-status').textContent = t(weatherMessage?.key ?? (activity && activity !== baseActivity ? 'weatherLoaded' : 'weatherIdle'));
     $('weather-status').classList.toggle('error', !!weatherMessage?.error);
+    changed?.();
   }
   function update() { refresh(); redraw(); }
   // Timeline: proportional bar over the whole activity, with draggable trim handles and a playhead.
@@ -168,5 +179,5 @@ export function createPreview({ t, redraw }) {
   $('seek').oninput = () => seek(Number($('seek').value));
   window.addEventListener('pagehide', event => { if (!event.persisted) { cancelWeather(); $('weather-key').value = ''; clearWeatherCache(); stop(); } });
   refresh();
-  return { frame, renderLabels:refresh, pause, loadActivity, exportSource:()=>({activity,activityLabel:$('activity-name').textContent,range:{start:trimStart,end:trimEnd},rangeLabel:rangeLabel()}) };
+  return { frame, renderLabels:refresh, pause, loadActivity, exportSource:()=>({activity,loading:activityLoading,activityLabel:$('activity-name').textContent,range:{start:trimStart,end:trimEnd},rangeLabel:rangeLabel()}) };
 }

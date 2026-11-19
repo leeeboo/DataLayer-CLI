@@ -33,7 +33,7 @@ async function activity(page){
 // The export range is the editor's trim selection; the dialog only chooses output format.
 async function trim(page,start,end){
   if(await page.locator('#export-dialog').isVisible())await page.locator('#export-close').click();
-  await page.locator('#trim-reset').click();
+  if(await page.locator('#trim-reset').isEnabled())await page.locator('#trim-reset').click();
   await page.locator('#trim-start').fill(start);await page.locator('#trim-start').press('Tab');await page.locator('#trim-end').fill(end);await page.locator('#trim-end').press('Tab');
 }
 async function configure(page,{duration='.2',bitrate='8',size='1280x720',start='0',fps}={}){
@@ -109,6 +109,13 @@ test('trimmed 703 FIT export uses the editor trim range, common frame rates and 
   for(const size of ['3840x2160','2160x3840']){await configure(page,{duration:'.1',size,fps:'29.97',bitrate:'20'});inspect(await encode(page),3,30000,1001);}
   await page.locator('#export-close').click();await page.locator('#trim-reset').click();await page.locator('#web-export').click();await expect(page.locator('#export-summary')).toContainText(`${Math.ceil(4*30000/1001)} frames`);
   expect(result.errors).toEqual([]);expect(result.requests).toEqual([]);
+});
+
+test('start export is disabled with a reason while settings are invalid',async({page})=>{
+  await open(page);await activity(page);await expect(page.locator('#export-encode')).toHaveAttribute('title',translations.en.exportStartButton);
+  await page.locator('#export-bitrate').fill('');await expect(page.locator('#export-encode')).toBeDisabled();await expect(page.locator('#export-encode')).toHaveAttribute('title',translations.en.exportInvalid);
+  await page.locator('#export-bitrate').fill('101');await expect(page.locator('#export-encode')).toBeDisabled();
+  await page.locator('#export-bitrate').fill('8');await expect(page.locator('#export-encode')).toBeEnabled();await expect(page.locator('#export-close')).toHaveAttribute('title',translations.en.exportClose);
 });
 
 test('legacy export URLs open the integrated editor without loading WASM eagerly',async({page})=>{
@@ -240,11 +247,11 @@ test('editor export follows all twelve languages and fits mobile without a secon
 });
 
 test('editor export requires real activity and preserves draft validation and keyboard cancellation',async({page})=>{
-  await open(page);await page.locator('#web-export').click();await expect(page.locator('#export-dialog')).not.toBeVisible();await expect(page.locator('#status')).toHaveText(translations.en.exportNeedsActivity);
+  await open(page);await expect(page.locator('#web-export')).toBeDisabled();await expect(page.locator('#web-export')).toHaveAttribute('title',translations.en.exportNeedsActivity);
   await activity(page);
   await page.evaluate(()=>{const Base=Worker;window.Worker=class extends Base{postMessage(data,...args){if(data.type==='frame'&&!window.editorFrameHeld){window.editorFrameHeld=true;return;}return super.postMessage(data,...args);}};});
   await configure(page,{duration:'1'});await page.locator('#export-encode').click();await page.waitForFunction(()=>window.editorFrameHeld);
-  await expect(page.locator('#export-close')).toBeDisabled();await page.keyboard.press('Escape');await expect(page.locator('#export-cancel')).toBeHidden();await expect(page.locator('#export-status')).toHaveText(translations.en.exportCancelled);
+  await expect(page.locator('#export-close')).toBeDisabled();await expect(page.locator('#export-close')).toHaveAttribute('title',(await import('../i18n.mjs')).translations.en.whyExporting);await expect(page.locator('#export-cancel')).toBeEnabled();await page.keyboard.press('Escape');await expect(page.locator('#export-cancel')).toBeHidden();await expect(page.locator('#export-status')).toHaveText(translations.en.exportCancelled);
   await expect(page.locator('#export-dialog')).toBeVisible();await configure(page,{duration:'.1'});inspect(await encode(page),3,30);
   await page.locator('#export-close').click();await expect(page.locator('#canvas [data-index]')).toHaveCount(8);
   await page.locator('#activity-file').setInputFiles({name:'broken.fit',mimeType:'application/octet-stream',buffer:Buffer.from('broken')});await expect(page.locator('#media-status')).not.toBeEmpty();await expect(page.locator('#activity-name')).toContainText('activity.fit');
