@@ -7,8 +7,8 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; style-src-attr 'unsafe-hashes' 'sha256-3oFxofzq3N//6J8H86e9ul4WT2OkJrtonB66gn/TLJw='; img-src 'self' data:; media-src blob:; connect-src 'self' https://api.openweathermap.org; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Gauge Layout Editor · DataLayer Studio</title>
   <link rel="icon" href="./mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=20261119-4k">
-  <script type="module" src="./app.mjs?v=20261119-4k"></script>
+  <link rel="stylesheet" href="./style.css?v=20261119-timeline">
+  <script type="module" src="./app.mjs?v=20261119-timeline"></script>
 </head>
 <body>
   <header class="app-header">
@@ -64,6 +64,16 @@
       <div class="playback-bar"><button id="play" type="button" disabled>Play</button><input id="seek" type="range" min="0" max="0" step="0.01" value="0" aria-label="Preview time" data-t-aria="seek" dir="ltr" disabled><output id="preview-time" dir="ltr">00:00 / 00:00</output></div>
       <section id="activity-trim" class="activity-trim" aria-labelledby="trim-title" hidden>
         <h2 id="trim-title" data-t="trimActivity">Trim activity</h2>
+        <div id="timeline" class="timeline" dir="ltr">
+          <div id="timeline-track" class="timeline-track">
+            <div id="timeline-range" class="timeline-range"></div>
+            <div id="timeline-playhead" class="timeline-playhead"></div>
+            <div id="timeline-start" class="timeline-handle" role="slider" tabindex="0" aria-label="Start (seconds)" data-t-aria="trimStart" aria-describedby="timeline-help"></div>
+            <div id="timeline-end" class="timeline-handle" role="slider" tabindex="0" aria-label="End (seconds)" data-t-aria="trimEnd" aria-describedby="timeline-help"></div>
+          </div>
+          <div class="timeline-scale"><span>00:00</span><span id="timeline-selection"></span><span id="timeline-total">00:00</span></div>
+        </div>
+        <p id="timeline-help" class="hint" data-t="timelineHelp">Drag the handles to trim; click the timeline to move the playhead. Arrow keys move a handle by 1 s, Shift by 10 s.</p>
         <div class="trim-fields">
           <label for="trim-start"><span data-t="trimStart">Start (seconds)</span><input id="trim-start" type="number" min="0" step="any" value="0" dir="ltr" aria-describedby="trim-help"></label>
           <button id="trim-set-start" type="button" data-t="trimSetStart">Start here</button>

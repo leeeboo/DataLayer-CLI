@@ -1,6 +1,6 @@
 import {clone} from '../model.mjs?v=20261025-weather';
 import {previewAt} from '../telemetry.mjs?v=20261025-weather';
-import {translate} from './i18n.mjs?v=20261119-4k';
+import {translate} from './i18n.mjs?v=20261119-timeline';
 import {exportConfig,frameRates,recommendedBitrate} from './config.mjs?v=20261119-4k';
 import {paint,encodeOverlay,exportFilename} from './encoder-client.mjs?v=20261119-4k';
 import {cleanupExports} from './storage.mjs?v=20261026-full1';

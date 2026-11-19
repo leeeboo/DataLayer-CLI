@@ -31,12 +31,34 @@ test('trim controls in twelve languages fit desktop and mobile without changing 
     await expect(page.locator('#trim-set-end')).toHaveText(translations[language].trimSetEnd);
     await expect(page.locator('#trim-reset')).toHaveText(translations[language].trimReset);
     await expect(page.locator('#trim-help')).toHaveText(translations[language].trimHelp);
+    await expect(page.locator('#timeline-help')).toHaveText(translations[language].timelineHelp);
+    await expect(page.locator('#timeline-start')).toHaveAttribute('aria-label',translations[language].trimStart);await expect(page.locator('#timeline-end')).toHaveAttribute('aria-label',translations[language].trimEnd);
     for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
       await page.setViewportSize(viewport);
-      expect(await page.locator('#activity-trim').evaluate(node=>{const r=node.getBoundingClientRect();return document.documentElement.scrollWidth<=innerWidth+1&&[...node.querySelectorAll('input,button')].every(n=>{const b=n.getBoundingClientRect();return b.left>=r.left&&b.right<=r.right;});})).toBe(true);
+      expect(await page.locator('#activity-trim').evaluate(node=>{const r=node.getBoundingClientRect();return document.documentElement.scrollWidth<=innerWidth+1&&[...node.querySelectorAll('input,button,.timeline-track')].every(n=>{const b=n.getBoundingClientRect();return b.left>=r.left&&b.right<=r.right;});})).toBe(true);
     }
     await expect(page.locator('#trim-start')).toHaveValue('1');
   }
+});
+
+test('timeline handles trim by drag and keyboard, and clicking moves the playhead inside the selection',async({page})=>{
+  await openEditor(page);const source=await template(page);await uploadActivity(page);
+  // Measure on every use: focusing controls may scroll the page.
+  let box,y;const x=seconds=>box.x+box.width*seconds/4,measure=async()=>{box=await page.locator('#timeline-track').boundingBox();y=box.y+box.height/2;};
+  async function drag(handle,seconds){await measure();const b=await page.locator(handle).boundingBox();await page.mouse.move(b.x+b.width/2,y);await page.mouse.down();await page.mouse.move(x(seconds),y,{steps:6});await page.mouse.up();}
+  await drag('#timeline-start',1);await expect(page.locator('#trim-start')).toHaveValue('1');await expect(page.locator('#seek')).toHaveValue('1');
+  await drag('#timeline-end',3);await expect(page.locator('#trim-end')).toHaveValue('3');await expect(page.locator('#seek')).toHaveValue('3');
+  await expect(page.locator('#trim-summary')).toHaveText('Selected: 1–3 s · 2 s');await expect(page.locator('#timeline-selection')).toHaveText('00:01 – 00:03');
+  await expect(page.locator('#timeline-start')).toHaveAttribute('aria-valuetext','00:01');await expect(page.locator('#timeline-end')).toHaveAttribute('aria-valuemin','1');
+  await drag('#timeline-start',3.6);await expect(page.locator('#trim-start')).toHaveValue('2.9');await expect(page.locator('#trim-end')).toHaveValue('3');
+  const start=page.locator('#timeline-start');await start.press('ArrowLeft');await expect(page.locator('#trim-start')).toHaveValue('1.9');
+  await start.press('Shift+ArrowLeft');await expect(page.locator('#trim-start')).toHaveValue('0');await start.press('End');await expect(page.locator('#trim-start')).toHaveValue('2.9');await start.press('Home');await expect(page.locator('#trim-start')).toHaveValue('0');
+  await page.locator('#timeline-end').press('ArrowRight');await expect(page.locator('#trim-end')).toHaveValue('4');
+  await page.locator('#trim-start').fill('1');await page.locator('#trim-start').press('Tab');await page.locator('#trim-end').fill('3');await page.locator('#trim-end').press('Tab');
+  await measure();await page.mouse.click(x(3.8),y);await expect(page.locator('#seek')).toHaveValue('3');
+  await page.mouse.click(x(2),y);await expect(page.locator('#seek')).toHaveValue('2');await expect(page.locator('#trim-start')).toHaveValue('1');await expect(page.locator('#trim-end')).toHaveValue('3');
+  await expect(page.locator('#canvas text').filter({hasText:/^120$/})).toHaveCount(1);await expect(page.locator('#media-status')).toHaveText('');
+  expect(await download(page)).toEqual(source);
 });
 
 test('trim limits seeking and playback, keeps original values and restores the full activity',async({page})=>{

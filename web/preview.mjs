@@ -31,6 +31,7 @@ export function createPreview({ t, redraw }) {
     $('preview-note').textContent = t(activity ? 'previewReal' : 'preview');
     $('activity-trim').hidden = !activity;
     $('trim-summary').textContent = rangeLabel();
+    renderTimeline(current);
     for (const id of ['trim-start','trim-end','trim-set-start','trim-set-end','trim-reset']) $(id).disabled = !activity || activityLoading;
     $('media-status').textContent = message ? t(message.key) : '';
     $('media-status').classList.toggle('error', !!message?.error);
@@ -40,6 +41,56 @@ export function createPreview({ t, redraw }) {
     $('weather-status').classList.toggle('error', !!weatherMessage?.error);
   }
   function update() { refresh(); redraw(); }
+  // Timeline: proportional bar over the whole activity, with draggable trim handles and a playhead.
+  const percent = value => activity?.duration > 0 ? `${clamp(value / activity.duration, 0, 1) * 100}%` : '0%';
+  function renderTimeline(current) {
+    const duration = activity?.duration ?? 0;
+    $('timeline-range').style.left = percent(trimStart); $('timeline-range').style.right = `calc(100% - ${percent(trimEnd)})`;
+    $('timeline-playhead').style.left = percent(current);
+    for (const [id, value, min, max] of [['timeline-start', trimStart, 0, trimEnd], ['timeline-end', trimEnd, trimStart, duration]]) {
+      const handle = $(id); handle.style.left = percent(value);
+      handle.setAttribute('aria-valuemin', String(min)); handle.setAttribute('aria-valuemax', String(max));
+      handle.setAttribute('aria-valuenow', String(value)); handle.setAttribute('aria-valuetext', formatTime(value));
+      handle.tabIndex = activity && !activityLoading ? 0 : -1; handle.setAttribute('aria-disabled', String(!activity || activityLoading));
+    }
+    $('timeline-selection').textContent = `${formatTime(trimStart)} – ${formatTime(trimEnd)}`;
+    $('timeline-total').textContent = formatTime(duration);
+  }
+  const tidy = value => Number(value.toFixed(3));
+  function moveHandle(which, value) {
+    if (!activity || activityLoading) return;
+    const duration = activity.duration;
+    // Preview the frame under the dragged handle; trim() re-seeks once with the new bounds.
+    const start = which === 'start' ? tidy(clamp(value, 0, Math.max(0, trimEnd - .1))) : trimStart;
+    const end = which === 'end' ? (value >= duration ? duration : tidy(clamp(value, Math.min(duration, trimStart + .1), duration))) : trimEnd;
+    time = which === 'start' ? start : end;
+    if (start !== trimStart || end !== trimEnd) trim(start, end); else seek(time);
+  }
+  function timelineValue(event) {
+    const box = $('timeline-track').getBoundingClientRect(), duration = activity.duration;
+    const value = clamp((event.clientX - box.left) / box.width, 0, 1) * duration;
+    return value >= duration ? duration : Math.round(value * 10) / 10;
+  }
+  let timelineDrag;
+  $('timeline-track').onpointerdown = event => {
+    if (!activity || activityLoading || event.button > 0) return;
+    event.preventDefault();
+    timelineDrag = event.target.id === 'timeline-start' ? 'start' : event.target.id === 'timeline-end' ? 'end' : 'seek';
+    $('timeline-track').setPointerCapture(event.pointerId);
+    if (timelineDrag === 'seek') { stop(); seek(timelineValue(event)); } else event.target.focus({ preventScroll: true });
+  };
+  $('timeline-track').onpointermove = event => {
+    if (!timelineDrag || !activity) return;
+    if (timelineDrag === 'seek') seek(timelineValue(event)); else moveHandle(timelineDrag, timelineValue(event));
+  };
+  $('timeline-track').onpointerup = $('timeline-track').onpointercancel = () => { timelineDrag = undefined; };
+  for (const [id, which] of [['timeline-start', 'start'], ['timeline-end', 'end']]) $(id).onkeydown = event => {
+    if (!activity || activityLoading) return;
+    const step = event.shiftKey ? 10 : 1, value = which === 'start' ? trimStart : trimEnd;
+    const next = { ArrowLeft: value - step, ArrowDown: value - step, ArrowRight: value + step, ArrowUp: value + step, PageDown: value - 10, PageUp: value + 10, Home: 0, End: activity.duration }[event.key];
+    if (next === undefined) return;
+    event.preventDefault(); stop(); moveHandle(which, next);
+  };
   function stop() {
     playing = false; cancelAnimationFrame(raf); raf = 0;
   }
