@@ -42,7 +42,6 @@
   "Sources/OverlayCore/Rendering/OverlayRenderConfig.swift",
   "Sources/OverlayCore/Rendering/OverlayRenderer.swift",
   "Sources/OverlayCore/Rendering/OverlayTimeZone.swift",
-  "Sources/OverlayCore/Support/AppleSiliconRequirement.swift",
   "Sources/OverlayCore/Support/DataLayerStudioDefaults.swift",
   "Sources/OverlayCore/Support/OverlayHardwareAcceleration.swift",
   "Sources/OverlayCore/Support/PortableGraphics.swift",
